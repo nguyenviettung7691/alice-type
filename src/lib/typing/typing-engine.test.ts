@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 import {
   applyAction,
   createSession,
+  expireSession,
+  extendTarget,
   getMetrics,
+  getProgress,
   getTypingAction,
   PRACTICE_TEXT,
   type TypingKey,
   type TypingSession
 } from './typing-engine';
+import { generateExercise, type SessionConfiguration } from './exercise-generator';
 
 function type(session: TypingSession, character: string, now = 0) {
   return applyAction(session, { type: 'character', character }, now);
@@ -168,6 +172,105 @@ describe('derived metrics', () => {
 describe('keyboard filtering', () => {
   it.each(['a', 'A', ' ', ',', '.', '!', '0', '~'])('accepts printable key %j', (character) => {
     expect(getTypingAction(key(character))).toEqual({ type: 'character', character });
+  });
+
+  describe('mode-aware sessions', () => {
+    const timed: SessionConfiguration = {
+      mode: 'timed', durationSeconds: 15, wordBankTier: 200, punctuation: false, numbers: false
+    };
+    const words: SessionConfiguration = {
+      mode: 'words', wordLimit: 10, wordBankTier: 200, punctuation: false, numbers: false
+    };
+    const create = (configuration: SessionConfiguration) => {
+      const exercise = generateExercise(configuration, () => 0);
+      return createSession(exercise.target, exercise.configuration, exercise.wordEnds);
+    };
+
+    it('copies configuration and boundaries, rejecting invalid metadata', () => {
+      const exercise = generateExercise(words, () => 0);
+      const session = createSession(exercise.target, words, exercise.wordEnds);
+      expect(session.configuration).not.toBe(words);
+      expect(Object.isFrozen(session.wordEnds)).toBe(true);
+      for (const ends of [undefined, [], [1], [...exercise.wordEnds].reverse(),
+        [0, ...exercise.wordEnds.slice(1)], [1.5, ...exercise.wordEnds.slice(1)]]) {
+        expect(() => createSession(exercise.target, words, ends)).toThrow('word boundaries');
+      }
+    });
+
+    it('stays ready for empty Backspace and starts on an incorrect character at time zero', () => {
+      const ready = create(timed);
+      expect(getProgress(ready, 50_000)).toEqual({ value: 0, maximum: 15, percent: 0 });
+      expect(applyAction(ready, { type: 'backspace' }, 1)).toBe(ready);
+      const running = type(ready, 'x', 0);
+      expect(getProgress(running, 7500)).toEqual({ value: 7.5, maximum: 15, percent: 50 });
+      expect(expireSession(running, 14999)).toBe(running);
+    });
+
+    it.each([15, 30, 60, 120] as const)('expires at exactly %i seconds, not a delayed callback time', (durationSeconds) => {
+      const running = type(create({ ...timed, durationSeconds }), 'y', 1000);
+      const deadline = 1000 + durationSeconds * 1000;
+      expect(getProgress(running, deadline + 9000)).toEqual({ value: durationSeconds, maximum: durationSeconds, percent: 100 });
+      expect(getMetrics(running, deadline + 9000).elapsedMs).toBe(durationSeconds * 1000);
+      const completed = expireSession(running, deadline + 9000);
+      expect(completed).toMatchObject({ status: 'completed', endedAt: deadline, input: 'y', totalAttempts: 1 });
+      expect(getMetrics(completed, deadline)).toEqual(getMetrics(completed, deadline + 90_000));
+      expect(expireSession(completed, deadline + 1000)).toBe(completed);
+    });
+
+    it('rejects character and Backspace actions at or beyond the deadline before changing counters', () => {
+      const running = type(create(timed), 'y', 1000);
+      for (const action of [{ type: 'character', character: 'o' }, { type: 'backspace' }] as const) {
+        expect(applyAction(running, action, 16_000)).toMatchObject({
+          status: 'completed', input: 'y', totalAttempts: 1, endedAt: 16_000
+        });
+      }
+    });
+
+    it('does not complete at timed-buffer exhaustion and safely extends the prefix', () => {
+      let session = create(timed);
+      for (const character of session.target) session = type(session, character, 0);
+      expect(session.status).toBe('running');
+      expect(() => type(session, 'x', 1)).toThrow('extended');
+      const previous = session;
+      const exercise = generateExercise(timed, () => 0.5);
+      session = extendTarget(session, exercise);
+      expect(session.target).toBe(`${previous.target} ${exercise.target}`);
+      expect(session).toMatchObject({
+        input: previous.input, startedAt: 0, totalAttempts: previous.totalAttempts,
+        correctAttempts: previous.correctAttempts, status: 'running'
+      });
+      expect(getMetrics(session, 1000)).toEqual(getMetrics(previous, 1000));
+      expect(type(session, ' ', 1000).correctAttempts).toBe(previous.correctAttempts + 1);
+      expect(() => extendTarget(create(words), exercise)).toThrow('timed');
+      expect(() => extendTarget(expireSession(session, 15_000), exercise)).toThrow('timed');
+      expect(() => extendTarget(session, generateExercise({ ...timed, numbers: true }, () => 0))).toThrow('same session');
+      expect(() => extendTarget(session, { ...exercise, target: '' })).toThrow('non-empty');
+    });
+
+    it('tracks base-word offsets, not numeric tokens or correctness, and rolls back with Backspace', () => {
+      let session = create({ ...words, punctuation: true, numbers: true });
+      expect(session.target).toMatch(/^you, 0 you,/);
+      for (const character of 'xxxx ') session = type(session, character, 0);
+      expect(getProgress(session, 0)).toEqual({ value: 1, maximum: 10, percent: 10 });
+      session = applyAction(session, { type: 'backspace' }, 1);
+      expect(getProgress(session, 1).value).toBe(0);
+      session = type(session, ' ', 2);
+      for (const character of '0 ') session = type(session, character, 3);
+      expect(getProgress(session, 3).value).toBe(1);
+      expect(session.totalAttempts).toBe(8);
+    });
+
+    it.each([10, 25, 50, 100] as const)('completes %i base words only at the final modified character', (wordLimit) => {
+      let session = create({ ...words, wordLimit, punctuation: true, numbers: true });
+      for (const character of session.target.slice(0, -1)) session = type(session, character, 0);
+      expect(session.status).toBe('running');
+      expect(getProgress(session, 500).value).toBe(wordLimit - 1);
+      session = type(session, 'x', 1000);
+      expect(session).toMatchObject({ status: 'completed', endedAt: 1000 });
+      expect(getProgress(session, 50_000)).toEqual({ value: wordLimit, maximum: wordLimit, percent: 100 });
+      expect(type(session, 'x', 2000)).toBe(session);
+      expect(getMetrics(session, 2000)).toEqual(getMetrics(session, 1000));
+    });
   });
 
   it('accepts Backspace as the only editing action', () => {

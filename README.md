@@ -4,7 +4,7 @@ AliceType is a desktop-oriented typing practice web app for the Alice split-ergo
 
 ## Project status
 
-Phase 1 scaffolding, the Phase 2 core typing engine, and the Phase 3 Alice visualizer are implemented. Practice one fixed exercise with character feedback, Backspace correction, live WPM/accuracy, completion, restart, and physical-key feedback on a generic Alice keyboard diagram. Configurable modes and persistence are not implemented yet. Product design documents:
+Phases 1–4 are implemented: the app foundation, typing engine, Alice visualizer, and generated Timed/Words exercises. Practice with optional punctuation/numbers, configurable vocabulary, live WPM/accuracy, mode-specific progress, completion, and restart. Persistence and the other roadmap modes are not implemented. Product design documents:
 
 - [Technical Design Document](doc/tech-design.md)
 - [Phase 1 Detail Design](doc/phase-1-detail-design.md)
@@ -13,14 +13,20 @@ Phase 1 scaffolding, the Phase 2 core typing engine, and the Phase 3 Alice visua
 - [Phase 2 Implementation Plan](doc/phase-2-implementation-plan.md)
 - [Phase 3 Detail Design](doc/phase-3-detail-design.md)
 - [Phase 3 Implementation Plan](doc/phase-3-implementation-plan.md)
+- [Phase 4 Detail Design](doc/phase-4-detail-design.md)
+- [Phase 4 Implementation Plan](doc/phase-4-implementation-plan.md)
 
 ## Practice
 
-- Select the exercise text, tab to the practice input, or activate **Start typing**. Focusing alone does not start the session; the first printable key does.
-- Type the displayed sentence, including capitalization, spaces, punctuation, and the final period. Errors are red and underlined; Backspace removes the last character.
+- Choose **Timed** (15/30/60/120 seconds) or **Words** (10/25/50/100 base words). The default is Timed, 30 seconds.
+- Choose a **200**, **1000**, or **5000** word vocabulary and optionally enable **Punctuation** and **Numbers**. Both modifiers default to off. Settings and mode selection are locked while running; Restart unlocks them.
+- Select the exercise text, tab to the practice input, or activate **Start typing**. Focusing alone does not start the session; the first printable key does. Type the full displayed target, including spaces and modifiers. Errors are red and underlined; Backspace removes the last character.
 - WPM counts currently correct characters using five characters per word. Accuracy counts all character attempts, including mistakes later corrected.
 - Tab leaves the practice input without capturing typing elsewhere. Elapsed time continues while focus is away; use **Resume typing** to return.
-- Reaching the end completes the exercise even with errors. **Restart** resets the same exercise and all metrics.
+- Timed mode ends at its deadline, even when focus is elsewhere. Its target extends automatically as needed; running out of the initial text does not complete the session.
+- Words mode ends on the final target character even with errors. Progress counts base words, not inserted number tokens; Backspace can reduce progress without erasing attempt history.
+- **Restart** generates a fresh exercise using the same session configuration and resets all metrics. A generation failure displays an explicit error and stops capture until recovery. Nothing is saved on reload.
+- Long exercises scroll within the text area; the active character is kept in view.
 - Input is limited to discrete printable ASCII key presses. Paste, composition/IME input, and held-key repeat are not supported. Browser shortcuts are not captured by the typing engine.
 
 ## Alice visualizer
@@ -56,7 +62,13 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Unit tests cover typing-engine behavior and layout mapping/geometry. The browser tests cover input/focus, correction, native-edit filtering, metrics, completion/restart, visualizer timing and physical mapping, timer cleanup, keyboard scrolling, and layouts at 1440, 768, and 320 px. They require port 4175 to be available.
+Unit tests cover generation/word-bank validation, modifier boundaries, mode deadlines/progress, typing-engine behavior, and layout mapping/geometry. Browser tests cover all supported mode limits, settings, refill/error recovery, exact timed metrics, input/focus, correction, native-edit filtering, completion/restart, visualizer timing/mapping, timer cleanup, keyboard scrolling, and layouts at 1440, 768, and 320 px. They require port 4175 to be available.
+
+## Vocabulary data
+
+The bundled English vocabulary is adapted from Hermit Dave's [FrequencyWords](https://github.com/hermitdave/FrequencyWords), derived from OpenSubtitles2018. The three tiers are prefixes of 5000 unique lowercase ASCII entries in source frequency order, not a universal English frequency ranking. No vocabulary is downloaded at runtime.
+
+Vocabulary data is licensed separately under **CC BY-SA 4.0**. See the [attribution and transformation notice](src/lib/typing/word-banks/NOTICE.txt) and [data license](src/lib/typing/word-banks/LICENSE-CC-BY-SA-4.0.txt); both are also accessible from the app footer in production builds.
 
 ## Planned technology
 
@@ -76,7 +88,7 @@ Unit tests cover typing-engine behavior and layout mapping/geometry. The browser
 6. Keyboard Keys Test Matrix
 7. Keyboard Device Details
 
-See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent. The header's modes, Settings, and Stats remain non-functional placeholders. No keyboard permissions, device identification, sound, progress calculation, or persistent data is introduced through Phase 3.
+See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent. Quote, Custom, Zen, Settings, and Stats remain unavailable placeholders. No difficulty levels, keyboard permissions, device identification, sound, or persistent data is introduced through Phase 4.
 
 ## License
 

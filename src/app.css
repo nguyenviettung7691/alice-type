@@ -201,6 +201,7 @@ a:focus-visible {
 
 .app-footer {
   display: flex;
+  flex-wrap: wrap;
   width: min(100% - 3rem, 76rem);
   align-items: center;
   justify-content: space-between;

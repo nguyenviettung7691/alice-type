@@ -6,9 +6,13 @@
     <script type="module">
       import { mount, unmount } from 'svelte';
       import PracticePanel from '../../src/lib/components/PracticePanel.svelte';
+      import { DEFAULT_SETTINGS } from '../../src/lib/typing/exercise-generator';
       import '../../src/app.css';
 
-      const component = mount(PracticePanel, { target: document.getElementById('fixture') });
+      const component = mount(PracticePanel, {
+        target: document.getElementById('fixture'),
+        props: { settings: { ...DEFAULT_SETTINGS, mode: 'words' } }
+      });
       window.addEventListener('unmount-practice', () => unmount(component), { once: true });
     </script>
   </body>

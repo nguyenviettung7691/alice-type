@@ -1,0 +1,30 @@
+AliceType English vocabulary data
+================================
+
+english.json is adapted from Hermit Dave's FrequencyWords project:
+https://github.com/hermitdave/FrequencyWords
+
+Source: content/2018/en/en_50k.txt
+Revision: 072bbed282316a23651aa7068c7173aa7898cf80
+https://github.com/hermitdave/FrequencyWords/blob/072bbed282316a23651aa7068c7173aa7898cf80/content/2018/en/en_50k.txt
+Retrieved: 2026-10-25
+
+The upstream README licenses content under CC BY-SA 4.0:
+https://github.com/hermitdave/FrequencyWords#license
+The source frequency data is derived from OpenSubtitles2018:
+http://opus.nlpl.eu/OpenSubtitles2018.php
+
+Changes: removed frequency counts; kept only unique lowercase ASCII words
+matching ^[a-z]+$; retained source frequency order; selected the first 5000
+entries; converted to JSON. The 200- and 1000-word pools are prefixes of
+this 5000-word pool. This is a subtitle-derived vocabulary, not a claim
+to represent universal English word frequency.
+
+english.json and adaptations of this vocabulary are licensed under
+Creative Commons Attribution-ShareAlike 4.0 International (CC BY-SA 4.0).
+See LICENSE-CC-BY-SA-4.0.txt and:
+https://creativecommons.org/licenses/by-sa/4.0/
+
+No endorsement by the source authors is implied. This data license is
+separate from the application's MIT license. No upstream program code
+is included.

@@ -1,5 +1,12 @@
 <script lang="ts">
   import ModeNavigation from './ModeNavigation.svelte';
+  import type { PracticeMode } from '../typing/exercise-generator';
+
+  let { mode, disabled, onmodechange }: {
+    mode: PracticeMode;
+    disabled: boolean;
+    onmodechange: (mode: PracticeMode) => void;
+  } = $props();
 </script>
 
 <header class="w-full border-b border-white/[0.06]">
@@ -13,7 +20,7 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-x-7 gap-y-3 max-[760px]:w-full max-[760px]:justify-between max-[520px]:items-start max-[520px]:flex-col">
-      <ModeNavigation />
+      <ModeNavigation {mode} {disabled} {onmodechange} />
       <div class="flex items-center gap-2" aria-label="Settings and statistics, coming soon">
         <span class="rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-muted">Settings</span>
         <span class="rounded-full border border-white/[0.08] px-3 py-1.5 text-xs text-muted">Stats</span>

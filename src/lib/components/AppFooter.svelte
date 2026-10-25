@@ -1,4 +1,26 @@
+<script lang="ts">
+  import vocabularyNotice from '../typing/word-banks/NOTICE.txt?url&no-inline';
+  import vocabularyLicense from '../typing/word-banks/LICENSE-CC-BY-SA-4.0.txt?url&no-inline';
+</script>
+
 <footer class="app-footer">
   <span class="footer-brand">Made for a more comfortable way to type.</span>
-  <span>AliceType <span aria-hidden="true">·</span> Practice with the Alice visualizer</span>
+  <span>AliceType <span aria-hidden="true">·</span> Timed &amp; Words practice</span>
+  <span class="data-notices">
+    <a href={vocabularyNotice}>Vocabulary attribution</a>
+    <a href={vocabularyLicense}>CC BY-SA 4.0 data</a>
+  </span>
 </footer>
+
+<style>
+  .data-notices {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  a {
+    color: inherit;
+    text-underline-offset: 0.2em;
+  }
+</style>
