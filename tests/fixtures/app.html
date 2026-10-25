@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8"><title>Application lifecycle test</title></head>
+  <body>
+    <div id="fixture"></div>
+    <script type="module">
+      import { mount, unmount } from 'svelte';
+      import App from '../../src/App.svelte';
+      import '../../src/app.css';
+
+      const component = mount(App, { target: document.getElementById('fixture') });
+      window.addEventListener('unmount-app', () => unmount(component), { once: true });
+    </script>
+  </body>
+</html>

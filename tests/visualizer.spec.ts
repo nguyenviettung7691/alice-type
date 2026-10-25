@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ALICE_LAYOUT } from '../src/lib/keyboard/alice-layout';
+import { skipOnboarding } from './support';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Typing practice', exact: true });
 const diagram = (page: Page) => page.getByRole('img', { name: 'Generic Alice keyboard', exact: true });
@@ -27,6 +28,7 @@ async function dispatchKey(page: Page, key: string, code: string, options: KeyOp
 }
 
 test.beforeEach(async ({ page }) => {
+  await skipOnboarding(page);
   await page.addInitScript(() => { Math.random = () => 0; });
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));

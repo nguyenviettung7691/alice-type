@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { skipOnboarding } from './support';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Typing practice', exact: true });
 const panel = (page: Page) => page.getByRole('region', { name: 'Typing practice', exact: true });
@@ -15,6 +16,7 @@ async function start(page: Page) {
 }
 
 test.beforeEach(async ({ page }) => {
+  await skipOnboarding(page);
   await page.addInitScript(() => { Math.random = () => 0; });
   await page.goto('/');
   await page.getByRole('button', { name: 'Words', exact: true }).click();
@@ -222,7 +224,7 @@ for (const width of [1440, 768, 320]) {
   });
 }
 
-test('does not emit runtime errors, use persistence, or make external requests', async ({ page }) => {
+test('reports unavailable history without runtime errors or external requests', async ({ page }) => {
   const errors: string[] = [];
   const externalRequests: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -230,13 +232,14 @@ test('does not emit runtime errors, use persistence, or make external requests',
     if (new URL(request.url()).origin !== 'http://127.0.0.1:4175') externalRequests.push(request.url());
   });
   await page.addInitScript(() => {
-    Storage.prototype.setItem = () => { throw new Error('Unexpected persistence'); };
-    indexedDB.open = () => { throw new Error('Unexpected database access'); };
+    indexedDB.open = () => { throw new DOMException('Database disabled', 'SecurityError'); };
   });
   await page.reload();
   await start(page);
   await page.keyboard.type('you ');
   await page.getByRole('button', { name: 'Restart' }).click();
+  await page.getByRole('button', { name: 'Stats', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Database disabled');
   expect(errors).toEqual([]);
   expect(externalRequests).toEqual([]);
 });

@@ -17,12 +17,26 @@
     ExerciseGenerationError, generateExercise, getConfiguration,
     type PracticeSettings, type SessionConfiguration
   } from '../typing/exercise-generator';
+  import { type CaretStyle } from '../storage/preferences';
+  import { completedRecord, type SessionRecord } from '../storage/session-history';
 
-  let { settings = $bindable({ ...DEFAULT_SETTINGS }), running = $bindable(false) }: {
+  let {
+    settings = $bindable({ ...DEFAULT_SETTINGS }), running = $bindable(false),
+    caretStyle = 'block', showLiveStats = true, onsettingschange, oncharacter, oncomplete
+  }: {
     settings?: PracticeSettings;
     running?: boolean;
+    caretStyle?: CaretStyle;
+    showLiveStats?: boolean;
+    onsettingschange?: (settings: PracticeSettings) => void;
+    oncharacter?: () => void;
+    oncomplete?: (record: SessionRecord) => void;
   } = $props();
 
+  let sessionId = '';
+  let startedWallTime = 0;
+  let submitted = false;
+  let missedKeys: Record<string, number> = {};
   let session = $state<TypingSession | null>(null);
   let exerciseError = $state('');
   let now = $state(0);
@@ -57,7 +71,7 @@
     const interval = window.setInterval(() => {
       now = performance.now();
       if (session) session = expireSession(session, now);
-      if (session?.status === 'completed') clearFeedback();
+      if (session?.status === 'completed') complete();
     }, 100);
 
     return () => window.clearInterval(interval);
@@ -92,6 +106,9 @@
 
   function prepareExercise(selected: PracticeSettings, configuration?: SessionConfiguration) {
     clearFeedback();
+    sessionId = '';
+    missedKeys = {};
+    submitted = false;
     exerciseError = '';
     now = 0;
     try {
@@ -100,6 +117,19 @@
     } catch (error) {
       session = null;
       generationFailed(error);
+    }
+  }
+
+  function changeSettings(next: PracticeSettings) {
+    settings = next;
+    onsettingschange?.(next);
+  }
+
+  function complete() {
+    clearFeedback();
+    if (!submitted && session?.status === 'completed' && oncomplete) {
+      submitted = true;
+      oncomplete(completedRecord(session, sessionId, startedWallTime, missedKeys));
     }
   }
 
@@ -145,15 +175,25 @@
     now = performance.now();
     session = expireSession(session, now);
     if (session.status === 'completed') {
-      clearFeedback();
+      complete();
       return;
     }
     if (action.type === 'character' && !refillTarget()) return;
     const correct = action.type === 'character'
       && action.character === session.target[session.input.length];
+    if (action.type === 'character') {
+      if (session.status === 'ready') {
+        sessionId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+        startedWallTime = Date.now();
+      }
+      if (!correct && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(event.code) && event.code !== 'Unidentified') {
+        missedKeys[event.code] = (Object.hasOwn(missedKeys, event.code) ? missedKeys[event.code] : 0) + 1;
+      }
+    }
     session = applyAction(session, action, now);
+    if (action.type === 'character') oncharacter?.();
     if (session.status === 'completed') {
-      clearFeedback();
+      complete();
     } else if (action.type === 'character' && ALICE_CODES.has(event.code)) {
       highlightKey(event.code, correct);
     }
@@ -164,8 +204,8 @@
   }
 </script>
 
-<section class="practice-panel" aria-labelledby="practice-panel-heading" data-status={exerciseError ? 'error' : session?.status ?? 'ready'}>
-  <h3 id="practice-panel-heading" class="sr-only">Typing practice</h3>
+<section class="practice-panel" data-caret={caretStyle} aria-labelledby="practice-panel-heading" data-status={exerciseError ? 'error' : session?.status ?? 'ready'}>
+  <h3 id="practice-panel-heading" class="sr-only" tabindex="-1">Typing practice</h3>
 
   <fieldset class="exercise-settings" disabled={running}>
     <legend>Exercise settings</legend>
@@ -174,7 +214,7 @@
         <select aria-label="Duration" value={settings.durationSeconds} onchange={(event) => {
           const durationSeconds = DURATIONS.find((duration) => String(duration) === event.currentTarget.value);
           if (durationSeconds === undefined) throw new Error('Unsupported duration selection.');
-          settings = { ...settings, durationSeconds };
+          changeSettings({ ...settings, durationSeconds });
         }}>
           {#each DURATIONS as duration}<option value={duration}>{duration} seconds</option>{/each}
         </select>
@@ -184,7 +224,7 @@
         <select aria-label="Word limit" value={settings.wordLimit} onchange={(event) => {
           const wordLimit = WORD_LIMITS.find((limit) => String(limit) === event.currentTarget.value);
           if (wordLimit === undefined) throw new Error('Unsupported word-limit selection.');
-          settings = { ...settings, wordLimit };
+          changeSettings({ ...settings, wordLimit });
         }}>
           {#each WORD_LIMITS as limit}<option value={limit}>{limit} words</option>{/each}
         </select>
@@ -194,16 +234,16 @@
       <select aria-label="Vocabulary" value={settings.wordBankTier} onchange={(event) => {
         const wordBankTier = WORD_BANK_TIERS.find((tier) => String(tier) === event.currentTarget.value);
         if (wordBankTier === undefined) throw new Error('Unsupported vocabulary selection.');
-        settings = { ...settings, wordBankTier };
+        changeSettings({ ...settings, wordBankTier });
       }}>
         {#each WORD_BANK_TIERS as tier}<option value={tier}>{tier} words</option>{/each}
       </select>
     </label>
     <label class="modifier"><input type="checkbox" checked={settings.punctuation} onchange={(event) => {
-      settings = { ...settings, punctuation: event.currentTarget.checked };
+      changeSettings({ ...settings, punctuation: event.currentTarget.checked });
     }} />Punctuation</label>
     <label class="modifier"><input type="checkbox" checked={settings.numbers} onchange={(event) => {
-      settings = { ...settings, numbers: event.currentTarget.checked };
+      changeSettings({ ...settings, numbers: event.currentTarget.checked });
     }} />Numbers</label>
   </fieldset>
   <p class="settings-note">{running ? 'Restart to change mode or settings.' : 'Choose an exercise, then start typing.'}</p>
@@ -215,6 +255,7 @@
   <div class="practice-toolbar">
     <p class="practice-label">{timed ? 'Timed practice' : 'Word practice'}</p>
 
+    {#if showLiveStats || session.status === 'completed'}
     <div class="metrics" role="group" aria-label="Practice metrics">
       <div class="metric">
         <span class="metric-label">WPM</span>
@@ -231,6 +272,7 @@
         >{metrics.accuracy === null ? '—' : `${metrics.accuracy.toFixed(1)}%`}</span>
       </div>
     </div>
+    {/if}
   </div>
 
   <p id="typing-instructions" class="sr-only">
@@ -414,6 +456,18 @@
     color: var(--color-background);
     background: var(--color-accent);
     box-shadow: -2px 0 var(--color-accent);
+  }
+
+  [data-caret='line'] .typing-character.active {
+    color: var(--color-text);
+    background: transparent;
+    box-shadow: -2px 0 var(--color-accent);
+  }
+
+  [data-caret='underline'] .typing-character.active {
+    color: var(--color-text);
+    background: transparent;
+    box-shadow: 0 2px var(--color-accent);
   }
 
   .practice-actions {

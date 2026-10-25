@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { skipOnboarding } from './support';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Typing practice', exact: true });
 const panel = (page: Page) => page.getByRole('region', { name: 'Typing practice', exact: true });
@@ -12,6 +13,7 @@ const progress = (page: Page) => page.getByRole('progressbar');
 const intervalCount = (page: Page) => page.evaluate(() => Reflect.get(window, 'phase4IntervalCount'));
 
 test.beforeEach(async ({ page }) => {
+  await skipOnboarding(page);
   await page.addInitScript(() => { Math.random = () => 0; });
   await page.clock.install();
   await page.clock.pauseAt(new Date(Date.now() + 1000));

@@ -43,6 +43,177 @@ a {
   font: inherit;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.primary-button,
+.secondary-button,
+.view-navigation button {
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 0.55rem;
+  padding: 0.6rem 0.85rem;
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.primary-button,
+.view-navigation button[aria-pressed='true'] {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  color: var(--color-background);
+}
+
+.view-navigation,
+.panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.panel-actions {
+  margin-top: 1.5rem;
+}
+
+.notice {
+  margin-bottom: 1.5rem;
+  border: 1px solid var(--color-error);
+  border-radius: 0.6rem;
+  padding: 1rem;
+  overflow-wrap: anywhere;
+}
+
+.notice button + button {
+  margin-left: 0.5rem;
+}
+
+.panel-copy,
+.settings-panel p,
+dialog p {
+  color: #b8b8b8;
+  font-size: 0.9rem;
+  line-height: 1.65;
+}
+
+.layout-message button {
+  margin: 0.5rem;
+}
+
+dialog {
+  width: min(36rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  overflow-y: auto;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 1rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+  padding: clamp(1.25rem, 4vw, 2rem);
+}
+
+dialog::backdrop {
+  background: rgb(0 0 0 / 75%);
+}
+
+.settings-panel h2,
+.stats-panel h2,
+dialog h2 {
+  margin-top: 0;
+  font-size: 1.75rem;
+}
+
+.settings-panel fieldset {
+  min-width: 0;
+  border: 0;
+  border-top: 1px solid rgb(255 255 255 / 15%);
+  padding: 1.25rem 0;
+  margin-top: 1rem;
+}
+
+.settings-panel legend {
+  padding-right: 0.75rem;
+  font-weight: 600;
+}
+
+.settings-panel label {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-bottom: 1rem;
+}
+
+.settings-panel select {
+  border: 1px solid var(--color-muted);
+  border-radius: 0.35rem;
+  padding: 0.5rem;
+  background: var(--color-background);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.settings-panel input {
+  accent-color: var(--color-accent);
+}
+
+.settings-panel input:focus-visible,
+.settings-panel select:focus-visible,
+.history-scroll:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.stats-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: 1rem;
+  margin-block: 2rem;
+}
+
+.stats-summary dt {
+  color: #b8b8b8;
+  font-size: 0.85rem;
+}
+
+.stats-summary dd {
+  margin: 0.5rem 0 0;
+  font-size: 1.8rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.history-scroll table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-scroll td,
+.history-scroll th {
+  border-bottom: 1px solid rgb(255 255 255 / 15%);
+  padding: 0.85rem 0.6rem;
+  white-space: nowrap;
+}
+
+.missed-keys {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 2rem;
+  padding-left: 1.25rem;
+}
+
 button:focus-visible,
 a:focus-visible {
   outline: 2px solid var(--color-focus);
