@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8"><title>Practice lifecycle test</title></head>
+  <body>
+    <div id="fixture"></div>
+    <script type="module">
+      import { mount, unmount } from 'svelte';
+      import PracticePanel from '../../src/lib/components/PracticePanel.svelte';
+      import '../../src/app.css';
+
+      const component = mount(PracticePanel, { target: document.getElementById('fixture') });
+      window.addEventListener('unmount-practice', () => unmount(component), { once: true });
+    </script>
+  </body>
+</html>

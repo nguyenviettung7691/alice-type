@@ -181,18 +181,6 @@ a:focus-visible {
   text-align: center;
 }
 
-.sample-text strong {
-  color: var(--color-text);
-  font-weight: 600;
-}
-
-.progress-track {
-  height: 0.22rem;
-  overflow: hidden;
-  border-radius: 999px;
-  background: rgb(255 93 0 / 42%);
-}
-
 .practice-bottom {
   margin-top: 1.35rem;
 }
@@ -208,11 +196,7 @@ a:focus-visible {
   border-radius: 0.55rem;
   background: transparent;
   padding: 0.55rem 0.8rem;
-  opacity: 0.7;
-}
-
-.restart-button:disabled {
-  cursor: not-allowed;
+  cursor: pointer;
 }
 
 .app-footer {
