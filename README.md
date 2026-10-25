@@ -4,7 +4,7 @@ AliceType is a desktop-oriented typing practice web app for the Alice split-ergo
 
 ## Project status
 
-Phases 1–5 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, and local storage/polish. Preferences persist locally; completed sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. Other roadmap modes remain unavailable. Product design documents:
+Phases 1–6 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, local storage/polish, and the guided Keyboard Test matrix. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Other roadmap modes remain unavailable. Product design documents:
 
 - [Technical Design Document](doc/tech-design.md)
 - [Phase 1 Detail Design](doc/phase-1-detail-design.md)
@@ -17,6 +17,8 @@ Phases 1–5 are implemented: the app foundation, typing engine, Alice visualize
 - [Phase 4 Implementation Plan](doc/phase-4-implementation-plan.md)
 - [Phase 5 Detail Design](doc/phase-5-detail-design.md)
 - [Phase 5 Implementation Plan](doc/phase-5-implementation-plan.md)
+- [Phase 6 Detail Design](doc/phase-6-detail-design.md)
+- [Phase 6 Implementation Plan](doc/phase-6-implementation-plan.md)
 
 ## Practice
 
@@ -49,6 +51,16 @@ Phases 1–5 are implemented: the app foundation, typing engine, Alice visualize
 - Feedback clears when focus leaves the input, the exercise completes, or it restarts. The highlight is temporary; incorrect printable attempts are separately aggregated into completed-session history.
 - At narrow widths, scroll within the diagram to see all keys. Keyboard users can tab to its scroll area and use Left/Right arrows; the diagram adds no focus stop when it fits.
 
+## Keyboard Test
+
+- Open **Keyboard Test**, then activate **Focus keyboard test** or tab to the test input region. Press and release each expected physical key in the generic Alice diagram's stable order. This is a physical `KeyboardEvent.code` test, independent of the character typed or printed on your keycaps.
+- The arrow marks the expected key; correctly tested keys show **+** and a count of one. A wrong key briefly shows **!** without advancing or changing any count. Both spacebars share the same logical Space count. **Text key results** provides a readable list of key states and counts.
+- Held-key repeat, composition, and browser/system shortcut combinations are ignored. Standalone modifiers can be tested; their native behavior is not suppressed. Some system keys may be withheld by the browser/OS, so this is not a hardware certification or device-identification tool.
+- Tab leaves the input except when Tab itself is expected. **Shift+Tab** and **Escape** always provide a way out. Focus the separate diagram scroll area for native Left/Right scrolling at narrow widths.
+- **Restart test** clears all run counts, progress, and feedback without changing sound preferences. Blur pauses input while retaining progress; leaving the view or reloading discards the run. Matrix runs never contribute to practice scores, missed-key summaries, or Stats.
+- **Keyboard test sound** defaults off and is independent of practice sound. Select Default, Bubble, Horn, Cartoon, Coin, Dog bark, Glass, Donkey, Phone, Punch, Plastic Toy, Sneeze, or Plastic chicken. These are original short synthesized interpretations, not downloaded recordings. Selection changes preview only when enabled; eligible correct and unexpected presses sound once each.
+- The toggle/effect persist in preferences schema v2. Existing v1 preferences migrate while retaining practice/display/onboarding values. A failed migration write preserves valid selections in memory and offers retry without overwriting the v1 record. No run counts or raw test events are saved.
+
 ## Getting started
 
 Requirements: Node.js 20.19+ or 22.12+.
@@ -74,7 +86,7 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Unit tests cover generation/word-bank validation, modifier boundaries, mode deadlines/progress, typing-engine behavior, layout mapping/geometry, preference validation, and history record/summary contracts. Browser tests additionally exercise real IndexedDB upgrades/transactions, blocked access, failed commits/retries/deletion, reload persistence, onboarding, sound filtering/cleanup, caret/live-stat preferences, and Phase 2–4 regressions at 1440, 768, and 320 px. They require port 4175 to be available.
+Unit tests cover generation/word-bank validation, modifier boundaries, mode deadlines/progress, typing-engine behavior, layout mapping/geometry, guided keyboard-test transitions, synthesized effect bounds, audio lifecycle, preference migration/validation, and history record/summary contracts. Browser tests additionally exercise real IndexedDB upgrades/transactions, blocked access, failed commits/retries/deletion, reload persistence, onboarding, sound filtering/cleanup, native Web Audio effects, pending-play cancellation, full physical-key matrix runs, caret/live-stat preferences, and Phase 2–5 regressions at desktop and narrow widths. They require port 4175 to be available.
 
 ## Vocabulary data
 
@@ -101,7 +113,7 @@ Vocabulary data is licensed separately under **CC BY-SA 4.0**. See the [attribut
 6. Keyboard Keys Test Matrix
 7. Keyboard Device Details
 
-See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 5 Implementation Plan](doc/phase-5-implementation-plan.md) for storage/polish decisions and verification. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, the keyboard test matrix/effect library, and device identification/catalog are not implemented.
+See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 6 Implementation Plan](doc/phase-6-implementation-plan.md) for the latest implementation and verification record. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, and device identification/catalog are not implemented.
 
 ## License
 

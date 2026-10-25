@@ -6,11 +6,21 @@
     type AliceKey,
     type KeyFeedback
   } from '../keyboard/alice-layout';
+  import { expectedTestKey, type KeyboardTestState } from '../keyboard/keyboard-test';
 
-  let { layout, feedback }: {
+  let { layout, feedback = {}, testState, errorCode }: {
     layout: readonly AliceKey[];
-    feedback: KeyFeedback;
+    feedback?: KeyFeedback;
+    testState?: KeyboardTestState;
+    errorCode?: string;
   } = $props();
+  const expectedCode = $derived(testState ? expectedTestKey(testState)?.code : undefined);
+
+  function testStatus(code: string): string {
+    if (code === errorCode) return 'unexpected';
+    if (code === expectedCode) return 'expected';
+    return testState?.correctCounts[code] ? 'tested' : 'untested';
+  }
 
   const id = $props.id();
   let scrollRegion: HTMLDivElement;
@@ -29,9 +39,12 @@
 
 <figure class="keyboard-visualizer">
   <figcaption>
-    <span class="keyboard-title">Alice visualizer</span>
+    <span class="keyboard-title">{testState ? 'Alice test matrix' : 'Alice visualizer'}</span>
     <span class="keyboard-legend">
       <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
+      {#if testState}
+        <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>Expected key</span>
+      {/if}
       <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
       <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
     </span>
@@ -56,16 +69,31 @@
       aria-labelledby={`${id}-title`}
       aria-describedby={`${id}-description`}
     >
-      <title id={`${id}-title`}>Generic Alice keyboard</title>
+      <title id={`${id}-title`}>{testState ? 'Generic Alice keyboard test matrix' : 'Generic Alice keyboard'}</title>
       <desc id={`${id}-description`}>
         Angled split layout with generic US ANSI legends, not a detected device.
-        Recent accepted printable presses briefly show an orange plus for correct
-        input or a red exclamation mark for a mismatch. Unmapped physical codes
-        do not highlight. Both spacebar shapes share one physical Space code.
+        {#if testState}
+          Each cell shows its correct-press count. An arrow marks the expected key,
+          a plus marks a tested key, and an exclamation mark indicates temporary
+          unexpected input. Text key results are available below the diagram.
+        {:else}
+          Recent accepted printable presses briefly show an orange plus for correct
+          input or a red exclamation mark for a mismatch. Unmapped physical codes
+          do not highlight.
+        {/if}
+        Both spacebar shapes share one physical Space code.
       </desc>
       <g aria-hidden="true">
         {#each layout as key (key.code)}
-          <g class="keyboard-key" data-code={key.code} data-feedback={feedback[key.code] ?? 'neutral'}>
+          <g
+            class="keyboard-key"
+            data-code={key.code}
+            data-feedback={testState
+              ? (errorCode === key.code ? 'incorrect' : testState.correctCounts[key.code] ? 'correct' : 'neutral')
+              : feedback[key.code] ?? 'neutral'}
+            data-test-state={testState ? testStatus(key.code) : undefined}
+            data-count={testState ? testState.correctCounts[key.code] ?? 0 : undefined}
+          >
             {#each key.keycaps as cap}
               <g transform={ALICE_HALF_TRANSFORMS[cap.half]}>
                 <rect
@@ -78,18 +106,25 @@
                 <text
                   class="key-legend"
                   x={cap.x + cap.width / 2}
-                  y={cap.y + cap.height / 2}
+                  y={cap.y + cap.height / 2 - (testState ? 5 : 0)}
                   dominant-baseline="central"
                   text-anchor="middle"
                 >{key.legend}</text>
-                {#if feedback[key.code]}
+                {#if testState}
+                  <text class="key-count" x={cap.x + cap.width / 2} y={cap.y + cap.height - 6} text-anchor="middle">
+                    {testState.correctCounts[key.code] ?? 0}
+                  </text>
+                {/if}
+                {#if testState ? testStatus(key.code) !== 'untested' : feedback[key.code]}
                   <text
                     class="feedback-marker"
                     x={cap.x + cap.width - 7}
                     y={cap.y + 9}
                     text-anchor="middle"
                     dominant-baseline="central"
-                  >{feedback[key.code] === 'correct' ? '+' : '!'}</text>
+                  >{testState
+                      ? (errorCode === key.code ? '!' : expectedCode === key.code ? '>' : '+')
+                      : feedback[key.code] === 'correct' ? '+' : '!'}</text>
                 {/if}
               </g>
             {/each}
@@ -102,6 +137,16 @@
     <p id={`${id}-scroll-help`} class="keyboard-note scroll-help">
       Scroll to see all keys. Keyboard: focus the diagram and use Left/Right arrows.
     </p>
+  {/if}
+  {#if testState}
+    <details class="key-results">
+      <summary>Text key results</summary>
+      <ul>
+        {#each layout as key (key.code)}
+          <li>{key.legend} ({key.code}): {testState.correctCounts[key.code] ?? 0} correct, {testStatus(key.code)}</li>
+        {/each}
+      </ul>
+    </details>
   {/if}
 </figure>
 
@@ -155,6 +200,42 @@
     color: var(--color-background);
     background: var(--color-accent);
   }
+
+  .legend-mark.expected {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+  }
+
+  .keyboard-key[data-test-state='expected'] rect {
+    stroke: var(--color-accent);
+    stroke-width: 3;
+  }
+
+  .keyboard-key[data-test-state='expected'] .feedback-marker {
+    fill: var(--color-accent);
+  }
+
+  .key-count {
+    fill: var(--color-muted);
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  .keyboard-key[data-feedback='correct'] .key-count,
+  .keyboard-key[data-feedback='incorrect'] .key-count {
+    fill: var(--color-background);
+  }
+
+  .key-results {
+    margin-top: 1rem;
+    color: var(--color-text);
+    font-size: 0.85rem;
+    line-height: 1.7;
+  }
+
+  summary { cursor: pointer; }
+  summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .key-results ul { padding-left: 1.5rem; }
 
   .legend-mark.incorrect {
     border-color: var(--color-error);

@@ -6,9 +6,13 @@
     mode: PracticeMode;
     disabled: boolean;
     onmodechange: (mode: PracticeMode) => void;
-    view: 'practice' | 'settings' | 'stats';
-    onviewchange: (view: 'practice' | 'settings' | 'stats') => void;
+    view: 'practice' | 'settings' | 'stats' | 'keyboard-test';
+    onviewchange: (view: 'practice' | 'settings' | 'stats' | 'keyboard-test') => void;
   } = $props();
+  const views = [
+    { id: 'practice', label: 'Practice' }, { id: 'keyboard-test', label: 'Keyboard Test' },
+    { id: 'settings', label: 'Settings' }, { id: 'stats', label: 'Stats' }
+  ] as const;
 </script>
 
 <header class="w-full border-b border-white/[0.06]">
@@ -24,10 +28,9 @@
     <div class="flex flex-wrap items-center gap-x-7 gap-y-3 max-[760px]:w-full max-[760px]:justify-between max-[520px]:items-start max-[520px]:flex-col">
       <ModeNavigation {mode} {disabled} {onmodechange} />
       <nav class="view-navigation" aria-label="App views">
-        {#each ['practice', 'settings', 'stats'] as destination}
-          <button type="button" {disabled} aria-pressed={view === destination} onclick={() => {
-            if (destination === 'practice' || destination === 'settings' || destination === 'stats') onviewchange(destination);
-          }}>{destination[0].toUpperCase() + destination.slice(1)}</button>
+        {#each views as destination}
+          <button type="button" {disabled} aria-pressed={view === destination.id}
+            onclick={() => onviewchange(destination.id)}>{destination.label}</button>
         {/each}
       </nav>
     </div>

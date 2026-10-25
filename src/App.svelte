@@ -6,18 +6,24 @@
   import SettingsPanel from './lib/components/SettingsPanel.svelte';
   import StatsPanel from './lib/components/StatsPanel.svelte';
   import KeyboardOnboarding from './lib/components/KeyboardOnboarding.svelte';
+  import KeyboardTestPanel from './lib/components/KeyboardTestPanel.svelte';
   import { type PracticeSettings } from './lib/typing/exercise-generator';
-  import { DEFAULT_PREFERENCES, loadPreferences, savePreferences, type Preferences } from './lib/storage/preferences';
+  import {
+    DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type Preferences
+  } from './lib/storage/preferences';
   import { StorageError } from './lib/storage/errors';
   import { SessionHistory, type SessionRecord } from './lib/storage/session-history';
   import { TypingSound, TypingSoundError } from './lib/audio/typing-sound';
 
   function initialPreferences() {
     try {
-      return { settings: loadPreferences(), error: '' };
+      return { settings: loadPreferences(), error: '', operation: 'save' as const };
     } catch (error) {
+      if (error instanceof PreferenceMigrationError) {
+        return { settings: error.settings, error: error.message, operation: 'save' as const };
+      }
       if (!(error instanceof StorageError)) throw error;
-      return { settings: { ...DEFAULT_PREFERENCES }, error: error.message };
+      return { settings: { ...DEFAULT_PREFERENCES }, error: error.message, operation: 'load' as const };
     }
   }
 
@@ -32,10 +38,10 @@
   let preferences = $state<Preferences>(initial.settings);
   let settings = $state(practicePreferences(initial.settings));
   let running = $state(false);
-  let view = $state<'practice' | 'settings' | 'stats'>('practice');
+  let view = $state<'practice' | 'settings' | 'stats' | 'keyboard-test'>('practice');
   let preferenceError = $state(initial.error);
-  let preferenceOperation = $state<'load' | 'save'>(initial.error ? 'load' : 'save');
-  let preserveStored = Boolean(initial.error);
+  let preferenceOperation = $state<'load' | 'save'>(initial.operation);
+  let preserveStored = initial.operation === 'load';
   let onboarding = $state(!initial.settings.onboardingComplete);
   let layoutMessage = $state('');
   let audioError = $state('');
@@ -87,6 +93,13 @@
       onboarding = !loaded.onboardingComplete;
     } catch (error) {
       if (!(error instanceof StorageError)) throw error;
+      if (error instanceof PreferenceMigrationError) {
+        preferences = error.settings;
+        settings = practicePreferences(error.settings);
+        preferenceOperation = 'save';
+        preserveStored = false;
+        onboarding = !error.settings.onboardingComplete;
+      }
       preferenceError = error.message;
     }
   }
@@ -217,6 +230,14 @@
       }} />
     {:else if view === 'stats'}
       <StatsPanel {history} {revision} pending={pending.length > 0} />
+    {:else if view === 'keyboard-test'}
+      <KeyboardTestPanel
+        soundEnabled={preferences.keyboardTestSoundEnabled}
+        soundEffect={preferences.keyboardTestSoundEffect}
+        onsoundchange={(keyboardTestSoundEnabled, keyboardTestSoundEffect) =>
+          changePreferences({ ...preferences, keyboardTestSoundEnabled, keyboardTestSoundEffect })}
+        onaudiofailure={() => { preferences = { ...preferences, keyboardTestSoundEnabled: false }; }}
+      />
     {/if}
   </main>
 
