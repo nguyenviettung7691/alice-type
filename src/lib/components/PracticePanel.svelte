@@ -1,4 +1,7 @@
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+  import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
+  import { ALICE_CODES, ALICE_LAYOUT, type KeyFeedback } from '../keyboard/alice-layout';
   import {
     applyAction,
     createSession,
@@ -12,6 +15,8 @@
   let inputElement: HTMLInputElement;
   let focused = $state(false);
   let composing = false;
+  let feedback = $state<KeyFeedback>({});
+  const feedbackTimers = new Map<string, number>();
   const running = $derived(session.status === 'running');
   const metrics = $derived(getMetrics(session, now));
   const statusMessage = $derived(
@@ -32,6 +37,25 @@
     return () => window.clearInterval(interval);
   });
 
+  onDestroy(clearFeedback);
+
+  function clearFeedback() {
+    for (const timer of feedbackTimers.values()) window.clearTimeout(timer);
+    feedbackTimers.clear();
+    feedback = {};
+  }
+
+  function highlightKey(code: string, correct: boolean) {
+    window.clearTimeout(feedbackTimers.get(code));
+    feedback = { ...feedback, [code]: correct ? 'correct' : 'incorrect' };
+    feedbackTimers.set(code, window.setTimeout(() => {
+      feedbackTimers.delete(code);
+      const next = { ...feedback };
+      delete next[code];
+      feedback = next;
+    }, 300));
+  }
+
   function handleKeydown(event: KeyboardEvent) {
     if (composing) return;
 
@@ -39,11 +63,21 @@
     if (!action) return;
 
     event.preventDefault();
+    if (session.status === 'completed') return;
+
+    const correct = action.type === 'character'
+      && action.character === session.target[session.input.length];
     now = performance.now();
     session = applyAction(session, action, now);
+    if (session.status === 'completed') {
+      clearFeedback();
+    } else if (action.type === 'character' && ALICE_CODES.has(event.code)) {
+      highlightKey(event.code, correct);
+    }
   }
 
   function restart() {
+    clearFeedback();
     session = createSession(session.target);
     now = 0;
   }
@@ -94,7 +128,7 @@
     oncompositionstart={() => { composing = true; }}
     oncompositionend={() => { composing = false; inputElement.value = ''; }}
     onfocus={() => { focused = true; }}
-    onblur={() => { focused = false; composing = false; inputElement.value = ''; }}
+    onblur={() => { focused = false; composing = false; inputElement.value = ''; clearFeedback(); }}
   />
   <label class="sample-text practice-text" for="practice-input" id="practice-target">
     <span class="sr-only">{PRACTICE_TEXT}</span>
@@ -105,6 +139,8 @@
         class:active={session.status !== 'completed' && index === session.input.length}
       >{character}</span>{/each}</span>
   </label>
+
+  <AliceKeyboardVisualizer layout={ALICE_LAYOUT} {feedback} />
 
   <div class="practice-bottom">
     <p class="session-note" role="status">{statusMessage}</p>
