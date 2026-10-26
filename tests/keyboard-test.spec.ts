@@ -298,7 +298,7 @@ test.describe('test sound and local preferences', () => {
     await expect(soundToggle(page)).toBeChecked();
     await expect(effectSelect(page)).toHaveValue('dog-bark');
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? ''), PREFERENCES_KEY);
-    expect(saved).toEqual({ version: 2, settings: {
+    expect(saved).toEqual({ version: 3, settings: {
       ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardTestSoundEnabled: true, keyboardTestSoundEffect: 'dog-bark'
     } });
     await page.reload();
@@ -355,7 +355,7 @@ test.describe('test sound and local preferences', () => {
   });
 });
 
-test('migration write failure retains existing values and retry saves v2 without losing them', async ({ page }) => {
+test('migration write failure retains existing values and retry saves v3 without losing them', async ({ page }) => {
   await page.addInitScript(({ key, defaults }) => {
     const { keyboardTestSoundEnabled, keyboardTestSoundEffect, ...previous } = defaults;
     localStorage.setItem(key, JSON.stringify({ version: 1, settings: {
@@ -374,7 +374,7 @@ test('migration write failure retains existing values and retry saves v2 without
   await nav(page, 'Retry preferences').click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? ''), PREFERENCES_KEY);
-  expect(saved.version).toBe(2);
+  expect(saved.version).toBe(3);
   expect(saved.settings).toMatchObject({
     durationSeconds: 120, soundEnabled: true, caretStyle: 'underline', onboardingComplete: true,
     keyboardTestSoundEnabled: false, keyboardTestSoundEffect: 'default'

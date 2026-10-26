@@ -8,11 +8,12 @@
   } from '../keyboard/alice-layout';
   import { expectedTestKey, type KeyboardTestState } from '../keyboard/keyboard-test';
 
-  let { layout, feedback = {}, testState, errorCode }: {
+  let { layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice' }: {
     layout: readonly AliceKey[];
     feedback?: KeyFeedback;
     testState?: KeyboardTestState;
     errorCode?: string;
+    testLayoutLabel?: string;
   } = $props();
   const expectedCode = $derived(testState ? expectedTestKey(testState)?.code : undefined);
 
@@ -39,7 +40,7 @@
 
 <figure class="keyboard-visualizer">
   <figcaption>
-    <span class="keyboard-title">{testState ? 'Alice test matrix' : 'Alice visualizer'}</span>
+    <span class="keyboard-title">{testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer'}</span>
     <span class="keyboard-legend">
       <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
       {#if testState}
@@ -50,7 +51,7 @@
     </span>
   </figcaption>
   <p class="keyboard-note">
-    Generic Alice layout · US ANSI legends, not detected hardware.
+    {testLayoutLabel} layout · US ANSI legends, not detected hardware.
     Both spacebars represent the same Space key.
   </p>
 
@@ -69,7 +70,7 @@
       aria-labelledby={`${id}-title`}
       aria-describedby={`${id}-description`}
     >
-      <title id={`${id}-title`}>{testState ? 'Generic Alice keyboard test matrix' : 'Generic Alice keyboard'}</title>
+      <title id={`${id}-title`}>{testState ? `${testLayoutLabel} keyboard test matrix` : 'Generic Alice keyboard'}</title>
       <desc id={`${id}-description`}>
         Angled split layout with generic US ANSI legends, not a detected device.
         {#if testState}

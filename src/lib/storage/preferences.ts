@@ -4,10 +4,20 @@ import {
 } from '../typing/exercise-generator';
 import { isRecord, StorageError, storageFailure } from './errors';
 import { KEYBOARD_TEST_EFFECTS, type KeyboardTestEffect } from '../audio/keyboard-test-sound';
+import { isKeyboardProfileId } from '../keyboard/keyboard-profiles';
 
 export const PREFERENCES_KEY = 'alicetype.preferences';
 export const CARET_STYLES = ['block', 'line', 'underline'] as const;
 export type CaretStyle = typeof CARET_STYLES[number];
+
+export const KEYBOARD_DETAIL_TEXT_FIELDS = ['name', 'brand', 'model', 'version', 'connectivity'] as const;
+export const KEYBOARD_DETAIL_BOOLEAN_FIELDS = ['rgbBacklighting', 'keyRollover', 'programmableKeys'] as const;
+export const KEYBOARD_DETAIL_MAX_LENGTH = 120;
+
+export type KeyboardUserDetails = Readonly<
+  Partial<Record<typeof KEYBOARD_DETAIL_TEXT_FIELDS[number], string>
+    & Record<typeof KEYBOARD_DETAIL_BOOLEAN_FIELDS[number], boolean>>
+>;
 
 export interface Preferences extends PracticeSettings {
   readonly caretStyle: CaretStyle;
@@ -16,6 +26,8 @@ export interface Preferences extends PracticeSettings {
   readonly onboardingComplete: boolean;
   readonly keyboardTestSoundEnabled: boolean;
   readonly keyboardTestSoundEffect: KeyboardTestEffect;
+  readonly keyboardProfileId: string | null;
+  readonly keyboardUserDetails: KeyboardUserDetails;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -25,14 +37,20 @@ export const DEFAULT_PREFERENCES: Preferences = {
   showLiveStats: true,
   onboardingComplete: false,
   keyboardTestSoundEnabled: false,
-  keyboardTestSoundEffect: 'default'
+  keyboardTestSoundEffect: 'default',
+  keyboardProfileId: null,
+  keyboardUserDetails: {}
 };
 
 function member<T>(values: readonly T[], value: unknown): value is T {
   return values.some((entry) => entry === value);
 }
 
-function validateVersion1(value: unknown): Omit<Preferences, 'keyboardTestSoundEnabled' | 'keyboardTestSoundEffect'> {
+type Version1Preferences = Omit<Preferences,
+  'keyboardTestSoundEnabled' | 'keyboardTestSoundEffect' | 'keyboardProfileId' | 'keyboardUserDetails'>;
+type Version2Preferences = Omit<Preferences, 'keyboardProfileId' | 'keyboardUserDetails'>;
+
+function validateVersion1(value: unknown): Version1Preferences {
   if (!isRecord(value)
     || (value.mode !== 'timed' && value.mode !== 'words')
     || !member(DURATIONS, value.durationSeconds)
@@ -58,7 +76,7 @@ function validateVersion1(value: unknown): Omit<Preferences, 'keyboardTestSoundE
   };
 }
 
-export function validatePreferences(value: unknown): Preferences {
+function validateVersion2(value: unknown): Version2Preferences {
   const existing = validateVersion1(value);
   if (!isRecord(value) || typeof value.keyboardTestSoundEnabled !== 'boolean') {
     throw new StorageError('Saved preferences contain an invalid keyboard test sound toggle.');
@@ -66,6 +84,43 @@ export function validatePreferences(value: unknown): Preferences {
   const effect = KEYBOARD_TEST_EFFECTS.find((effect) => effect.id === value.keyboardTestSoundEffect);
   if (!effect) throw new StorageError('Saved preferences contain an invalid keyboard test sound effect.');
   return { ...existing, keyboardTestSoundEnabled: value.keyboardTestSoundEnabled, keyboardTestSoundEffect: effect.id };
+}
+
+function validateKeyboardUserDetails(value: unknown): KeyboardUserDetails {
+  if (!isRecord(value)) throw new StorageError('Saved keyboard details are invalid.');
+  const details: Partial<Record<typeof KEYBOARD_DETAIL_TEXT_FIELDS[number], string>
+    & Record<typeof KEYBOARD_DETAIL_BOOLEAN_FIELDS[number], boolean>> = {};
+  for (const field of KEYBOARD_DETAIL_TEXT_FIELDS) {
+    const entry = value[field];
+    if (entry === undefined) continue;
+    if (typeof entry !== 'string') throw new StorageError(`Saved keyboard detail "${field}" must be text.`);
+    const trimmed = entry.trim();
+    if (trimmed.length > KEYBOARD_DETAIL_MAX_LENGTH) {
+      throw new StorageError(`Saved keyboard detail "${field}" exceeds ${KEYBOARD_DETAIL_MAX_LENGTH} characters.`);
+    }
+    if (trimmed) details[field] = trimmed;
+  }
+  for (const field of KEYBOARD_DETAIL_BOOLEAN_FIELDS) {
+    const entry = value[field];
+    if (entry === undefined) continue;
+    if (typeof entry !== 'boolean') throw new StorageError(`Saved keyboard detail "${field}" must be yes or no.`);
+    details[field] = entry;
+  }
+  return details;
+}
+
+export function validatePreferences(value: unknown): Preferences {
+  const existing = validateVersion2(value);
+  if (!isRecord(value)) throw new StorageError('Saved preferences contain invalid keyboard details.');
+  const profileId = value.keyboardProfileId;
+  if (profileId !== null && !isKeyboardProfileId(profileId)) {
+    throw new StorageError('Saved preferences refer to an unknown keyboard profile.');
+  }
+  return {
+    ...existing,
+    keyboardProfileId: profileId,
+    keyboardUserDetails: validateKeyboardUserDetails(value.keyboardUserDetails)
+  };
 }
 
 export class PreferenceMigrationError extends StorageError {
@@ -81,20 +136,38 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     const raw = (storage ?? window.localStorage).getItem(PREFERENCES_KEY);
     if (raw === null) return { ...DEFAULT_PREFERENCES };
     const record: unknown = JSON.parse(raw);
-    if (!isRecord(record) || (record.version !== 1 && record.version !== 2)) {
+    if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3)) {
       throw new StorageError('Saved preferences use an unsupported schema version.');
     }
+    if (record.version === 3) return validatePreferences(record.settings);
+
+    let migrated: Preferences;
     if (record.version === 1) {
-      const settings = validatePreferences({
-        ...validateVersion1(record.settings), keyboardTestSoundEnabled: false, keyboardTestSoundEffect: 'default'
+      const phaseOne = validateVersion1(record.settings);
+      migrated = validatePreferences({
+        ...phaseOne,
+        keyboardTestSoundEnabled: false,
+        keyboardTestSoundEffect: 'default',
+        keyboardProfileId: null,
+        keyboardUserDetails: {}
       });
-      try { savePreferences(settings, storage); } catch (error) {
-        if (!(error instanceof StorageError)) throw error;
-        throw new PreferenceMigrationError(settings, error);
-      }
-      return settings;
+    } else {
+      const phaseTwo = validateVersion2(record.settings);
+      migrated = validatePreferences({
+        ...phaseTwo,
+        keyboardProfileId: null,
+        keyboardUserDetails: {}
+      });
     }
-    return validatePreferences(record.settings);
+    try {
+      savePreferences(migrated, storage);
+    } catch (error) {
+      if (error instanceof StorageError) {
+        throw new PreferenceMigrationError(migrated, error);
+      }
+      throw error;
+    }
+    return migrated;
   } catch (error) {
     if (error instanceof PreferenceMigrationError) throw error;
     throw storageFailure('Preferences could not be loaded', error);
@@ -102,7 +175,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
 }
 
 export function savePreferences(settings: Preferences, storage?: PreferenceStorage): void {
-  const record = { version: 2, settings: validatePreferences(settings) };
+  const record = { version: 3, settings: validatePreferences(settings) };
   try {
     (storage ?? window.localStorage).setItem(PREFERENCES_KEY, JSON.stringify(record));
   } catch (error) {

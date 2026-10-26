@@ -7,6 +7,10 @@
   import StatsPanel from './lib/components/StatsPanel.svelte';
   import KeyboardOnboarding from './lib/components/KeyboardOnboarding.svelte';
   import KeyboardTestPanel from './lib/components/KeyboardTestPanel.svelte';
+  import KeyboardDetailsPanel from './lib/components/KeyboardDetailsPanel.svelte';
+  import {
+    findKeyboardProfile, GENERIC_ALICE_TEST_LAYOUT, isTestLayoutEligible
+  } from './lib/keyboard/keyboard-profiles';
   import { type PracticeSettings } from './lib/typing/exercise-generator';
   import {
     DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type Preferences
@@ -38,7 +42,7 @@
   let preferences = $state<Preferences>(initial.settings);
   let settings = $state(practicePreferences(initial.settings));
   let running = $state(false);
-  let view = $state<'practice' | 'settings' | 'stats' | 'keyboard-test'>('practice');
+  let view = $state<'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details'>('practice');
   let preferenceError = $state(initial.error);
   let preferenceOperation = $state<'load' | 'save'>(initial.operation);
   let preserveStored = initial.operation === 'load';
@@ -47,6 +51,10 @@
   let audioError = $state('');
   let revision = $state(0);
   let pending = $state<{ record: SessionRecord; saving: boolean; error: string }[]>([]);
+  const activeTestLayout = $derived.by(() => {
+    const profile = findKeyboardProfile(preferences.keyboardProfileId);
+    return isTestLayoutEligible(profile) ? profile.testLayout : GENERIC_ALICE_TEST_LAYOUT;
+  });
   const history = new SessionHistory();
   const sound = new TypingSound();
   let alive = true;
@@ -234,9 +242,18 @@
       <KeyboardTestPanel
         soundEnabled={preferences.keyboardTestSoundEnabled}
         soundEffect={preferences.keyboardTestSoundEffect}
+        testLayout={activeTestLayout.layout}
+        testLayoutLabel={activeTestLayout.label.replace(/ test layout$/, '')}
         onsoundchange={(keyboardTestSoundEnabled, keyboardTestSoundEffect) =>
           changePreferences({ ...preferences, keyboardTestSoundEnabled, keyboardTestSoundEffect })}
         onaudiofailure={() => { preferences = { ...preferences, keyboardTestSoundEnabled: false }; }}
+      />
+    {:else if view === 'keyboard-details'}
+      <KeyboardDetailsPanel
+        profileId={preferences.keyboardProfileId}
+        userDetails={preferences.keyboardUserDetails}
+        onprofilechange={(keyboardProfileId) => changePreferences({ ...preferences, keyboardProfileId })}
+        onuserdetailschange={(keyboardUserDetails) => changePreferences({ ...preferences, keyboardUserDetails })}
       />
     {/if}
   </main>

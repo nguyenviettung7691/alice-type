@@ -4,7 +4,7 @@ AliceType is a desktop-oriented typing practice web app for the Alice split-ergo
 
 ## Project status
 
-Phases 1–6 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, local storage/polish, and the guided Keyboard Test matrix. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Other roadmap modes remain unavailable. Product design documents:
+Phases 1–7 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, local storage/polish, guided Keyboard Test matrix, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Keyboard Details provides a revisioned generic Alice profile and locally editable device notes; vendor-specific hardware profiles remain unavailable until sourced claims can be verified. Other roadmap modes remain unavailable. Product design documents:
 
 - [Technical Design Document](doc/tech-design.md)
 - [Phase 1 Detail Design](doc/phase-1-detail-design.md)
@@ -19,6 +19,8 @@ Phases 1–6 are implemented: the app foundation, typing engine, Alice visualize
 - [Phase 5 Implementation Plan](doc/phase-5-implementation-plan.md)
 - [Phase 6 Detail Design](doc/phase-6-detail-design.md)
 - [Phase 6 Implementation Plan](doc/phase-6-implementation-plan.md)
+- [Phase 7 Detail Design](doc/phase-7-detail-design.md)
+- [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md)
 
 ## Practice
 
@@ -59,7 +61,15 @@ Phases 1–6 are implemented: the app foundation, typing engine, Alice visualize
 - Tab leaves the input except when Tab itself is expected. **Shift+Tab** and **Escape** always provide a way out. Focus the separate diagram scroll area for native Left/Right scrolling at narrow widths.
 - **Restart test** clears all run counts, progress, and feedback without changing sound preferences. Blur pauses input while retaining progress; leaving the view or reloading discards the run. Matrix runs never contribute to practice scores, missed-key summaries, or Stats.
 - **Keyboard test sound** defaults off and is independent of practice sound. Select Default, Bubble, Horn, Cartoon, Coin, Dog bark, Glass, Donkey, Phone, Punch, Plastic Toy, Sneeze, or Plastic chicken. These are original short synthesized interpretations, not downloaded recordings. Selection changes preview only when enabled; eligible correct and unexpected presses sound once each.
-- The toggle/effect persist in preferences schema v2. Existing v1 preferences migrate while retaining practice/display/onboarding values. A failed migration write preserves valid selections in memory and offers retry without overwriting the v1 record. No run counts or raw test events are saved.
+- The toggle/effect persist in preferences schema v3. Existing v1/v2 preferences migrate while retaining practice/display/onboarding values. A failed migration write preserves valid selections in memory and offers retry without overwriting the original record. No run counts or raw test events are saved.
+
+## Keyboard Details
+
+- Open **Keyboard Details** to select the generic Alice layout reference or leave the profile unselected. The selection describes a reference profile; AliceType does not detect the connected keyboard.
+- The bundled catalog is revisioned and records internal layout provenance. It currently contains the generic Alice layout only; no brand, model, version, RGB, connectivity, rollover, or programmable-key claims are made for a device.
+- Name, brand, model, version, connectivity, and feature overrides can be entered as user-provided details. Each displayed value is labeled **Catalog verified**, **You provided this**, or **Unknown**. Personal details can be edited and cleared separately from profile selection.
+- Profile and personal details are saved in this browser using preferences schema v3. Existing v1/v2 preferences migrate while preserving practice and Keyboard Test settings. Device details are not included in session history or Stats and are never sent to a server.
+- Keyboard Test uses a catalog map only when it is explicitly verified; otherwise it labels and uses the generic Alice map. User-provided notes never change the test layout.
 
 ## Getting started
 
@@ -113,7 +123,7 @@ Vocabulary data is licensed separately under **CC BY-SA 4.0**. See the [attribut
 6. Keyboard Keys Test Matrix
 7. Keyboard Device Details
 
-See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 6 Implementation Plan](doc/phase-6-implementation-plan.md) for the latest implementation and verification record. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, and device identification/catalog are not implemented.
+See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md) for the latest implementation and verification record. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, and automatic device identification are not implemented.
 
 ## License
 

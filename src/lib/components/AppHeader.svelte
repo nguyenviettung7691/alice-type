@@ -6,11 +6,12 @@
     mode: PracticeMode;
     disabled: boolean;
     onmodechange: (mode: PracticeMode) => void;
-    view: 'practice' | 'settings' | 'stats' | 'keyboard-test';
-    onviewchange: (view: 'practice' | 'settings' | 'stats' | 'keyboard-test') => void;
+    view: 'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details';
+    onviewchange: (view: 'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
   } = $props();
   const views = [
     { id: 'practice', label: 'Practice' }, { id: 'keyboard-test', label: 'Keyboard Test' },
+    { id: 'keyboard-details', label: 'Keyboard Details' },
     { id: 'settings', label: 'Settings' }, { id: 'stats', label: 'Stats' }
   ] as const;
 </script>

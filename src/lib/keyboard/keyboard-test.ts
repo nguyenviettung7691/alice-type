@@ -12,12 +12,16 @@ export function createKeyboardTest(): KeyboardTestState {
   return { expectedIndex: 0, correctCounts: {} };
 }
 
-export function expectedTestKey(state: KeyboardTestState): AliceKey | undefined {
-  return ALICE_LAYOUT[state.expectedIndex];
+export function expectedTestKey(state: KeyboardTestState, layout: readonly AliceKey[] = ALICE_LAYOUT): AliceKey | undefined {
+  return layout[state.expectedIndex];
 }
 
-export function pressTestKey(state: KeyboardTestState, code: string): KeyboardTestState {
-  const expected = expectedTestKey(state);
+export function pressTestKey(
+  state: KeyboardTestState,
+  code: string,
+  layout: readonly AliceKey[] = ALICE_LAYOUT
+): KeyboardTestState {
+  const expected = expectedTestKey(state, layout);
   if (!expected || expected.code !== code) return state;
   return {
     expectedIndex: state.expectedIndex + 1,
