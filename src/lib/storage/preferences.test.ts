@@ -9,7 +9,7 @@ function storage(raw: string | null = null) {
   return { getItem: vi.fn(() => raw), setItem: vi.fn() };
 }
 
-describe('preferences version 3', () => {
+describe('preferences version 4', () => {
   it('returns Phase 4-compatible defaults without writing an absent key', () => {
     const source = storage();
     expect(loadPreferences(source)).toEqual(DEFAULT_PREFERENCES);
@@ -34,12 +34,12 @@ describe('preferences version 3', () => {
     const normalized = { ...settings, keyboardUserDetails: {
       name: 'Split Alice', brand: 'Example', connectivity: 'USB-C', rgbBacklighting: false, programmableKeys: true
     } };
-    expect(raw).toEqual([PREFERENCES_KEY, JSON.stringify({ version: 3, settings: normalized })]);
-    expect(loadPreferences(storage(JSON.stringify({ version: 3, settings: { ...normalized, target: 'private' } })))).toEqual(normalized);
+    expect(raw).toEqual([PREFERENCES_KEY, JSON.stringify({ version: 4, settings: normalized })]);
+    expect(loadPreferences(storage(JSON.stringify({ version: 4, settings: { ...normalized, target: 'private' } })))).toEqual(normalized);
   });
 
-  it.each(['{', 'null', '[]', '{"version":0}', '{"version":4}', '{"version":1,"settings":{}}',
-    '{"version":2,"settings":{}}', '{"version":3,"settings":{}}'])(
+  it.each(['{', 'null', '[]', '{"version":0}', '{"version":5}', '{"version":1,"settings":{}}',
+    '{"version":2,"settings":{}}', '{"version":3,"settings":{}}', '{"version":4,"settings":{}}'])(
     'rejects %s without overwriting it', (raw) => {
       const source = storage(raw);
       expect(() => loadPreferences(source)).toThrow(StorageError);
@@ -100,7 +100,7 @@ describe('preferences version 3', () => {
 
   it.each(KEYBOARD_TEST_EFFECTS)('round trips independent test effect $id', ({ id }) => {
     const settings = { ...DEFAULT_PREFERENCES, keyboardTestSoundEnabled: true, keyboardTestSoundEffect: id };
-    const source = storage(JSON.stringify({ version: 3, settings }));
+    const source = storage(JSON.stringify({ version: 4, settings }));
     expect(loadPreferences(source)).toEqual(settings);
     expect(source.setItem).not.toHaveBeenCalled();
     expect(settings.soundEnabled).toBe(false);
@@ -117,11 +117,11 @@ describe('preferences version 3', () => {
     expect(loaded).toEqual({
       ...existing, keyboardTestSoundEnabled, keyboardTestSoundEffect, keyboardProfileId, keyboardUserDetails
     });
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 3, settings: loaded }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 4, settings: loaded }));
     expect(source.setItem).toHaveBeenCalledTimes(1);
   });
 
-  it('migrates v2 preferences directly to v3 without losing test-sound settings', () => {
+  it('migrates v2 preferences directly to v4 without losing test-sound settings', () => {
     const {
       keyboardProfileId, keyboardUserDetails, ...phaseTwo
     } = DEFAULT_PREFERENCES;
@@ -130,7 +130,7 @@ describe('preferences version 3', () => {
     const loaded = loadPreferences(source);
     expect(loaded).toEqual({ ...existing, keyboardProfileId, keyboardUserDetails });
     expect(source.setItem).toHaveBeenCalledTimes(1);
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 3, settings: loaded }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 4, settings: loaded }));
   });
 
   it('retains validated migrated settings and the original record when v1 migration cannot be saved', () => {
@@ -150,7 +150,7 @@ describe('preferences version 3', () => {
     source.setItem.mockReset();
     if (!failure) throw new Error('Expected migration failure.');
     savePreferences(failure.settings, source);
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 3, settings: failure.settings }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 4, settings: failure.settings }));
   });
 
   it('retains v2 values and the original record when migration cannot be saved', () => {
@@ -173,5 +173,67 @@ describe('preferences version 3', () => {
     const source = storage(JSON.stringify({ version: 1, settings: { ...phaseOne, mode: 'zen' } }));
     expect(() => loadPreferences(source)).toThrow(/invalid or missing/);
     expect(source.setItem).not.toHaveBeenCalled();
+  });
+});
+
+describe('keyboard layout confirmation (version 4)', () => {
+  const PROFILE = 'projectkb-alice';
+  const confirmation = {
+    profileId: PROFILE, variant: { 0: 1, 1: 0 }, confirmedFor: { vendorId: 0x0159, productId: 0xa71c },
+    catalogRevision: 'via-9e3e9f4.qmk-180f394'
+  };
+
+  it('migrates v3 preferences to v4 with a null confirmation and one final write', () => {
+    const { keyboardLayoutConfirmation, ...phaseThree } = DEFAULT_PREFERENCES;
+    const existing = { ...phaseThree, keyboardProfileId: PROFILE, keyboardUserDetails: { model: 'Rev 1' }, onboardingComplete: true };
+    const source = storage(JSON.stringify({ version: 3, settings: existing }));
+    const loaded = loadPreferences(source);
+    expect(keyboardLayoutConfirmation).toBeNull();
+    expect(loaded).toEqual({ ...existing, keyboardLayoutConfirmation: null });
+    expect(source.setItem).toHaveBeenCalledTimes(1);
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 4, settings: loaded }));
+  });
+
+  it('ignores a confirmation-shaped field in v3 records instead of trusting it', () => {
+    const source = storage(JSON.stringify({ version: 3, settings: {
+      ...DEFAULT_PREFERENCES, keyboardProfileId: PROFILE, keyboardLayoutConfirmation: confirmation
+    } }));
+    expect(loadPreferences(source).keyboardLayoutConfirmation).toBeNull();
+  });
+
+  it('round trips a confirmation and strips unknown confirmation fields', () => {
+    const settings = { ...DEFAULT_PREFERENCES, keyboardProfileId: PROFILE, keyboardLayoutConfirmation: confirmation };
+    const source = storage(JSON.stringify({ version: 4, settings: {
+      ...settings, keyboardLayoutConfirmation: { ...confirmation, score: 0.9, observedCodes: ['KeyA'] }
+    } }));
+    expect(loadPreferences(source)).toEqual(settings);
+    expect(source.setItem).not.toHaveBeenCalled();
+    expect(validatePreferences({ ...settings, keyboardLayoutConfirmation: { ...confirmation, confirmedFor: null } })
+      .keyboardLayoutConfirmation?.confirmedFor).toBeNull();
+  });
+
+  it('keeps a structurally valid but stale variant so the app can report it', () => {
+    const stale = { ...confirmation, variant: { 7: 3 } };
+    expect(validatePreferences({
+      ...DEFAULT_PREFERENCES, keyboardProfileId: PROFILE, keyboardLayoutConfirmation: stale
+    }).keyboardLayoutConfirmation).toEqual(stale);
+  });
+
+  it.each([
+    ['a different profile', { keyboardProfileId: 'generic-alice' }],
+    ['no selected profile', { keyboardProfileId: null }],
+    ['a negative option', { keyboardLayoutConfirmation: { ...confirmation, variant: { 0: -1 } } }],
+    ['a fractional option', { keyboardLayoutConfirmation: { ...confirmation, variant: { 0: 0.5 } } }],
+    ['a non-index group', { keyboardLayoutConfirmation: { ...confirmation, variant: { split: 1 } } }],
+    ['an array variant', { keyboardLayoutConfirmation: { ...confirmation, variant: [1] } }],
+    ['an out-of-range vendor ID', { keyboardLayoutConfirmation: { ...confirmation, confirmedFor: { vendorId: 0x10000, productId: 1 } } }],
+    ['a missing product ID', { keyboardLayoutConfirmation: { ...confirmation, confirmedFor: { vendorId: 1 } } }],
+    ['an empty revision', { keyboardLayoutConfirmation: { ...confirmation, catalogRevision: ' ' } }],
+    ['an overlong revision', { keyboardLayoutConfirmation: { ...confirmation, catalogRevision: 'r'.repeat(41) } }],
+    ['a missing confirmation field', { keyboardLayoutConfirmation: undefined }]
+  ])('rejects a confirmation with %s', (_, override) => {
+    expect(() => validatePreferences({
+      ...DEFAULT_PREFERENCES, keyboardProfileId: PROFILE, keyboardLayoutConfirmation: confirmation, ...override
+    })).toThrow(StorageError);
   });
 });

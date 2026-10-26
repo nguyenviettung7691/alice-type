@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ALICE_CODES, ALICE_HALF_TRANSFORMS, ALICE_LAYOUT, ALICE_VIEW_BOX } from './alice-layout';
+import { ALICE_CODES, ALICE_HALF_TRANSFORMS, ALICE_LAYOUT, ALICE_VIEW_BOX, keycapTransform } from './alice-layout';
 import { PRACTICE_TEXT } from '../typing/typing-engine';
 
 describe('generic Alice layout', () => {
@@ -53,7 +53,10 @@ describe('generic Alice layout', () => {
     expect(ALICE_VIEW_BOX).toBe('0 0 860 315');
     const caps = ALICE_LAYOUT.flatMap((key) => key.keycaps);
     for (const cap of caps) {
+      if (!cap.half) throw new Error('Generic Alice keycaps must belong to a half');
       expect(Object.hasOwn(ALICE_HALF_TRANSFORMS, cap.half)).toBe(true);
+      expect(cap.rotation).toBeUndefined();
+      expect(keycapTransform(cap)).toBe(ALICE_HALF_TRANSFORMS[cap.half]);
       for (const value of [cap.x, cap.y, cap.width, cap.height]) {
         expect(Number.isFinite(value)).toBe(true);
       }

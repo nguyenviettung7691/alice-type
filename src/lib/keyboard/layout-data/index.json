@@ -1,0 +1,854 @@
+{
+  "revision": "via-9e3e9f4.qmk-180f394",
+  "generatedAt": "2026-10-26",
+  "pins": {
+    "via": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+    "qmk": "180f394b489c238cb231c2bf8b080262155e03c0"
+  },
+  "profiles": [
+    {
+      "id": "axolstudio-yeti-hotswap",
+      "displayName": "Yeti RGB",
+      "name": "Yeti RGB",
+      "brand": "Axolstudio",
+      "vendorId": 21084,
+      "productId": 40862,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/axolstudio/yeti/yeti_rgb.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/axolstudio/yeti/yeti_rgb.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "axolstudio/yeti/hotswap",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/axolstudio/yeti/hotswap/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/axolstudio/yeti/hotswap/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/axolstudio/yeti/hotswap/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "axolstudio-yeti-soldered",
+      "displayName": "Yeti",
+      "name": "Yeti",
+      "brand": "Axolstudio",
+      "vendorId": 21084,
+      "productId": 40863,
+      "sharedIdCount": 1,
+      "groups": [
+        {
+          "label": "Split Backspace",
+          "options": [
+            "Off",
+            "On"
+          ]
+        },
+        {
+          "label": "Full RShift",
+          "options": [
+            "Off",
+            "On"
+          ]
+        }
+      ],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/axolstudio/yeti/yeti.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/axolstudio/yeti/yeti.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "axolstudio/yeti/soldered",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/axolstudio/yeti/soldered/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/axolstudio/yeti/soldered/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/axolstudio/yeti/soldered/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT_alice",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "chalice",
+      "displayName": "Chalice",
+      "name": "Chalice",
+      "brand": "CustomKBD",
+      "vendorId": 27242,
+      "productId": 12,
+      "sharedIdCount": 1,
+      "groups": [
+        {
+          "label": "Split Backspace",
+          "options": [
+            "Off",
+            "On"
+          ]
+        }
+      ],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/chalice/chalice.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/chalice/chalice.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "chalice",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/chalice/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/chalice/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/chalice/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT_default",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "fancytech-fancyalice66",
+      "displayName": "FancyAlice66",
+      "name": "FancyAlice66",
+      "brand": "Fancytech",
+      "vendorId": 60653,
+      "productId": 13923,
+      "sharedIdCount": 1,
+      "groups": [
+        {
+          "label": "Knob",
+          "options": [
+            "Off",
+            "On"
+          ]
+        }
+      ],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/fancytech/fancyalice66.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/fancytech/fancyalice66.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "fancytech/fancyalice66",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/fancytech/fancyalice66/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/fancytech/fancyalice66/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/fancytech/fancyalice66/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "fate-nozomi-arisu",
+      "displayName": "ARISU",
+      "name": "ARISU",
+      "brand": "Fate",
+      "vendorId": 64126,
+      "productId": 0,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/fate_nozomi/arisu/arisu.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/fate_nozomi/arisu/arisu.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "arisu",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/arisu/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/arisu/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/arisu/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-q10-ansi-encoder",
+      "displayName": "Keychron Q10 ANSI Knob",
+      "name": "Keychron Q10 ANSI Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 417,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/q10/ansi_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q10/ansi_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/q10/ansi_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/q10/ansi_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/q10/ansi_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q10/ansi_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_ansi_89",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-q10-iso-encoder",
+      "displayName": "Keychron Q10 ISO Knob",
+      "name": "Keychron Q10 ISO Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 419,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/q10/iso_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q10/iso_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/q10/iso_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/q10/iso_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/q10/iso_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q10/iso_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_iso_90",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-q8-ansi",
+      "displayName": "Keychron Q8 ANSI",
+      "name": "Keychron Q8 ANSI",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 384,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/q8/ansi.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/ansi.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/q8/ansi",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/q8/ansi/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/q8/ansi/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/ansi/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_ansi_69",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-q8-ansi-encoder",
+      "displayName": "Keychron Q8 ANSI Knob",
+      "name": "Keychron Q8 ANSI Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 385,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/q8/ansi_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/ansi_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/q8/ansi_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/q8/ansi_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/q8/ansi_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/ansi_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_ansi_69",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-q8-iso",
+      "displayName": "Keychron Q8 ISO",
+      "name": "Keychron Q8 ISO",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 386,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/q8/iso.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/iso.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/q8/iso",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/q8/iso/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/q8/iso/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/iso/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_iso_70",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-q8-iso-encoder",
+      "displayName": "Keychron Q8 ISO Knob",
+      "name": "Keychron Q8 ISO Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 387,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/q8/iso_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/iso_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/q8/iso_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/q8/iso_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/q8/iso_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/iso_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_iso_70",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-v10-ansi-encoder",
+      "displayName": "Keychron V10 ANSI Knob",
+      "name": "Keychron V10 ANSI Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 929,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/v10/ansi_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v10/ansi_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/v10/ansi_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/v10/ansi_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/v10/ansi_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v10/ansi_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_ansi_89",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-v10-iso-encoder",
+      "displayName": "Keychron V10 ISO Knob",
+      "name": "Keychron V10 ISO Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 931,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/v10/iso_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v10/iso_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/v10/iso_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/v10/iso_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/v10/iso_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v10/iso_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_iso_90",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-v8-ansi",
+      "displayName": "Keychron V8 ANSI",
+      "name": "Keychron V8 ANSI",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 896,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/v8/ansi.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v8/ansi.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/v8/ansi",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/v8/ansi/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/v8/ansi/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v8/ansi/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_ansi_69",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "keychron-v8-ansi-encoder",
+      "displayName": "Keychron V8 ANSI Knob",
+      "name": "Keychron V8 ANSI Knob",
+      "brand": "Keychron",
+      "vendorId": 13364,
+      "productId": 897,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/keychron/v8/ansi_encoder.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v8/ansi_encoder.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "keychron/v8/ansi_encoder",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/keychron/v8/ansi_encoder/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/keychron/v8/ansi_encoder/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v8/ansi_encoder/keymaps/default/keymap.c",
+          "layer": "WIN_BASE",
+          "layoutMacro": "LAYOUT_ansi_69",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "meetlab-kalice",
+      "displayName": "Kalice",
+      "name": "Kalice",
+      "brand": "lucky_studio",
+      "vendorId": 43524,
+      "productId": 47876,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/meetlab/kalice/kalice.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/meetlab/kalice/kalice.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "meetlab/kalice",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/meetlab/kalice/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/meetlab/kalice/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/meetlab/kalice/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "mwstudio-alicekk",
+      "displayName": "AliceKK",
+      "name": "AliceKK",
+      "brand": "MWStudio",
+      "vendorId": 31649,
+      "productId": 12801,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/mwstudio/alicekk.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/mwstudio/alicekk.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "mwstudio/alicekk",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/mwstudio/alicekk/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/mwstudio/alicekk/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/mwstudio/alicekk/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "ph-arisu",
+      "displayName": "PH Arisu",
+      "name": "PH Arisu",
+      "brand": "PH",
+      "vendorId": 24946,
+      "productId": 24672,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/other/ph_arisu/ph_arisu.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/other/ph_arisu/ph_arisu.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "nightly_boards/ph_arisu",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/nightly_boards/ph_arisu/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/nightly_boards/ph_arisu/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/nightly_boards/ph_arisu/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "projectkb-alice",
+      "displayName": "ProjectKB Alice",
+      "name": "ProjectKB Alice",
+      "brand": "ProjectKB",
+      "vendorId": 345,
+      "productId": 42780,
+      "sharedIdCount": 2,
+      "groups": [
+        {
+          "label": "Long Backspace",
+          "options": [
+            "Off",
+            "On"
+          ]
+        },
+        {
+          "label": "Long RShift",
+          "options": [
+            "Off",
+            "On"
+          ]
+        }
+      ],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/projectkb/alice/projectkb_alice.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/projectkb/alice/projectkb_alice.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "projectkb/alice/rev1",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/projectkb/alice/rev1/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/projectkb/alice/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/projectkb/alice/keymaps/default/keymap.c",
+          "layer": "_BASE",
+          "layoutMacro": "LAYOUT_alice_split_bs",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "qwertlekeys-calice",
+      "displayName": "Calice",
+      "name": "Calice",
+      "brand": "QwertleKeys",
+      "vendorId": 29035,
+      "productId": 1,
+      "sharedIdCount": 1,
+      "groups": [
+        {
+          "label": "Split Backspace",
+          "options": [
+            "Off",
+            "On"
+          ]
+        }
+      ],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/qwertlekeys/calice.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/qwertlekeys/calice.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "qwertlekeys/calice",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/qwertlekeys/calice/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/qwertlekeys/calice/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/qwertlekeys/calice/keymaps/default/keymap.c",
+          "layer": "0",
+          "layoutMacro": "LAYOUT_all",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "sneakbox-aliceclone",
+      "displayName": "Sneakbox Alice Clone",
+      "name": "Sneakbox Alice Clone",
+      "brand": "Sneakbox",
+      "vendorId": 21314,
+      "productId": 1,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/sneakbox/aliceclone/aliceclone.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sneakbox/aliceclone/aliceclone.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "sneakbox/aliceclone",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/sneakbox/aliceclone/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/sneakbox/aliceclone/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/aliceclone/keymaps/default/keymap.c",
+          "layer": "_BASE",
+          "layoutMacro": "LAYOUT_alice_split_bs",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "sneakbox-aliceclone-rgb",
+      "displayName": "Sneakbox Alice Clone RGB",
+      "name": "Sneakbox Alice Clone",
+      "brand": "Sneakbox",
+      "vendorId": 21314,
+      "productId": 6,
+      "sharedIdCount": 1,
+      "groups": [],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/sneakbox/aliceclonergb/alicecloneRGB.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sneakbox/aliceclonergb/alicecloneRGB.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "sneakbox/aliceclonergb",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/sneakbox/aliceclonergb/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/sneakbox/aliceclonergb/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/aliceclonergb/keymaps/default/keymap.c",
+          "layer": "_BASE",
+          "layoutMacro": "LAYOUT_alice_split_bs",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    },
+    {
+      "id": "sneakbox-ava",
+      "displayName": "AVA",
+      "name": "AVA",
+      "brand": "Sneakbox",
+      "vendorId": 21314,
+      "productId": 4,
+      "sharedIdCount": 1,
+      "groups": [
+        {
+          "label": "Split Backspace",
+          "options": [
+            "Off",
+            "On"
+          ]
+        }
+      ],
+      "sources": {
+        "via": {
+          "repository": "the-via/keyboards",
+          "path": "v3/sneakbox/ava/ava.json",
+          "commit": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+          "url": "https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sneakbox/ava/ava.json",
+          "license": "GPL-3.0"
+        },
+        "qmkInfo": {
+          "keyboard": "sneakbox/ava",
+          "url": "https://keyboards.qmk.fm/v1/keyboards/sneakbox/ava/info.json",
+          "lastUpdated": null,
+          "license": "GPL-2.0-or-later"
+        },
+        "keymap": {
+          "repository": "qmk/qmk_firmware",
+          "path": "keyboards/sneakbox/ava/keymaps/default/keymap.c",
+          "commit": "180f394b489c238cb231c2bf8b080262155e03c0",
+          "url": "https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/ava/keymaps/default/keymap.c",
+          "layer": "_BASE",
+          "layoutMacro": "LAYOUT_alice_split_bs",
+          "license": "GPL-2.0-or-later"
+        }
+      }
+    }
+  ]
+}

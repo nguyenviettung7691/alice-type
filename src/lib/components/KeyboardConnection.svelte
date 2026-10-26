@@ -3,12 +3,14 @@
   import KeyboardOnboarding from './KeyboardOnboarding.svelte';
   import { browserKeyboardAccess, type KeyboardDevice } from '../keyboard/keyboard-access';
 
-  let { onboarding, disabled, onfinish, ondevicechange, onlayoutchange }: {
+  let { onboarding, disabled, onfinish, ondevicechange, onlayoutchange, onfindlayout, confirmedLayoutLabel = null }: {
     onboarding: boolean;
     disabled: boolean;
     onfinish: (focusPractice: boolean) => void;
     ondevicechange: (device: KeyboardDevice | null) => void;
     onlayoutchange: (legends: ReadonlyMap<string, string> | null) => void;
+    onfindlayout: () => void;
+    confirmedLayoutLabel?: string | null;
   } = $props();
 
   const { hid, keyboard } = browserKeyboardAccess();
@@ -163,7 +165,11 @@
         <div class="connection-copy">
           {#if selected}
             <p class="selected-device" role="status">Selected device: <strong>{selected.productName || 'Unnamed HID device'}</strong></p>
-            <p class="connection-description">No verified device-specific profile is available. Both diagrams use a reference Alice layout, not your keyboard's detected shape.</p>
+            {#if confirmedLayoutLabel}
+              <p class="connection-description">Both diagrams use the <strong>{confirmedLayoutLabel}</strong> layout you confirmed. AliceType does not detect your keyboard's shape.</p>
+            {:else}
+              <p class="connection-description">No layout is confirmed for this device. Both diagrams use a reference Alice layout, not your keyboard's detected shape. Use Find my layout to look for a catalog match.</p>
+            {/if}
           {/if}
           {#if warning}<p class="keyboard-warning" aria-live="polite">{warning}</p>{/if}
         </div>
@@ -174,6 +180,9 @@
             </button>
           {/if}
           <button class="secondary-button" type="button" disabled={disabled} onclick={() => { void requestLayout(); }}>Refresh key labels</button>
+          {#if selected}
+            <button class="secondary-button" type="button" disabled={disabled} onclick={onfindlayout}>Find my layout</button>
+          {/if}
         </div>
       </div>
       {#if devices.length > 1}

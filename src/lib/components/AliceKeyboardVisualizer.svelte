@@ -1,24 +1,39 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import {
-    ALICE_HALF_TRANSFORMS,
     ALICE_VIEW_BOX,
+    keycapTransform,
     type AliceKey,
+    type InertKey,
     type KeyFeedback
   } from '../keyboard/alice-layout';
   import { expectedTestKey, type KeyboardTestState } from '../keyboard/keyboard-test';
 
-  let { layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false }: {
+  let {
+    layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false,
+    testSequence = layout, inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutSource = 'generic', title
+  }: {
     layout: readonly AliceKey[];
     feedback?: KeyFeedback;
     testState?: KeyboardTestState;
     errorCode?: string;
     testLayoutLabel?: string;
     browserLegends?: boolean;
+    /** Ordered keys covered by the guided test; keys outside it are shown but never expected. */
+    testSequence?: readonly AliceKey[];
+    /** Keys without a standard physical code: drawn for orientation, never highlighted or tested. */
+    inertKeys?: readonly InertKey[];
+    viewBox?: string;
+    /** Generic reference layout, an imported layout the user confirmed, or an unconfirmed preview. */
+    layoutSource?: 'generic' | 'confirmed' | 'preview';
+    title?: string;
   } = $props();
-  const expectedCode = $derived(testState ? expectedTestKey(testState, layout)?.code : undefined);
+  const expectedCode = $derived(testState ? expectedTestKey(testState, testSequence)?.code : undefined);
+  const imported = $derived(layoutSource !== 'generic');
+  const sequenceCodes = $derived(new Set(testSequence.map((key) => key.code)));
 
   function testStatus(code: string): string {
+    if (!sequenceCodes.has(code)) return 'not tested';
     if (code === errorCode) return 'unexpected';
     if (code === expectedCode) return 'expected';
     return testState?.correctCounts[code] ? 'tested' : 'untested';
@@ -39,9 +54,9 @@
   });
 </script>
 
-<figure class="keyboard-visualizer">
+<figure class="keyboard-visualizer" data-layout-source={layoutSource}>
   <figcaption>
-    <span class="keyboard-title">{testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer'}</span>
+    <span class="keyboard-title">{title ?? (testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer')}</span>
     <span class="keyboard-legend">
       <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
       {#if testState}
@@ -49,12 +64,23 @@
       {/if}
       <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
       <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
+      {#if inertKeys.length > 0}
+        <span><span class="legend-mark inert" aria-hidden="true"></span>No standard key code</span>
+      {/if}
     </span>
   </figcaption>
-  <p class="keyboard-note">
-    {testLayoutLabel} layout · {browserLegends ? 'Browser layout legends (reference legends for missing keys)' : 'US ANSI legends'}, not detected hardware.
-    Both spacebars represent the same Space key.
-  </p>
+  {#if imported}
+    <p class="keyboard-note">
+      {testLayoutLabel} layout · {layoutSource === 'confirmed' ? 'Confirmed by you' : 'Preview, not confirmed'} · VIA/QMK data, not detected hardware ·
+      {browserLegends ? 'Browser layout legends (default keymap legends for missing keys)' : 'Default keymap legends'}.
+      Dashed keys have no standard key code and are never highlighted or tested. Keycaps that share one physical code highlight together.
+    </p>
+  {:else}
+    <p class="keyboard-note">
+      {testLayoutLabel} layout · {browserLegends ? 'Browser layout legends (reference legends for missing keys)' : 'US ANSI legends'}, not detected hardware.
+      Both spacebars represent the same Space key.
+    </p>
+  {/if}
 
   <!-- svelte-ignore a11y_no_noninteractive_tabindex (Overflowing diagrams need focus for native keyboard scrolling.) -->
   <div
@@ -66,14 +92,21 @@
     tabindex={scrollable ? 0 : undefined}
   >
     <svg
-      viewBox={ALICE_VIEW_BOX}
+      {viewBox}
       role="img"
       aria-labelledby={`${id}-title`}
       aria-describedby={`${id}-description`}
     >
-      <title id={`${id}-title`}>{testState ? `${testLayoutLabel} keyboard test matrix` : 'Generic Alice keyboard'}</title>
+      <title id={`${id}-title`}>{testState
+        ? `${testLayoutLabel} keyboard test matrix`
+        : imported ? `${testLayoutLabel} keyboard` : 'Generic Alice keyboard'}</title>
       <desc id={`${id}-description`}>
-        Angled split layout with {browserLegends ? 'browser layout legends where available' : 'generic US ANSI legends'}, not a detected device.
+        {#if imported}
+          {layoutSource === 'confirmed' ? 'Layout confirmed by you' : 'Unconfirmed layout preview'} from imported VIA and QMK data, with {browserLegends ? 'browser layout legends where available' : 'default keymap legends'}; not a detected device.
+          Keys without a standard key code are drawn dashed and never highlighted.
+        {:else}
+          Angled split layout with {browserLegends ? 'browser layout legends where available' : 'generic US ANSI legends'}, not a detected device.
+        {/if}
         {#if testState}
           Each cell shows its correct-press count. An arrow marks the expected key,
           a plus marks a tested key, and an exclamation mark indicates temporary
@@ -83,9 +116,22 @@
           input or a red exclamation mark for a mismatch. Unmapped physical codes
           do not highlight.
         {/if}
-        Both spacebar shapes share one physical Space code.
+        {imported ? 'Keycaps that share a physical code highlight together.' : 'Both spacebar shapes share one physical Space code.'}
       </desc>
       <g aria-hidden="true">
+        {#each inertKeys as key (key.id)}
+          <g class="keyboard-key inert-key" data-inert={key.id}>
+            {#each key.keycaps as cap}
+              <g transform={keycapTransform(cap)}>
+                <rect x={cap.x} y={cap.y} width={cap.width} height={cap.height} rx="6" />
+                {#if !cap.secondary && key.legend}
+                  <text class="key-legend" x={cap.x + cap.width / 2} y={cap.y + cap.height / 2}
+                    dominant-baseline="central" text-anchor="middle">{key.legend}</text>
+                {/if}
+              </g>
+            {/each}
+          </g>
+        {/each}
         {#each layout as key (key.code)}
           <g
             class="keyboard-key"
@@ -97,7 +143,7 @@
             data-count={testState ? testState.correctCounts[key.code] ?? 0 : undefined}
           >
             {#each key.keycaps as cap}
-              <g transform={ALICE_HALF_TRANSFORMS[cap.half]}>
+              <g transform={keycapTransform(cap)}>
                 <rect
                   x={cap.x}
                   y={cap.y}
@@ -105,28 +151,30 @@
                   height={cap.height}
                   rx="6"
                 />
-                <text
-                  class="key-legend"
-                  x={cap.x + cap.width / 2}
-                  y={cap.y + cap.height / 2 - (testState ? 5 : 0)}
-                  dominant-baseline="central"
-                  text-anchor="middle"
-                >{key.legend}</text>
-                {#if testState}
-                  <text class="key-count" x={cap.x + cap.width / 2} y={cap.y + cap.height - 6} text-anchor="middle">
-                    {testState.correctCounts[key.code] ?? 0}
-                  </text>
-                {/if}
-                {#if testState ? testStatus(key.code) !== 'untested' : feedback[key.code]}
+                {#if !cap.secondary}
                   <text
-                    class="feedback-marker"
-                    x={cap.x + cap.width - 7}
-                    y={cap.y + 9}
-                    text-anchor="middle"
+                    class="key-legend"
+                    x={cap.x + cap.width / 2}
+                    y={cap.y + cap.height / 2 - (testState ? 5 : 0)}
                     dominant-baseline="central"
-                  >{testState
-                      ? (errorCode === key.code ? '!' : expectedCode === key.code ? '>' : '+')
-                      : feedback[key.code] === 'correct' ? '+' : '!'}</text>
+                    text-anchor="middle"
+                  >{key.legend}</text>
+                  {#if testState}
+                    <text class="key-count" x={cap.x + cap.width / 2} y={cap.y + cap.height - 6} text-anchor="middle">
+                      {testState.correctCounts[key.code] ?? 0}
+                    </text>
+                  {/if}
+                  {#if testState ? !['untested', 'not tested'].includes(testStatus(key.code)) : feedback[key.code]}
+                    <text
+                      class="feedback-marker"
+                      x={cap.x + cap.width - 7}
+                      y={cap.y + 9}
+                      text-anchor="middle"
+                      dominant-baseline="central"
+                    >{testState
+                        ? (errorCode === key.code ? '!' : expectedCode === key.code ? '>' : '+')
+                        : feedback[key.code] === 'correct' ? '+' : '!'}</text>
+                  {/if}
                 {/if}
               </g>
             {/each}
@@ -145,7 +193,10 @@
       <summary>Text key results</summary>
       <ul>
         {#each layout as key (key.code)}
-          <li>{key.legend} ({key.code}): {testState.correctCounts[key.code] ?? 0} correct, {testStatus(key.code)}</li>
+          <li>{key.legend} ({key.code}): {#if sequenceCodes.has(key.code)}{testState.correctCounts[key.code] ?? 0} correct, {testStatus(key.code)}{:else}not part of the guided test{/if}</li>
+        {/each}
+        {#each inertKeys as key (key.id)}
+          <li>{key.legend || 'Unlabeled key'} (no standard key code): not part of the guided test</li>
         {/each}
       </ul>
     </details>
@@ -303,4 +354,13 @@
   .keyboard-key[data-feedback='incorrect'] .key-legend {
     fill: var(--color-background);
   }
+  .inert-key rect {
+    fill: transparent;
+    stroke: var(--color-muted);
+    stroke-dasharray: 4 3;
+  }
+
+  .inert-key .key-legend { fill: var(--color-muted); }
+
+  .legend-mark.inert { border-style: dashed; }
 </style>

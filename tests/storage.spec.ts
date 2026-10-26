@@ -458,7 +458,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(input(page)).toBeFocused();
   });
 
-  for (const raw of ['{broken', JSON.stringify({ version: 4, settings: DEFAULT_PREFERENCES })]) {
+  for (const raw of ['{broken', JSON.stringify({ version: 5, settings: DEFAULT_PREFERENCES })]) {
     test(`does not overwrite invalid/future data during onboarding: ${raw.slice(0, 14)}`, async ({ page }) => {
       await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: PREFERENCES_KEY, value: raw });
       await page.goto('/');

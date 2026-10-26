@@ -4,7 +4,7 @@ AliceType is a desktop-oriented typing practice web app for the Alice split-ergo
 
 ## Project status
 
-Phases 1–7 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, local storage/polish, guided Keyboard Test matrix, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Keyboard Details provides a revisioned generic Alice profile and locally editable device notes; vendor-specific hardware profiles remain unavailable until sourced claims can be verified. Other roadmap modes remain unavailable. Product design documents:
+Phases 1–7 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, local storage/polish, guided Keyboard Test matrix, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Keyboard Details provides a revisioned catalog with the generic Alice profile plus 23 real Alice-family layouts imported from open-source QMK/VIA data, and locally editable device notes. **Find my layout** suggests catalog layouts from your keyboard's browser-reported vendor/product ID; a layout is used in Practice and Keyboard Test only after you confirm it. Other roadmap modes remain unavailable. Product design documents:
 
 - [Technical Design Document](doc/tech-design.md)
 - [Phase 1 Detail Design](doc/phase-1-detail-design.md)
@@ -69,11 +69,16 @@ Phases 1–7 are implemented: the app foundation, typing engine, Alice visualize
 
 ## Keyboard Details
 
-- Open **Keyboard Details** to select the generic Alice layout reference or leave the profile unselected. The selection describes a reference profile; AliceType does not detect the connected keyboard.
-- The bundled catalog is revisioned and records internal layout provenance. It currently contains the generic Alice layout only; no brand, model, version, RGB, connectivity, rollover, or programmable-key claims are made for a device.
+- Open **Keyboard Details** to select a reference profile (generic Alice or a catalog keyboard) or leave the profile unselected. The selection describes a reference profile; AliceType does not detect the connected keyboard.
+- The bundled catalog is revisioned and records provenance. Device profiles show only the name (from VIA) and brand (from the QMK manufacturer field), each cited with the pinned upstream source. Model, version, RGB, connectivity, rollover, and programmable-key details stay **Unknown**.
 - Name, brand, model, version, connectivity, and feature overrides can be entered as user-provided details. Each displayed value is labeled **Catalog verified**, **You provided this**, or **Unknown**. Personal details can be edited and cleared separately from profile selection.
-- Profile and personal details are saved in this browser using preferences schema v3. Existing v1/v2 preferences migrate while preserving practice and Keyboard Test settings. Device details are not included in session history or Stats and are never sent to a server.
-- Keyboard Test uses a catalog map only when it is explicitly verified; otherwise it labels and uses the generic Alice map. User-provided notes never change the test layout.
+- Profile, personal details, and the confirmed layout are saved in this browser using preferences schema v4. Existing v1/v2/v3 preferences migrate while preserving practice and Keyboard Test settings. Device details are not included in session history or Stats and are never sent to a server.
+- **Find my layout** (in Keyboard Details, or from the keyboard connection panel once a device is selected):
+  - Ranks catalog layouts by the browser-reported vendor/product ID. It explains each suggestion, warns when an ID is shared by several keyboards, and labels every suggestion **Suggested — not confirmed**. Without a match, you can browse the catalog.
+  - Lets you choose layout variants (for example split Backspace or a long right Shift). Pressing the listed distinguishing keys in the optional key-press check rules out variants that cannot produce them.
+  - Shows a preview. The layout and variants become active in Practice and Keyboard Test only after **Confirm this layout**. Rotated keys, ISO Enter shapes, and keys without a standard code (drawn dashed, never highlighted or tested) follow the source data.
+  - Can clear the confirmation at any time. Choosing a different reference profile also clears it. A notice appears when the connected device's ID differs from the confirmed one or when a catalog update invalidates the stored variant.
+- Suggestions are never presented as detection. Nothing is fetched at runtime, and no HID device is opened or read. Keyboard Test uses the generic Alice map unless a layout is confirmed. User-provided notes never change the test layout.
 
 ## Getting started
 
@@ -108,6 +113,12 @@ The bundled English vocabulary is adapted from Hermit Dave's [FrequencyWords](ht
 
 Vocabulary data is licensed separately under **CC BY-SA 4.0**. See the [attribution and transformation notice](src/lib/typing/word-banks/NOTICE.txt) and [data license](src/lib/typing/word-banks/LICENSE-CC-BY-SA-4.0.txt); both are also accessible from the app footer in production builds.
 
+## Keyboard layout data
+
+Layout profiles under `src/lib/keyboard/layout-data/` are generated from [VIA keyboard definitions](https://github.com/the-via/keyboards) (GPL-3.0) and [QMK firmware](https://github.com/qmk/qmk_firmware) keyboard data (GPL-2.0-or-later, used under GPL-3.0). Geometry and variants come from VIA, physical key codes from each board's QMK default keymap, and USB IDs and the brand from QMK. The data is converted and filtered, and it is licensed under **GPL-3.0**. See the [attribution notice](src/lib/keyboard/layout-data/NOTICE.txt), which lists sources, pinned commits, and upstream copyright lines, and the [GPL-3.0 text](src/lib/keyboard/layout-data/LICENSE-GPL-3.0.txt). Both are linked from the app footer.
+
+Maintainers regenerate the snapshot with `npm run import:layouts` (Node 22.18+, network access required). The importer reads only the reviewed allowlist in `scripts/keyboard-layout-sources.json`, pins upstream commits, and rejects layouts without an angled split. The app never fetches layout data at runtime.
+
 ## Technology
 
 - Vite
@@ -127,8 +138,8 @@ Vocabulary data is licensed separately under **CC BY-SA 4.0**. See the [attribut
 6. Keyboard Keys Test Matrix
 7. Keyboard Device Details
 
-See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md) for the latest implementation and verification record. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, and automatic device identification are not implemented.
+See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md) for the latest implementation and verification record. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, and automatic device identification are not implemented. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred.
 
 ## License
 
-The repository currently includes a provisional MIT license. Confirm the copyright holder and licensing choice before publishing or distributing the project.
+The repository currently includes a provisional MIT license for AliceType-authored source. Confirm the copyright holder and licensing choice before publishing or distributing the project. Bundled vocabulary data is CC BY-SA 4.0, and bundled keyboard layout data is GPL-3.0 (see above). Because MIT is GPL-compatible, a distributed build that includes the layout data is conveyed under GPL-3.0 as a whole, and this repository provides the corresponding source.

@@ -1,0 +1,167 @@
+AliceType keyboard layout data
+==============================
+
+Catalog revision via-9e3e9f4.qmk-180f394, generated 2026-10-26 by scripts/import-keyboard-layouts.ts.
+
+The files in this directory (index.json and profiles/*.json) are derived from third-party
+open-source keyboard data and are NOT covered by the AliceType MIT license:
+
+- VIA keyboard definitions, https://github.com/the-via/keyboards at commit 9e3e9f4aa9f50f9439fdebc747560f51aaf109a0,
+  licensed under the GNU General Public License v3.0 (GPL-3.0).
+- QMK Firmware default keymaps, https://github.com/qmk/qmk_firmware at commit 180f394b489c238cb231c2bf8b080262155e03c0,
+  and QMK keyboard metadata from the QMK API (https://keyboards.qmk.fm), licensed under the
+  GNU General Public License v2.0 or later (GPL-2.0-or-later), used here under GPL-3.0.
+
+Modifications: AliceType converted the VIA KLE geometry to normalized key positions, mapped QMK
+default-layer keycodes to browser KeyboardEvent.code values and legends, and combined them with
+QMK USB identifiers. The data was reformatted as JSON; no other changes were made.
+
+These derived files, and any AliceType build that bundles them, are distributed under the
+GNU General Public License v3.0; see LICENSE-GPL-3.0.txt. The complete corresponding source,
+including the importer and these files, is available at
+https://github.com/nguyenviettung7691/alice-type. AliceType application source code remains
+available under the MIT license (see the repository LICENSE file).
+
+This software is provided WITHOUT ANY WARRANTY, to the extent permitted by applicable law.
+
+Per-keyboard sources and upstream copyright notices
+---------------------------------------------------
+
+Yeti RGB (axolstudio-yeti-hotswap)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/axolstudio/yeti/yeti_rgb.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/axolstudio/yeti/hotswap/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/axolstudio/yeti/hotswap/keymaps/default/keymap.c
+  Copyright 2022 kb-elmo
+
+Yeti (axolstudio-yeti-soldered)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/axolstudio/yeti/yeti.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/axolstudio/yeti/soldered/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/axolstudio/yeti/soldered/keymaps/default/keymap.c
+  Copyright 2020 kb-elmo
+
+Chalice (chalice)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/chalice/chalice.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/chalice/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/chalice/keymaps/default/keymap.c
+  Copyright 2020 null-ll
+  Copyright 2021 Jels, Josh Johnson
+
+FancyAlice66 (fancytech-fancyalice66)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/fancytech/fancyalice66.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/fancytech/fancyalice66/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/fancytech/fancyalice66/keymaps/default/keymap.c
+  Copyright 2023 Adophoxia <https://github.com/Adophoxia>
+
+ARISU (fate-nozomi-arisu)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/fate_nozomi/arisu/arisu.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/arisu/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/arisu/keymaps/default/keymap.c
+  Copyright 2019 Fate
+
+Keychron Q10 ANSI Knob (keychron-q10-ansi-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q10/ansi_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/q10/ansi_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q10/ansi_encoder/keymaps/default/keymap.c
+  Copyright 2022 @ Keychron (https://www.keychron.com)
+
+Keychron Q10 ISO Knob (keychron-q10-iso-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q10/iso_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/q10/iso_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q10/iso_encoder/keymaps/default/keymap.c
+  Copyright 2022 @ Keychron (https://www.keychron.com)
+
+Keychron Q8 ANSI (keychron-q8-ansi)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/ansi.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/q8/ansi/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/ansi/keymaps/default/keymap.c
+  Copyright 2021 @ Keychron (https://www.keychron.com)
+
+Keychron Q8 ANSI Knob (keychron-q8-ansi-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/ansi_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/q8/ansi_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/ansi_encoder/keymaps/default/keymap.c
+  Copyright 2021 @ Keychron (https://www.keychron.com)
+
+Keychron Q8 ISO (keychron-q8-iso)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/iso.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/q8/iso/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/iso/keymaps/default/keymap.c
+  Copyright 2021 @ Keychron (https://www.keychron.com)
+
+Keychron Q8 ISO Knob (keychron-q8-iso-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/q8/iso_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/q8/iso_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/q8/iso_encoder/keymaps/default/keymap.c
+  Copyright 2021 @ Keychron (https://www.keychron.com)
+
+Keychron V10 ANSI Knob (keychron-v10-ansi-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v10/ansi_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/v10/ansi_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v10/ansi_encoder/keymaps/default/keymap.c
+  Copyright 2023 @ Keychron (https://www.keychron.com)
+
+Keychron V10 ISO Knob (keychron-v10-iso-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v10/iso_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/v10/iso_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v10/iso_encoder/keymaps/default/keymap.c
+  Copyright 2023 @ Keychron (https://www.keychron.com)
+
+Keychron V8 ANSI (keychron-v8-ansi)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v8/ansi.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/v8/ansi/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v8/ansi/keymaps/default/keymap.c
+  Copyright 2022 @ Keychron (https://www.keychron.com)
+
+Keychron V8 ANSI Knob (keychron-v8-ansi-encoder)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/keychron/v8/ansi_encoder.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/keychron/v8/ansi_encoder/info.json
+  QMK default keymap (layer WIN_BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/keychron/v8/ansi_encoder/keymaps/default/keymap.c
+  Copyright 2022 @ Keychron (https://www.keychron.com)
+
+Kalice (meetlab-kalice)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/meetlab/kalice/kalice.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/meetlab/kalice/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/meetlab/kalice/keymaps/default/keymap.c
+  Copyright 2022 LXF-YZP(yuezp)
+
+AliceKK (mwstudio-alicekk)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/mwstudio/alicekk.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/mwstudio/alicekk/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/mwstudio/alicekk/keymaps/default/keymap.c
+  Copyright 2022 TW59420 <https://github.com/TW59420>
+
+PH Arisu (ph-arisu)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/other/ph_arisu/ph_arisu.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/nightly_boards/ph_arisu/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/nightly_boards/ph_arisu/keymaps/default/keymap.c
+  No copyright line in the keymap header; copyright remains with the QMK Firmware contributors.
+
+ProjectKB Alice (projectkb-alice)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/projectkb/alice/projectkb_alice.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/projectkb/alice/rev1/info.json
+  QMK default keymap (layer _BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/projectkb/alice/keymaps/default/keymap.c
+  Copyright 2012,2013 Jun Wako <wakojun@gmail.com>
+
+Calice (qwertlekeys-calice)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/qwertlekeys/calice.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/qwertlekeys/calice/info.json
+  QMK default keymap (layer 0): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/qwertlekeys/calice/keymaps/default/keymap.c
+  copyright 2021 Joah Nelson (jels)
+
+Sneakbox Alice Clone (sneakbox-aliceclone)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sneakbox/aliceclone/aliceclone.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/sneakbox/aliceclone/info.json
+  QMK default keymap (layer _BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/aliceclone/keymaps/default/keymap.c
+  Copyright 2020 Bryan Ong
+
+Sneakbox Alice Clone RGB (sneakbox-aliceclone-rgb)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sneakbox/aliceclonergb/alicecloneRGB.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/sneakbox/aliceclonergb/info.json
+  QMK default keymap (layer _BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/aliceclonergb/keymaps/default/keymap.c
+  Copyright 2021 Bryan Ong
+
+AVA (sneakbox-ava)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sneakbox/ava/ava.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/sneakbox/ava/info.json
+  QMK default keymap (layer _BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/ava/keymaps/default/keymap.c
+  Copyright 2021 Bryan Ong

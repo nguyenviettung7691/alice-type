@@ -5,21 +5,29 @@
   } from '../keyboard/keyboard-profiles';
   import {
     KEYBOARD_DETAIL_BOOLEAN_FIELDS, KEYBOARD_DETAIL_MAX_LENGTH, KEYBOARD_DETAIL_TEXT_FIELDS,
-    type KeyboardUserDetails
+    type KeyboardLayoutConfirmation, type KeyboardUserDetails
   } from '../storage/preferences';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
+  import LayoutMatchPanel from './LayoutMatchPanel.svelte';
   import { deviceId, type KeyboardDevice } from '../keyboard/keyboard-access';
 
   type TextField = typeof KEYBOARD_DETAIL_TEXT_FIELDS[number];
   type BooleanField = typeof KEYBOARD_DETAIL_BOOLEAN_FIELDS[number];
   type DetailField = TextField | BooleanField;
 
-  let { profileId, userDetails, onprofilechange, onuserdetailschange, connectedDevice = null }: {
+  let {
+    profileId, userDetails, onprofilechange, onuserdetailschange, connectedDevice = null,
+    layoutConfirmation, layoutNotice = '', onlayoutconfirm, onlayoutclear
+  }: {
     profileId: string | null;
     userDetails: KeyboardUserDetails;
     onprofilechange: (profileId: string | null) => void;
     onuserdetailschange: (details: KeyboardUserDetails) => void;
     connectedDevice?: KeyboardDevice | null;
+    layoutConfirmation: KeyboardLayoutConfirmation | null;
+    layoutNotice?: string;
+    onlayoutconfirm: (confirmation: KeyboardLayoutConfirmation) => void;
+    onlayoutclear: () => void;
   } = $props();
 
   const fieldLabels: Record<DetailField, string> = {
@@ -142,7 +150,7 @@
         </dl>
         <p class="device-explanation">These details come from the device you authorized, not from your typing. The IDs are identifiers only; they do not verify a brand, model, or layout.</p>
       </div>
-      <p class="device-limitation"><strong>Reference layout only.</strong> We don't have a verified profile for this device. Its specifications and physical layout remain unknown. Choose a reference profile or add your own notes below.</p>
+      <p class="device-limitation"><strong>Reference layout only.</strong> AliceType cannot detect this device's physical layout or specifications. Use Find my layout below to review catalog suggestions, or add your own notes.</p>
     {:else}
       <div class="browser-device-card">
         <p class="device-empty-title">No device selected</p>
@@ -151,6 +159,9 @@
       </div>
     {/if}
   </fieldset>
+
+  <LayoutMatchPanel {connectedDevice} confirmation={layoutConfirmation} {layoutNotice}
+    onconfirm={onlayoutconfirm} onclear={onlayoutclear} />
 
   <fieldset>
     <legend>Keyboard profile</legend>
@@ -164,6 +175,9 @@
         <option value={profile.id}>{profile.displayName}</option>
       {/each}
     </select>
+    {#if layoutConfirmation}
+      <p class="profile-summary">Choosing a different reference profile clears your confirmed layout.</p>
+    {/if}
     {#if selectedProfile}
       <p class="profile-summary">
         Selected reference: <strong>{selectedProfile.displayName}</strong>

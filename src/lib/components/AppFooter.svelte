@@ -2,6 +2,8 @@
   import vocabularyNotice from '../typing/word-banks/NOTICE.txt?url&no-inline';
   import vocabularyLicense from '../typing/word-banks/LICENSE-CC-BY-SA-4.0.txt?url&no-inline';
   import appLicense from '../../../LICENSE?url&no-inline';
+  import layoutNotice from '../keyboard/layout-data/NOTICE.txt?url&no-inline';
+  import layoutLicense from '../keyboard/layout-data/LICENSE-GPL-3.0.txt?url&no-inline';
 </script>
 
 <footer class="app-footer">
@@ -10,6 +12,8 @@
   <span class="data-notices">
     <a href={vocabularyNotice}>Vocabulary attribution</a>
     <a href={vocabularyLicense}>CC BY-SA 4.0 data</a>
+    <a href={layoutNotice}>Keyboard layout attribution</a>
+    <a href={layoutLicense}>GPL-3.0 layout data</a>
   </span>
 </footer>
 

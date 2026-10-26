@@ -2,7 +2,7 @@
   import { onDestroy, untrack } from 'svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import ModeNavigation from './ModeNavigation.svelte';
-  import { ALICE_LAYOUT, type AliceKey, type KeyFeedback } from '../keyboard/alice-layout';
+  import { ALICE_LAYOUT, ALICE_VIEW_BOX, type AliceKey, type InertKey, type KeyFeedback } from '../keyboard/alice-layout';
   import {
     applyAction,
     createSession,
@@ -24,7 +24,8 @@
   let {
     settings = $bindable({ ...DEFAULT_SETTINGS }), running = $bindable(false),
     caretStyle = 'block', showLiveStats = true, onsettingschange, oncharacter, oncomplete,
-    layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false
+    layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false,
+    inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutConfirmed = false
   }: {
     settings?: PracticeSettings;
     running?: boolean;
@@ -36,6 +37,9 @@
     layout?: readonly AliceKey[];
     layoutLabel?: string;
     browserLegends?: boolean;
+    inertKeys?: readonly InertKey[];
+    viewBox?: string;
+    layoutConfirmed?: boolean;
   } = $props();
 
   let sessionId = '';
@@ -325,7 +329,8 @@
   </div>
   {/if}
 
-  <AliceKeyboardVisualizer {layout} {feedback} testLayoutLabel={layoutLabel} {browserLegends} />
+  <AliceKeyboardVisualizer {layout} {feedback} testLayoutLabel={layoutLabel} {browserLegends}
+    {inertKeys} {viewBox} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'} />
 
   <div class="practice-bottom">
     <p class="session-note" role="status">{exerciseError ? 'Practice stopped. Restart to generate a new exercise.' : statusMessage}</p>

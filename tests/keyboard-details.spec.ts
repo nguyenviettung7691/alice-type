@@ -24,12 +24,12 @@ test.describe('Keyboard Details', () => {
 
     await page.getByLabel('Reference profile', { exact: true }).selectOption('generic-alice');
     await expect(panel(page)).toContainText('Generic Alice layout');
-    await expect(panel(page)).toContainText('Catalog revision 1.0.0');
+    await expect(panel(page)).toContainText('Catalog revision 1.1.0');
     await expect(panel(page)).toContainText('src/lib/keyboard/alice-layout.ts');
     await expect(row(page, 'RGB / backlighting')).toContainText('Unknown');
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? ''), PREFERENCES_KEY);
     expect(saved).toEqual({
-      version: 3,
+      version: 4,
       settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardProfileId: 'generic-alice' }
     });
   });

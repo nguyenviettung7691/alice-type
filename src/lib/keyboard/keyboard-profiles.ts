@@ -1,4 +1,5 @@
 import { ALICE_LAYOUT, type AliceKey } from './alice-layout';
+import { LAYOUT_CATALOG, type LayoutCatalogEntry } from './layout-catalog';
 
 export type KeyboardProfileField =
   | 'name'
@@ -54,9 +55,11 @@ export interface KeyboardProfile {
     SourcedProfileValue<string | boolean>
   >>>;
   readonly testLayout?: VerifiedTestLayout;
+  /** Present for device profiles imported from the keyboard layout catalog. */
+  readonly layoutCatalogId?: string;
 }
 
-export const KEYBOARD_PROFILE_CATALOG_REVISION = '1.0.0';
+export const KEYBOARD_PROFILE_CATALOG_REVISION = '1.1.0';
 export const KEYBOARD_PROFILE_CATALOG_UPDATED_AT = '2026-10-26';
 
 const aliceLayoutSource: InternalProfileSource = {
@@ -74,6 +77,31 @@ export const GENERIC_ALICE_TEST_LAYOUT: VerifiedTestLayout = {
   source: aliceLayoutSource
 };
 
+function deviceProfile(entry: LayoutCatalogEntry): KeyboardProfile {
+  const via: ExternalProfileSource = {
+    kind: 'external',
+    title: `VIA keyboard definition ${entry.sources.via.path} (GPL-3.0)`,
+    url: entry.sources.via.url,
+    accessedAt: LAYOUT_CATALOG.generatedAt,
+    fields: ['name', 'layout', 'geometry']
+  };
+  const qmk: ExternalProfileSource = {
+    kind: 'external',
+    title: `QMK keyboard metadata for ${entry.sources.qmkInfo.keyboard} (GPL-2.0-or-later)`,
+    url: entry.sources.qmkInfo.url,
+    accessedAt: LAYOUT_CATALOG.generatedAt,
+    fields: ['brand']
+  };
+  return {
+    id: entry.id,
+    kind: 'device',
+    displayName: entry.displayName,
+    identity: { name: { value: entry.name, source: via }, brand: { value: entry.brand, source: qmk } },
+    features: {},
+    layoutCatalogId: entry.id
+  };
+}
+
 export const KEYBOARD_PROFILES: readonly KeyboardProfile[] = [
   {
     id: 'generic-alice',
@@ -82,7 +110,8 @@ export const KEYBOARD_PROFILES: readonly KeyboardProfile[] = [
     identity: {},
     features: {},
     testLayout: GENERIC_ALICE_TEST_LAYOUT
-  }
+  },
+  ...LAYOUT_CATALOG.profiles.map(deviceProfile)
 ];
 
 export function findKeyboardProfile(id: string | null): KeyboardProfile | undefined {

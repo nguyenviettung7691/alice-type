@@ -1,0 +1,32 @@
+{
+  "$comment": "Reviewed Alice-family keyboards imported by `npm run import:layouts`. Geometry and variants come from the VIA v3 definition; physical codes come from the QMK default keymap layer. Pins are upstream commit SHAs; update them with `npm run import:layouts -- --latest`, then review the generated diff.",
+  "pins": {
+    "via": "9e3e9f4aa9f50f9439fdebc747560f51aaf109a0",
+    "qmk": "180f394b489c238cb231c2bf8b080262155e03c0"
+  },
+  "entries": [
+    { "id": "projectkb-alice", "via": "v3/projectkb/alice/projectkb_alice.json", "qmk": "projectkb/alice/rev1", "note": "Original TGR/ProjectKB Alice PCB." },
+    { "id": "keychron-q8-ansi", "via": "v3/keychron/q8/ansi.json", "qmk": "keychron/q8/ansi", "layer": "WIN_BASE", "note": "Keychron Q8 ANSI; Windows base layer." },
+    { "id": "keychron-q8-ansi-encoder", "via": "v3/keychron/q8/ansi_encoder.json", "qmk": "keychron/q8/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron Q8 ANSI knob; Windows base layer." },
+    { "id": "keychron-q8-iso", "via": "v3/keychron/q8/iso.json", "qmk": "keychron/q8/iso", "layer": "WIN_BASE", "note": "Keychron Q8 ISO; Windows base layer." },
+    { "id": "keychron-q8-iso-encoder", "via": "v3/keychron/q8/iso_encoder.json", "qmk": "keychron/q8/iso_encoder", "layer": "WIN_BASE", "note": "Keychron Q8 ISO knob; Windows base layer." },
+    { "id": "keychron-v8-ansi", "via": "v3/keychron/v8/ansi.json", "qmk": "keychron/v8/ansi", "layer": "WIN_BASE", "note": "Keychron V8 ANSI; Windows base layer." },
+    { "id": "keychron-v8-ansi-encoder", "via": "v3/keychron/v8/ansi_encoder.json", "qmk": "keychron/v8/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron V8 ANSI knob; Windows base layer. V8 ISO entries are excluded: the VIA definition labels the H key with matrix 2,12, which LAYOUT_iso_70 does not contain." },
+    { "id": "keychron-q10-ansi-encoder", "via": "v3/keychron/q10/ansi_encoder.json", "qmk": "keychron/q10/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron Q10 ANSI knob; Windows base layer." },
+    { "id": "keychron-q10-iso-encoder", "via": "v3/keychron/q10/iso_encoder.json", "qmk": "keychron/q10/iso_encoder", "layer": "WIN_BASE", "note": "Keychron Q10 ISO knob; Windows base layer." },
+    { "id": "keychron-v10-ansi-encoder", "via": "v3/keychron/v10/ansi_encoder.json", "qmk": "keychron/v10/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron V10 ANSI knob; Windows base layer." },
+    { "id": "keychron-v10-iso-encoder", "via": "v3/keychron/v10/iso_encoder.json", "qmk": "keychron/v10/iso_encoder", "layer": "WIN_BASE", "note": "Keychron V10 ISO knob; Windows base layer." },
+    { "id": "fate-nozomi-arisu", "via": "v3/fate_nozomi/arisu/arisu.json", "qmk": "arisu", "note": "Arisu (Fate/Nozomi)." },
+    { "id": "ph-arisu", "via": "v3/other/ph_arisu/ph_arisu.json", "qmk": "nightly_boards/ph_arisu", "note": "PH Arisu." },
+    { "id": "sneakbox-aliceclone", "via": "v3/sneakbox/aliceclone/aliceclone.json", "qmk": "sneakbox/aliceclone", "note": "Sneakbox AliceClone." },
+    { "id": "sneakbox-aliceclone-rgb", "via": "v3/sneakbox/aliceclonergb/alicecloneRGB.json", "qmk": "sneakbox/aliceclonergb", "displayName": "Sneakbox Alice Clone RGB", "note": "Sneakbox AliceClone RGB; the VIA name matches the non-RGB board, so the display name is disambiguated." },
+    { "id": "sneakbox-ava", "via": "v3/sneakbox/ava/ava.json", "qmk": "sneakbox/ava", "note": "Sneakbox Ava." },
+    { "id": "axolstudio-yeti-soldered", "via": "v3/axolstudio/yeti/yeti.json", "qmk": "axolstudio/yeti/soldered", "note": "Axolstudio Yeti soldered PCB." },
+    { "id": "axolstudio-yeti-hotswap", "via": "v3/axolstudio/yeti/yeti_rgb.json", "qmk": "axolstudio/yeti/hotswap", "note": "Axolstudio Yeti RGB hotswap PCB." },
+    { "id": "chalice", "via": "v3/chalice/chalice.json", "qmk": "chalice", "note": "Chalice." },
+    { "id": "fancytech-fancyalice66", "via": "v3/fancytech/fancyalice66.json", "qmk": "fancytech/fancyalice66", "note": "FancyTech FancyAlice66." },
+    { "id": "mwstudio-alicekk", "via": "v3/mwstudio/alicekk.json", "qmk": "mwstudio/alicekk", "note": "MW Studio AliceKK." },
+    { "id": "meetlab-kalice", "via": "v3/meetlab/kalice/kalice.json", "qmk": "meetlab/kalice", "note": "Meetlab KAlice." },
+    { "id": "qwertlekeys-calice", "via": "v3/qwertlekeys/calice.json", "qmk": "qwertlekeys/calice", "note": "QwertleKeys Calice." }
+  ]
+}

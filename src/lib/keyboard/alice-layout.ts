@@ -1,17 +1,35 @@
 export type KeyboardHalf = 'left' | 'right';
 
 export interface AliceKeycap {
-  readonly half: KeyboardHalf;
+  /** Generic Alice keycaps use a half transform; imported keycaps use their own rotation instead. */
+  readonly half?: KeyboardHalf;
   readonly x: number;
   readonly y: number;
   readonly width: number;
   readonly height: number;
+  readonly rotation?: number;
+  readonly originX?: number;
+  readonly originY?: number;
+  /** Second rectangle of a stepped key (for example ISO Enter); drawn without a legend. */
+  readonly secondary?: boolean;
 }
 
 export interface AliceKey {
   readonly code: string;
   readonly legend: string;
   readonly keycaps: readonly AliceKeycap[];
+}
+
+/** A physical key without a standard browser code; drawn but never highlighted or tested. */
+export interface InertKey {
+  readonly id: string;
+  readonly legend: string;
+  readonly keycaps: readonly AliceKeycap[];
+}
+
+export function keycapTransform(cap: AliceKeycap): string | undefined {
+  if (cap.half) return ALICE_HALF_TRANSFORMS[cap.half];
+  return cap.rotation ? `rotate(${cap.rotation} ${cap.originX ?? 0} ${cap.originY ?? 0})` : undefined;
 }
 
 export type KeyFeedback = Readonly<Partial<Record<string, 'correct' | 'incorrect'>>>;

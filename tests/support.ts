@@ -6,14 +6,14 @@ export const DEFAULT_PREFERENCES: Preferences = {
   mode: 'timed', durationSeconds: 30, wordLimit: 25, wordBankTier: 200,
   punctuation: false, numbers: false, caretStyle: 'block', soundEnabled: false,
   showLiveStats: true, onboardingComplete: false, keyboardTestSoundEnabled: false, keyboardTestSoundEffect: 'default',
-  keyboardProfileId: null, keyboardUserDetails: {}
+  keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null
 };
 
 export async function skipOnboarding(page: Page) {
   await disableDeviceAccess(page);
   await page.addInitScript(({ key, defaults }) => {
     if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 3, settings: defaults }));
+      localStorage.setItem(key, JSON.stringify({ version: 4, settings: defaults }));
     }
   }, { key: PREFERENCES_KEY, defaults: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
 }

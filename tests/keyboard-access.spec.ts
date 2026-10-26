@@ -6,7 +6,7 @@ type Scenario = 'grant' | 'restore' | 'denied' | 'empty' | 'multiple' | 'failed'
 async function mockAccess(page: Page, scenario: Scenario, returning = false) {
   await page.addInitScript(({ scenario, returning, key, defaults }) => {
     if (returning) localStorage.setItem(key, JSON.stringify({
-      version: 3, settings: { ...defaults, onboardingComplete: true }
+      version: 4, settings: { ...defaults, onboardingComplete: true }
     }));
     const device = { productName: 'Example Alice HID', vendorId: 0x1234, productId: 0xabcd };
     const other = { productName: 'Second HID device', vendorId: 0x5678, productId: 0x0001 };
@@ -60,7 +60,7 @@ test('automatically prompts, opens the chooser on activation, and shares browser
   expect(await page.evaluate(() => Reflect.get(window, 'chooserHadActivation'))).toBe(true);
   await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeFocused();
   await expect(connection(page)).toContainText('Example Alice HID');
-  await expect(connection(page)).toContainText('No verified device-specific profile');
+  await expect(connection(page)).toContainText('No layout is confirmed for this device');
   await expect(legend(page)).toHaveText('a');
   await page.getByRole('button', { name: 'Keyboard Test', exact: true }).click();
   await expect(legend(page)).toHaveText('a');

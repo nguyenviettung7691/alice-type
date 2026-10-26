@@ -4,6 +4,7 @@ import {
   findKeyboardProfile, GENERIC_ALICE_TEST_LAYOUT, isKeyboardProfileId, isTestLayoutEligible,
   KEYBOARD_PROFILE_CATALOG_REVISION, KEYBOARD_PROFILE_CATALOG_UPDATED_AT, KEYBOARD_PROFILES
 } from './keyboard-profiles';
+import { LAYOUT_CATALOG } from './layout-catalog';
 
 describe('keyboard profile catalog', () => {
   it('has a revision, review date, stable unique IDs, and a generic Alice layout', () => {
@@ -32,11 +33,19 @@ describe('keyboard profile catalog', () => {
     expect(GENERIC_ALICE_TEST_LAYOUT.layout.length).toBe(ALICE_LAYOUT.length);
   });
 
-  it('accepts only catalog profile identifiers and keeps device claims absent when unsourced', () => {
+  it('accepts only catalog profile identifiers and derives device profiles from the layout catalog', () => {
     expect(isKeyboardProfileId('generic-alice')).toBe(true);
+    expect(isKeyboardProfileId('projectkb-alice')).toBe(true);
     expect(isKeyboardProfileId('unknown')).toBe(false);
     expect(isKeyboardProfileId(null)).toBe(false);
-    expect(KEYBOARD_PROFILES.filter((profile) => profile.kind === 'device')).toEqual([]);
+    const devices = KEYBOARD_PROFILES.filter((profile) => profile.kind === 'device');
+    expect(devices.map((profile) => profile.id)).toEqual(LAYOUT_CATALOG.profiles.map((entry) => entry.id));
+    for (const device of devices) {
+      expect(device.layoutCatalogId).toBe(device.id);
+      expect(device.testLayout).toBeUndefined();
+      expect(Object.keys(device.identity).sort()).toEqual(['brand', 'name']);
+      expect(device.features).toEqual({});
+    }
   });
 
   it('requires each catalog field claim to be covered by its source provenance', () => {

@@ -12,6 +12,10 @@
   import {
     findKeyboardProfile, GENERIC_ALICE_TEST_LAYOUT, isTestLayoutEligible
   } from './lib/keyboard/keyboard-profiles';
+  import {
+    LayoutProfileLoadError, findCatalogEntry, isResolvedLayoutEligible, isValidVariant, loadLayoutProfile,
+    resolveImportedLayout, type ResolvedKeyboardLayout
+  } from './lib/keyboard/layout-catalog';
   import { type PracticeSettings } from './lib/typing/exercise-generator';
   import {
     DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type Preferences
@@ -58,6 +62,51 @@
     return isTestLayoutEligible(profile) ? profile.testLayout : GENERIC_ALICE_TEST_LAYOUT;
   });
   const activeLayout = $derived(applyLayoutLegends(activeTestLayout.layout, layoutLegends));
+  const confirmationKey = $derived(JSON.stringify(preferences.keyboardLayoutConfirmation));
+  let resolvedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
+  let layoutNotice = $state('');
+  // The layout shown by Practice and Keyboard Test; a running session is never changed in place.
+  let appliedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
+  const confirmedKeys = $derived(appliedLayout ? applyLayoutLegends(appliedLayout.keys, layoutLegends) : null);
+  const confirmedSequence = $derived(appliedLayout ? applyLayoutLegends(appliedLayout.testSequence, layoutLegends) : null);
+  const genericLabel = $derived(activeTestLayout.label.replace(/ test layout$/, ''));
+
+  $effect(() => {
+    const confirmation = JSON.parse(confirmationKey) as Preferences['keyboardLayoutConfirmation'];
+    layoutNotice = '';
+    if (!confirmation) {
+      resolvedLayout = null;
+      return;
+    }
+    const entry = findCatalogEntry(confirmation.profileId);
+    if (!entry || !isValidVariant(entry, confirmation.variant)) {
+      resolvedLayout = null;
+      layoutNotice = 'Your confirmed layout is no longer available in this catalog version. The generic Alice layout is active; your saved confirmation is kept. Find and confirm your layout again in Keyboard Details.';
+      return;
+    }
+    let cancelled = false;
+    loadLayoutProfile(entry.id).then((profile) => {
+      if (cancelled) return;
+      const layout = resolveImportedLayout(entry, profile, confirmation.variant);
+      if (isResolvedLayoutEligible(layout)) {
+        resolvedLayout = layout;
+      } else {
+        resolvedLayout = null;
+        layoutNotice = `The confirmed ${entry.displayName} layout is missing required keys (${layout.missingCodes.join(', ')}), so the generic Alice layout is active.`;
+      }
+    }).catch((error: unknown) => {
+      if (!(error instanceof LayoutProfileLoadError)) throw error;
+      if (cancelled) return;
+      resolvedLayout = null;
+      layoutNotice = `${error.message} The generic Alice layout is active. Reload the page to try again.`;
+    });
+    return () => { cancelled = true; };
+  });
+
+  $effect(() => {
+    const next = resolvedLayout;
+    if (!running) appliedLayout = next;
+  });
   const history = new SessionHistory();
   const sound = new TypingSound();
   let alive = true;
@@ -123,6 +172,13 @@
     document.getElementById(next === 'practice' ? 'practice-panel-heading' : `${next}-heading`)?.focus();
   }
 
+  async function findLayout() {
+    if (running) return;
+    await navigate('keyboard-details');
+    if (!alive) return;
+    document.getElementById('layout-match-heading')?.focus();
+  }
+
   async function saveSession(record: SessionRecord) {
     pending = pending.map((entry) => entry.record.id === record.id ? { ...entry, saving: true, error: '' } : entry);
     try {
@@ -180,7 +236,17 @@
   <main class="main-content">
     <KeyboardConnection {onboarding} disabled={running} onfinish={finishOnboarding}
       ondevicechange={(device) => { connectedDevice = device; }}
-      onlayoutchange={(legends) => { layoutLegends = legends; }} />
+      onlayoutchange={(legends) => { layoutLegends = legends; }}
+      onfindlayout={() => { void findLayout(); }}
+      confirmedLayoutLabel={appliedLayout?.label ?? null} />
+    {#if layoutNotice}
+      <div class="notice" role="alert">
+        <p>{layoutNotice}</p>
+        {#if view !== 'keyboard-details'}
+          <button class="secondary-button" type="button" disabled={running} onclick={() => { void findLayout(); }}>Open Find my layout</button>
+        {/if}
+      </div>
+    {/if}
     {#if preferenceError}
       <div class="notice" role="alert">
         <p>{preferenceError} Current selections work in memory; saved data has not been replaced.</p>
@@ -203,7 +269,8 @@
     {/if}
     <div hidden={view !== 'practice'}>
       <PracticePanel {settings} bind:running onsettingschange={(next) => changePreferences({ ...preferences, ...next })}
-        layout={activeLayout} layoutLabel={activeTestLayout.label.replace(/ test layout$/, '')}
+        layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
+        inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox} layoutConfirmed={!!appliedLayout}
         browserLegends={layoutLegends !== null}
         caretStyle={preferences.caretStyle} showLiveStats={preferences.showLiveStats}
         oncharacter={playClick} oncomplete={completed} />
@@ -215,23 +282,40 @@
     {:else if view === 'stats'}
       <StatsPanel {history} {revision} pending={pending.length > 0} />
     {:else if view === 'keyboard-test'}
-      <KeyboardTestPanel
-        soundEnabled={preferences.keyboardTestSoundEnabled}
-        soundEffect={preferences.keyboardTestSoundEffect}
-        testLayout={activeLayout}
-        browserLegends={layoutLegends !== null}
-        testLayoutLabel={activeTestLayout.label.replace(/ test layout$/, '')}
-        onsoundchange={(keyboardTestSoundEnabled, keyboardTestSoundEffect) =>
-          changePreferences({ ...preferences, keyboardTestSoundEnabled, keyboardTestSoundEffect })}
-        onaudiofailure={() => { preferences = { ...preferences, keyboardTestSoundEnabled: false }; }}
-      />
+      {#key appliedLayout}
+        <KeyboardTestPanel
+          soundEnabled={preferences.keyboardTestSoundEnabled}
+          soundEffect={preferences.keyboardTestSoundEffect}
+          testLayout={confirmedKeys ?? activeLayout}
+          testSequence={confirmedSequence ?? activeLayout}
+          inertKeys={appliedLayout?.inertKeys}
+          viewBox={appliedLayout?.viewBox}
+          confirmed={!!appliedLayout}
+          browserLegends={layoutLegends !== null}
+          testLayoutLabel={appliedLayout?.label ?? genericLabel}
+          onsoundchange={(keyboardTestSoundEnabled, keyboardTestSoundEffect) =>
+            changePreferences({ ...preferences, keyboardTestSoundEnabled, keyboardTestSoundEffect })}
+          onaudiofailure={() => { preferences = { ...preferences, keyboardTestSoundEnabled: false }; }}
+        />
+      {/key}
     {:else if view === 'keyboard-details'}
       <KeyboardDetailsPanel
         {connectedDevice}
         profileId={preferences.keyboardProfileId}
         userDetails={preferences.keyboardUserDetails}
-        onprofilechange={(keyboardProfileId) => changePreferences({ ...preferences, keyboardProfileId })}
+        layoutConfirmation={preferences.keyboardLayoutConfirmation}
+        {layoutNotice}
+        onprofilechange={(keyboardProfileId) => changePreferences({
+          ...preferences,
+          keyboardProfileId,
+          keyboardLayoutConfirmation: preferences.keyboardLayoutConfirmation?.profileId === keyboardProfileId
+            ? preferences.keyboardLayoutConfirmation : null
+        })}
         onuserdetailschange={(keyboardUserDetails) => changePreferences({ ...preferences, keyboardUserDetails })}
+        onlayoutconfirm={(keyboardLayoutConfirmation) => changePreferences({
+          ...preferences, keyboardProfileId: keyboardLayoutConfirmation.profileId, keyboardLayoutConfirmation
+        })}
+        onlayoutclear={() => changePreferences({ ...preferences, keyboardLayoutConfirmation: null })}
       />
     {/if}
   </main>

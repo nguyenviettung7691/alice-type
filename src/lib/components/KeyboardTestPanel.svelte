@@ -1,13 +1,14 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
-  import { ALICE_LAYOUT, type AliceKey } from '../keyboard/alice-layout';
+  import { ALICE_LAYOUT, ALICE_VIEW_BOX, type AliceKey, type InertKey } from '../keyboard/alice-layout';
   import { classifyTestKey, createKeyboardTest, expectedTestKey, pressTestKey } from '../keyboard/keyboard-test';
   import {
     KEYBOARD_TEST_EFFECTS, KeyboardTestSound, KeyboardTestSoundError, type KeyboardTestEffect
   } from '../audio/keyboard-test-sound';
 
-  let { soundEnabled, soundEffect, onsoundchange, onaudiofailure, testLayout = ALICE_LAYOUT, testLayoutLabel = 'Generic Alice', browserLegends = false }: {
+  let { soundEnabled, soundEffect, onsoundchange, onaudiofailure, testLayout = ALICE_LAYOUT, testLayoutLabel = 'Generic Alice', browserLegends = false,
+    testSequence = testLayout, inertKeys = [], viewBox = ALICE_VIEW_BOX, confirmed = false }: {
     soundEnabled: boolean;
     soundEffect: KeyboardTestEffect;
     onsoundchange: (enabled: boolean, effect: KeyboardTestEffect) => void;
@@ -15,6 +16,10 @@
     testLayout?: readonly AliceKey[];
     testLayoutLabel?: string;
     browserLegends?: boolean;
+    testSequence?: readonly AliceKey[];
+    inertKeys?: readonly InertKey[];
+    viewBox?: string;
+    confirmed?: boolean;
   } = $props();
 
   let testState = $state(createKeyboardTest());
@@ -30,7 +35,7 @@
   let playbackGeneration = 0;
   const heldCodes = new Set<string>();
   const sound = new KeyboardTestSound();
-  const expected = $derived(expectedTestKey(testState, testLayout));
+  const expected = $derived(expectedTestKey(testState, testSequence));
 
   function clearError() {
     clearTimeout(errorTimer);
@@ -72,7 +77,7 @@
     heldCodes.add(event.code);
     if (['Tab', 'Space', 'Backspace'].includes(event.code)) event.preventDefault();
     clearError();
-    const next = pressTestKey(testState, event.code, testLayout);
+    const next = pressTestKey(testState, event.code, testSequence);
     if (next === testState) {
       errorCode = event.code;
       errorMessage = `Unexpected key: ${event.code || 'unknown physical code'}.`;
@@ -130,8 +135,8 @@
     oncompositionend={() => { composing = false; }}
   >
     <p class="test-focus-note">{focused ? 'Listening for physical keys' : 'Focus this area to test your keyboard'}</p>
-    <p class="test-progress">{testState.expectedIndex} of {testLayout.length} keys tested</p>
-    <progress aria-label="Keyboard test progress" value={testState.expectedIndex} max={testLayout.length}></progress>
+    <p class="test-progress">{testState.expectedIndex} of {testSequence.length} keys tested</p>
+    <progress aria-label="Keyboard test progress" value={testState.expectedIndex} max={testSequence.length}></progress>
     <p class="test-status" role="status" aria-live="polite" aria-atomic="true">
       {#if expected}
         {errorMessage} Expected: <strong>{expected.legend}</strong> <span>({expected.code})</span>
@@ -141,7 +146,8 @@
     </p>
   </div>
 
-  <AliceKeyboardVisualizer layout={testLayout} {testState} {errorCode} {testLayoutLabel} {browserLegends} />
+  <AliceKeyboardVisualizer layout={testLayout} {testState} {errorCode} {testLayoutLabel} {browserLegends}
+    {testSequence} {inertKeys} {viewBox} layoutSource={confirmed ? 'confirmed' : 'generic'} />
 
   <fieldset>
     <legend>Test sound</legend>

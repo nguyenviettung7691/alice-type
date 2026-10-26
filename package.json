@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run src/lib",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "import:layouts": "node --network-family-autoselection-attempt-timeout=2000 scripts/import-keyboard-layouts.ts"
   },
   "dependencies": {
     "svelte": "5.57.2"
