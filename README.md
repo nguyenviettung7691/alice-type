@@ -24,6 +24,7 @@ Phases 1–7 are implemented: the app foundation, typing engine, Alice visualize
 
 ## Practice
 
+- The top navbar switches app views. The collapsible Keyboard connection panel sits directly below it at the top of every view. In Practice, a segmented mode selector sits inside the exercise panel above its settings; Timed and Words work, while Quote, Custom, and Zen remain coming soon.
 - Choose **Timed** (15/30/60/120 seconds) or **Words** (10/25/50/100 base words). The default is Timed, 30 seconds.
 - Choose a **200**, **1000**, or **5000** word vocabulary and optionally enable **Punctuation** and **Numbers**. Both modifiers default to off. Settings and mode selection are locked while running; Restart unlocks them.
 - Select the exercise text, tab to the practice input, or activate **Start typing**. Focusing alone does not start the session; the first printable key does. Type the full displayed target, including spaces and modifiers. Errors are red and underlined; Backspace removes the last character.
@@ -37,7 +38,10 @@ Phases 1–7 are implemented: the app foundation, typing engine, Alice visualize
 
 ## Settings, onboarding, and local history
 
-- On first use, choose **Start practicing** to focus the input and optionally request browser layout legends, or **Continue without layout access** / Escape to skip. Typing does not require keyboard permission. Layout access is optional and cannot detect hardware identity; the visualizer retains generic US ANSI legends.
+- On first use, a welcome dialog explains optional keyboard access and browser-only privacy. Where WebHID is supported, **Connect Keyboard & Start** opens the browser chooser on your click (or Enter). Select only your keyboard; protected keyboard interfaces often cannot appear. Returning visits restore authorized connected devices; if none are available, the app shows the dialog again. Skip / Escape dismisses it for this visit without blocking typing.
+- **Start practicing** requests only Keyboard API legends; **Continue without layout access** skips both APIs. `navigator.keyboard.getLayoutMap()` supplies OS/browser key legends, not a brand, model, or physical arrangement. Available legends update both Practice and Keyboard Test; missing legends retain reference values. **Refresh key labels** retries access, and supported layout-change events refresh legends.
+- The keyboard connection panel starts collapsed, showing a color-coded text status and the selected device name. Click its summary or focus it and press Enter/Space to expand controls, privacy information, and unsupported, denied/cancelled, missing-device, or detection-failure guidance. Yellow indicates attention/selection needed, green a selected device, blue pending permission, and neutral unavailable access. WebHID exposes only the selected product name and numeric vendor/product IDs; these are labeled browser-reported, separate from catalog facts and personal notes. Multiple authorized devices require explicit selection. Disconnects clear stale device details and layout legends. No HID device is opened and no reports are read or written.
+- All app data, including device information, stays in the browser; nothing is uploaded. Runtime device details are held only in memory, browser-managed device grants may survive reload, and selected reference profiles/personal notes remain in local preferences. You can revoke device access in browser site settings.
 - Open **Settings** to choose Block, Line, or Underline caret, hide live WPM/accuracy, or enable a quiet generated typing click. Sound is off by default; only accepted printable keys trigger it. Final metrics remain visible when live stats are hidden.
 - Practice preferences (including each mode's inactive limit), display settings, sound selection, and onboarding completion use versioned `localStorage`. **Restore defaults** requires confirmation and does not delete history.
 - **Stats** lists completed exercises newest first, with best/average WPM, average per-session accuracy, and incorrect attempts grouped by physical `KeyboardEvent.code`. Correcting an error does not erase that attempt. Missing physical codes are excluded from key totals, not from accuracy.
@@ -47,7 +51,7 @@ Phases 1–7 are implemented: the app foundation, typing engine, Alice visualize
 
 ## Alice visualizer
 
-- The diagram shows a generic angled Alice arrangement with US ANSI legends; it is not a detected device or a model-specific keyboard.
+- Both diagrams use the same selected verified reference arrangement, with optional browser layout legends (US ANSI reference legends otherwise). The current catalog contains only generic Alice geometry; it is not a detected device or a model-specific keyboard. A HID product name or ID does not establish a physical-layout match.
 - Accepted printable key presses highlight their physical `KeyboardEvent.code` for 300 ms: orange with **+** for a matching character, red with **!** and a dashed outline for a mismatch. Character correctness still uses the typed character, not the illustrated legend.
 - Both drawn spacebars share the logical `Space` code and illuminate together. Backspace and modifier keys do not create correctness feedback. Unmapped physical codes still allow valid text entry without highlighting a key.
 - Feedback clears when focus leaves the input, the exercise completes, or it restarts. The highlight is temporary; incorrect printable attempts are separately aggregated into completed-session history.

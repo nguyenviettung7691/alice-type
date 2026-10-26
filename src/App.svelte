@@ -5,7 +5,8 @@
   import PracticePanel from './lib/components/PracticePanel.svelte';
   import SettingsPanel from './lib/components/SettingsPanel.svelte';
   import StatsPanel from './lib/components/StatsPanel.svelte';
-  import KeyboardOnboarding from './lib/components/KeyboardOnboarding.svelte';
+  import KeyboardConnection from './lib/components/KeyboardConnection.svelte';
+  import { applyLayoutLegends, type KeyboardDevice } from './lib/keyboard/keyboard-access';
   import KeyboardTestPanel from './lib/components/KeyboardTestPanel.svelte';
   import KeyboardDetailsPanel from './lib/components/KeyboardDetailsPanel.svelte';
   import {
@@ -47,7 +48,8 @@
   let preferenceOperation = $state<'load' | 'save'>(initial.operation);
   let preserveStored = initial.operation === 'load';
   let onboarding = $state(!initial.settings.onboardingComplete);
-  let layoutMessage = $state('');
+  let connectedDevice = $state<KeyboardDevice | null>(null);
+  let layoutLegends = $state<ReadonlyMap<string, string> | null>(null);
   let audioError = $state('');
   let revision = $state(0);
   let pending = $state<{ record: SessionRecord; saving: boolean; error: string }[]>([]);
@@ -55,6 +57,7 @@
     const profile = findKeyboardProfile(preferences.keyboardProfileId);
     return isTestLayoutEligible(profile) ? profile.testLayout : GENERIC_ALICE_TEST_LAYOUT;
   });
+  const activeLayout = $derived(applyLayoutLegends(activeTestLayout.layout, layoutLegends));
   const history = new SessionHistory();
   const sound = new TypingSound();
   let alive = true;
@@ -157,32 +160,12 @@
     if (enabling) audioError = '';
   }
 
-  async function requestLayout() {
-    try {
-      const keyboardNavigator = navigator as Navigator & {
-        keyboard?: { getLayoutMap?: () => Promise<ReadonlyMap<string, string>> };
-      };
-      if (keyboardNavigator.keyboard?.getLayoutMap) {
-        const map = await keyboardNavigator.keyboard.getLayoutMap();
-        if (!alive) return;
-        const labels = ['KeyQ', 'KeyA', 'KeyY', 'KeyZ'].map((code) => `${code}: ${map.get(code) ?? 'unknown'}`);
-        layoutMessage = `Browser layout sample (${labels.join(', ')}). The diagram retains generic US ANSI legends; this does not identify hardware.`;
-      } else {
-        layoutMessage = 'Optional layout access is not supported here. Practice uses generic US ANSI legends.';
-      }
-    } catch (error) {
-      if (!(error instanceof Error)) throw error;
-      if (alive) layoutMessage = `Optional layout access was unavailable: ${error.message}. Practice uses generic US ANSI legends.`;
-    }
-  }
-
   async function finishOnboarding(useLayout: boolean) {
     onboarding = false;
     preferences = { ...preferences, onboardingComplete: true };
     if (!preserveStored) persist();
     if (useLayout) {
       view = 'practice';
-      void requestLayout();
     }
     await tick();
     if (!alive) return;
@@ -192,12 +175,12 @@
 </script>
 
 <div class="app-shell">
-  <AppHeader mode={settings.mode} disabled={running} {view} onviewchange={navigate} onmodechange={(mode) => {
-    changePreferences({ ...preferences, mode });
-    if (view !== 'practice') void navigate('practice');
-  }} />
+  <AppHeader disabled={running} {view} onviewchange={navigate} />
 
   <main class="main-content">
+    <KeyboardConnection {onboarding} disabled={running} onfinish={finishOnboarding}
+      ondevicechange={(device) => { connectedDevice = device; }}
+      onlayoutchange={(legends) => { layoutLegends = legends; }} />
     {#if preferenceError}
       <div class="notice" role="alert">
         <p>{preferenceError} Current selections work in memory; saved data has not been replaced.</p>
@@ -218,17 +201,10 @@
         <button class="secondary-button" type="button" onclick={() => { audioError = ''; }}>Dismiss sound warning</button>
       </div>
     {/if}
-    {#if layoutMessage}<p class="panel-copy layout-message" role="status">{layoutMessage}
-      <button class="secondary-button" type="button" onclick={() => { layoutMessage = ''; }}>Dismiss layout note</button>
-    </p>{/if}
     <div hidden={view !== 'practice'}>
-      <div class="intro">
-        <p class="eyebrow"><span class="eyebrow-dot"></span>A quieter kind of practice</p>
-        <h2>Find your rhythm.</h2>
-        <p class="intro-copy">A little focus goes a long way. Settle in and let the words flow.</p>
-      </div>
-
       <PracticePanel {settings} bind:running onsettingschange={(next) => changePreferences({ ...preferences, ...next })}
+        layout={activeLayout} layoutLabel={activeTestLayout.label.replace(/ test layout$/, '')}
+        browserLegends={layoutLegends !== null}
         caretStyle={preferences.caretStyle} showLiveStats={preferences.showLiveStats}
         oncharacter={playClick} oncomplete={completed} />
     </div>
@@ -242,7 +218,8 @@
       <KeyboardTestPanel
         soundEnabled={preferences.keyboardTestSoundEnabled}
         soundEffect={preferences.keyboardTestSoundEffect}
-        testLayout={activeTestLayout.layout}
+        testLayout={activeLayout}
+        browserLegends={layoutLegends !== null}
         testLayoutLabel={activeTestLayout.label.replace(/ test layout$/, '')}
         onsoundchange={(keyboardTestSoundEnabled, keyboardTestSoundEffect) =>
           changePreferences({ ...preferences, keyboardTestSoundEnabled, keyboardTestSoundEffect })}
@@ -250,6 +227,7 @@
       />
     {:else if view === 'keyboard-details'}
       <KeyboardDetailsPanel
+        {connectedDevice}
         profileId={preferences.keyboardProfileId}
         userDetails={preferences.keyboardUserDetails}
         onprofilechange={(keyboardProfileId) => changePreferences({ ...preferences, keyboardProfileId })}
@@ -260,5 +238,3 @@
 
   <AppFooter />
 </div>
-
-{#if onboarding}<KeyboardOnboarding onfinish={finishOnboarding} />{/if}

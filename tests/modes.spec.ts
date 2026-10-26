@@ -56,6 +56,35 @@ test('defaults to ready Timed 30/200, exposes exact limits, and keeps future mod
   }
 });
 
+test('keeps connection above every view and mode selection inside Practice', async ({ page }) => {
+  const modes = page.getByRole('navigation', { name: 'Practice modes', exact: true });
+  await expect(page.locator('header').getByRole('navigation', { name: 'Practice modes' })).toHaveCount(0);
+  await expect(panel(page).getByRole('navigation', { name: 'Practice modes' })).toBeVisible();
+  await expect(page.locator('.intro')).toHaveCount(0);
+  for (const width of [320, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const header = await page.locator('header').boundingBox();
+    const connection = await page.locator('.keyboard-connection').boundingBox();
+    const selector = await modes.boundingBox();
+    const settings = await page.getByRole('group', { name: 'Exercise settings' }).boundingBox();
+    if (!header || !connection || !selector || !settings) throw new Error('Missing app layout');
+    expect(connection.y - (header.y + header.height)).toBeGreaterThanOrEqual(0);
+    expect(connection.y - (header.y + header.height)).toBeLessThanOrEqual(24);
+    expect(selector.y).toBeGreaterThanOrEqual(connection.y + connection.height);
+    expect(settings.y).toBeGreaterThanOrEqual(selector.y + selector.height);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+  }
+  for (const name of ['Settings', 'Stats', 'Keyboard Test', 'Keyboard Details']) {
+    await page.getByRole('button', { name, exact: true }).click();
+    await expect(modes).toBeHidden();
+    await expect(page.locator('main > .keyboard-connection')).toBeVisible();
+  }
+  await page.getByRole('button', { name: 'Practice', exact: true }).click();
+  await expect(modes).toBeVisible();
+  await modes.getByRole('button', { name: 'Words', exact: true }).click();
+  await expect(page.getByLabel('Word limit', { exact: true })).toBeVisible();
+});
+
 test('bundled data attribution and license are readable without an external request', async ({ page, request }) => {
   const noticeUrl = await page.getByRole('link', { name: 'Vocabulary attribution', exact: true }).getAttribute('href');
   const licenseUrl = await page.getByRole('link', { name: 'CC BY-SA 4.0 data', exact: true }).getAttribute('href');

@@ -11,8 +11,9 @@
   ] as const;
 </script>
 
-<nav aria-label="Practice modes">
-  <ul class="m-0 flex list-none flex-wrap items-center gap-1 p-0">
+<nav aria-label="Practice modes" class="practice-modes">
+  <p class="mode-label">Practice mode</p>
+  <ul>
     {#each modes as option}
       <li>
         <button
@@ -25,25 +26,53 @@
       </li>
     {/each}
     {#each ['Quote', 'Custom', 'Zen'] as unavailable}
-      <li><span class="rounded-full px-3 py-2 text-xs text-muted" aria-disabled="true">{unavailable}<span class="sr-only">, coming soon</span></span></li>
+      <li><span class="unavailable-mode" aria-disabled="true" title="Coming soon">{unavailable}<span class="sr-only">, coming soon</span></span></li>
     {/each}
   </ul>
 </nav>
 
 <style>
+  .practice-modes { margin-bottom: 1.5rem; }
+  .mode-label {
+    margin: 0 0 0.65rem;
+    color: #b8b8b8;
+    font-size: 0.78rem;
+    font-weight: 600;
+  }
+  ul {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0.3rem;
+    list-style: none;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 0.75rem;
+    background: rgb(0 0 0 / 15%);
+  }
+  li { display: flex; }
+  .unavailable-mode {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.65rem 1rem;
+    color: var(--color-muted);
+    font-size: 0.85rem;
+    cursor: not-allowed;
+  }
   button {
     border: 1px solid transparent;
-    border-radius: 999px;
-    padding: 0.45rem 0.75rem;
+    border-radius: 0.5rem;
+    padding: 0.65rem 1rem;
     color: var(--color-text);
     background: transparent;
-    font-size: 0.75rem;
+    font-size: 0.85rem;
     cursor: pointer;
   }
 
   button.selected {
     border-color: var(--color-accent);
-    color: var(--color-accent);
+    color: var(--color-background);
+    background: var(--color-accent);
     font-weight: 650;
   }
 

@@ -1,11 +1,6 @@
 <script lang="ts">
-  import ModeNavigation from './ModeNavigation.svelte';
-  import type { PracticeMode } from '../typing/exercise-generator';
-
-  let { mode, disabled, onmodechange, view, onviewchange }: {
-    mode: PracticeMode;
+  let { disabled, view, onviewchange }: {
     disabled: boolean;
-    onmodechange: (mode: PracticeMode) => void;
     view: 'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details';
     onviewchange: (view: 'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
   } = $props();
@@ -27,7 +22,6 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-x-7 gap-y-3 max-[760px]:w-full max-[760px]:justify-between max-[520px]:items-start max-[520px]:flex-col">
-      <ModeNavigation {mode} {disabled} {onmodechange} />
       <nav class="view-navigation" aria-label="App views">
         {#each views as destination}
           <button type="button" {disabled} aria-pressed={view === destination.id}

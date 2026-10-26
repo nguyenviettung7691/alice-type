@@ -107,6 +107,7 @@ dialog p {
 }
 
 dialog {
+  margin: auto;
   width: min(36rem, calc(100% - 2rem));
   max-height: calc(100% - 2rem);
   overflow-y: auto;
@@ -242,13 +243,8 @@ a:focus-visible {
   flex: 1;
   flex-direction: column;
   align-self: center;
-  justify-content: center;
-  padding-block: clamp(4rem, 10vh, 7rem);
-}
-
-.intro {
-  margin-bottom: 2.5rem;
-  text-align: center;
+  justify-content: flex-start;
+  padding-block: 1.25rem 3rem;
 }
 
 .eyebrow {
@@ -261,29 +257,6 @@ a:focus-visible {
   font-weight: 650;
   letter-spacing: 0.16em;
   text-transform: uppercase;
-}
-
-.eyebrow-dot {
-  width: 0.42rem;
-  height: 0.42rem;
-  border-radius: 999px;
-  background: var(--color-accent);
-}
-
-.intro h2 {
-  margin: 0;
-  color: var(--color-text);
-  font-size: clamp(2rem, 5vw, 3.2rem);
-  font-weight: 550;
-  letter-spacing: -0.055em;
-  line-height: 1.1;
-}
-
-.intro-copy {
-  margin: 0.9rem 0 0;
-  color: var(--color-muted);
-  font-size: 0.98rem;
-  line-height: 1.6;
 }
 
 .practice-panel {
@@ -392,23 +365,14 @@ a:focus-visible {
 @media (max-width: 760px) {
   .main-content {
     width: min(100% - 2rem, 68rem);
-    padding-block: 4.5rem;
-  }
-
-  .intro {
-    margin-bottom: 2rem;
+    padding-block: 1rem 2rem;
   }
 }
 
 @media (max-width: 520px) {
   .main-content {
     width: min(100% - 1.25rem, 68rem);
-    padding-block: 3.25rem;
-  }
-
-  .intro-copy {
-    max-width: 19rem;
-    margin-inline: auto;
+    padding-block: 0.75rem 1.5rem;
   }
 
   .practice-toolbar {

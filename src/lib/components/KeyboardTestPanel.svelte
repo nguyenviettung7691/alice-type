@@ -7,13 +7,14 @@
     KEYBOARD_TEST_EFFECTS, KeyboardTestSound, KeyboardTestSoundError, type KeyboardTestEffect
   } from '../audio/keyboard-test-sound';
 
-  let { soundEnabled, soundEffect, onsoundchange, onaudiofailure, testLayout = ALICE_LAYOUT, testLayoutLabel = 'Generic Alice' }: {
+  let { soundEnabled, soundEffect, onsoundchange, onaudiofailure, testLayout = ALICE_LAYOUT, testLayoutLabel = 'Generic Alice', browserLegends = false }: {
     soundEnabled: boolean;
     soundEffect: KeyboardTestEffect;
     onsoundchange: (enabled: boolean, effect: KeyboardTestEffect) => void;
     onaudiofailure: () => void;
     testLayout?: readonly AliceKey[];
     testLayoutLabel?: string;
+    browserLegends?: boolean;
   } = $props();
 
   let testState = $state(createKeyboardTest());
@@ -140,7 +141,7 @@
     </p>
   </div>
 
-  <AliceKeyboardVisualizer layout={testLayout} {testState} {errorCode} {testLayoutLabel} />
+  <AliceKeyboardVisualizer layout={testLayout} {testState} {errorCode} {testLayoutLabel} {browserLegends} />
 
   <fieldset>
     <legend>Test sound</legend>

@@ -14,7 +14,7 @@
 
 This document defines a sourced keyboard-profile catalog and a local device-details view. Users can select a catalog profile, record their own device details, and see which information is catalog-verified, user-provided, or unknown. A profile may also supply a physical key map for the Keyboard Test view, but only when that map is explicitly defined and verified.
 
-This feature describes information the user selected or entered; it does not detect the connected keyboard. Existing practice input, session history, and Phase 6 test behavior remain independent of device details.
+The base feature describes information the user selected or entered. The user-requested optional browser-access extension in section 13 adds limited browser-reported device descriptors without inferring hardware specifications. Existing practice input, session history, and Phase 6 test behavior remain independent of device details.
 
 ## 3. Phase 7 scope
 
@@ -33,7 +33,7 @@ This feature describes information the user selected or entered; it does not det
 ### 3.2 Out of scope
 
 - Automatic detection of keyboard brand, model, version, firmware, layout, connectivity, RGB/backlighting, rollover, or programmable-key support.
-- Required permissions, device APIs, USB/Bluetooth scanning, keyboard probing, operating-system integration, server requests, telemetry, accounts, or cloud synchronization.
+- Required permissions, USB/Bluetooth scanning, keyboard probing, operating-system integration, server requests, telemetry, accounts, or cloud synchronization. Optional WebHID descriptors are covered only by section 13.
 - Inferring hardware details from `KeyboardEvent`, `KeyboardEvent.code`, `KeyboardEvent.key`, browser layout maps, user-agent data, or a selected layout alone.
 - Fabricating catalog entries or completing missing catalog fields with guesses.
 - Allowing users to modify catalog records or mark self-reported information as catalog-verified.
@@ -192,7 +192,7 @@ Do not persist source URLs, fetched page contents, or any values discovered at r
 - Provide accessible names and concise descriptions for feature controls. Use appropriate status or alert semantics for persistence errors without announcing every field change.
 - Keep the view usable at narrow widths and with zoom; avoid a wide table that requires two-dimensional scrolling.
 - Explain that information is stored in this browser and is not sent to a server. Do not include profile details in keyboard-test results, session history, or Stats.
-- Do not claim automatic detection in headings, labels, empty states, error messages, or test instructions.
+- Do not claim automatic hardware identification in headings, labels, empty states, error messages, or test instructions. Section 13 descriptors must be labeled browser-reported.
 - Keep unknown values visible as unknown; do not use success-shaped fallbacks after storage or validation failures.
 
 ## 9. Component and module responsibilities
@@ -251,4 +251,28 @@ Phase 7 is complete when all of the following are true:
 - **Preference migrations:** The existing preference record is version 2. Chain the v1-to-v2 and v2-to-v3 migrations without dropping test-sound or practice fields; test failed writes as well as successful migration.
 - **Profile changes and test input:** Resolve the active test map when entering Keyboard Test. Do not mutate a running sequence in place; a profile/map change must take effect on a fresh test run.
 - **User text:** Render user-entered values as plain text and apply limits/validation at both form and storage boundaries.
-- **No runtime discovery:** Browser keyboard APIs remain optional layout-assistance capabilities only. Phase 7 must not add device enumeration, permission prompts, or a success-shaped “detected” state.
+- **Limited runtime descriptors:** The base phase has no hardware discovery. The explicit extension below permits optional WebHID descriptors, not inferred device profiles or success-shaped hardware identification.
+
+## 13. User-requested optional keyboard access extension
+
+This extension supersedes the original prohibition on optional device APIs, but not the prohibition on fabricated hardware claims.
+
+- `KeyboardConnection.svelte` owns optional access and its lifecycle; `keyboard-access.ts` defines minimal browser interfaces and a pure legend-overlay helper. No new dependency is required.
+- On first use, show the native app welcome dialog automatically. With WebHID support, query previously granted connected devices on mount. If none are available (or detection fails), also show the dialog on returning visits. Skipping or Escape dismisses it for the visit. Do not use `onboardingComplete` as evidence of a browser permission grant.
+- **Connect Keyboard & Start** invokes `requestDevice({ filters: [] })` synchronously within the user's activation, before awaiting anything. Browsers prohibit automatically opening their native chooser on load. Explain that users must choose their keyboard and that protected keyboard interfaces may not appear. Vendor-defined interfaces prevent a reliable keyboard-only chooser filter; do not classify arbitrary HID devices as keyboards.
+- Restore one authorized device automatically. If several are connected, require an explicit selection and explain that standard key events cannot be associated with one HID device. Handle connect/disconnect events, remove listeners on teardown, and invalidate stale asynchronous updates.
+- Present product name, vendor ID, and product ID in a separate **Browser-reported device** section. These are descriptors, not verified brand, model, firmware, feature, or geometry claims. Do not merge them into catalog facts or personal notes.
+- Also display **VID:PID (VPID)** as the existing vendor/product IDs combined in four-digit hexadecimal form (`VVVV:PPPP`). This is formatting, not an additional detected fact. Skip VIA/KC support and firmware-version fields: generic WebHID descriptors do not establish them, and vendor-defined HID collections alone do not prove a protocol. Do not probe device reports or guess from a product name.
+- `navigator.keyboard.getLayoutMap()` is possible only where exposed and allowed by the browser. **Start practicing** requests just these legends; the connection action also attempts them. Use the same reference map with the same available legends in both Practice and Keyboard Test. Preserve physical codes, geometry, counts, and typing semantics. Missing or blank legends retain reference values. Handle supported layout-change events and provide **Refresh key labels**.
+- Keep the connection panel collapsed by default using native `details`/`summary` with keyboard activation and visible focus. The summary always shows **Keyboard connection**, a text status badge, and the selected device name (or an explicit unselected state). Use yellow for selection/attention needed, green for a selected device, blue for pending permission, and neutral for unavailable access; never convey status through color alone. Keep controls, full guidance, and browser-only privacy inside the expanded panel, with actions and summary content wrapping on narrow screens. Present browser-reported details in a responsive definition-list card with a single source label, separate from the reference-layout limitation and editable notes.
+- Keep the connection panel first in the main content, directly below the app navbar on every view, without vertical centering or a hero/intro gap. It remains in normal document flow. The navbar contains only app-view navigation. Practice mode selection lives in the Practice panel above exercise settings as a wrapping segmented control; future modes stay unavailable, and mode changes remain disabled during a run. Remove the Practice intro block.
+- The catalog still contains only generic Alice. State explicitly that no verified device-specific profile is available and the reference diagram is not detected hardware. A real keyboard-specific arrangement requires a sourced, reviewed catalog entry; descriptor names and IDs are not enough.
+- Show visible, politely announced warnings for unsupported access, denied access, cancelled/empty selection, no accessible device, and API errors. Include error details and retry controls; all ordinary typing and manual profile editing remain available without permission. Clear stale selected-device descriptors and browser legends when that device disconnects.
+- Display browser-only privacy in onboarding and across views: no app or connected-device data is uploaded. Retain live descriptors and layout maps only in page memory; the browser owns persistent device grants. Existing profile/personal-detail preference storage is unchanged. Do not open HID devices, read input reports, send output/feature reports, add telemetry, or associate descriptors with session history. Users can revoke device grants through browser site settings.
+- Verify first-load prompting and returning visits without grants, user activation, restored grants, multiple devices, denied/empty/unsupported/error cases, disconnect/reconnect, shared legend updates, unchanged typing/matrix behavior, and narrow layouts with mocked browser APIs. Physical-device compatibility still requires manual testing on the user's keyboard and browser.
+
+Browser API references:
+
+- [MDN: HID.requestDevice()](https://developer.mozilla.org/en-US/docs/Web/API/HID/requestDevice)
+- [MDN: HID.getDevices()](https://developer.mozilla.org/en-US/docs/Web/API/HID/getDevices)
+- [MDN: Keyboard.getLayoutMap()](https://developer.mozilla.org/en-US/docs/Web/API/Keyboard/getLayoutMap)

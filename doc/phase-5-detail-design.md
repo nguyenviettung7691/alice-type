@@ -162,6 +162,7 @@ Validate every stored record on read, including records missing an indexed times
 ### 7.1 First-use flow
 
 - On the first visit without `onboardingComplete`, show a dismissible welcome overlay with a concise explanation of focused typing, the generic Alice visualizer, and optional keyboard-layout support.
+- Center the welcome dialog horizontally and vertically in the viewport, keeping at least 1rem of edge spacing and allowing its contents to scroll on short screens. Shared dialog styles explicitly restore automatic margins after the Tailwind reset.
 - Provide a clearly labeled primary action such as **Start practicing** and a secondary **Continue without layout access** action. Both actions dismiss the overlay and mark onboarding complete locally.
 - The primary action is a real button activated by pointer, Enter, or Space. It focuses the practice input only after the explicit activation; do not capture keys on the overlay or attach a global keyboard handler.
 - If a layout map is supported, call `navigator.keyboard.getLayoutMap()` from that user-activated action. Use a successful result only for optional key-label assistance where the UI can represent it without claiming physical device identity.

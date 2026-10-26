@@ -10,9 +10,16 @@ export const DEFAULT_PREFERENCES: Preferences = {
 };
 
 export async function skipOnboarding(page: Page) {
+  await disableDeviceAccess(page);
   await page.addInitScript(({ key, defaults }) => {
     if (localStorage.getItem(key) === null) {
       localStorage.setItem(key, JSON.stringify({ version: 3, settings: defaults }));
     }
   }, { key: PREFERENCES_KEY, defaults: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
+}
+
+export async function disableDeviceAccess(page: Page) {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'hid', { configurable: true, value: undefined });
+  });
 }

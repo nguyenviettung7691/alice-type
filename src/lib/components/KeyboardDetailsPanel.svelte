@@ -8,16 +8,18 @@
     type KeyboardUserDetails
   } from '../storage/preferences';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
+  import { deviceId, type KeyboardDevice } from '../keyboard/keyboard-access';
 
   type TextField = typeof KEYBOARD_DETAIL_TEXT_FIELDS[number];
   type BooleanField = typeof KEYBOARD_DETAIL_BOOLEAN_FIELDS[number];
   type DetailField = TextField | BooleanField;
 
-  let { profileId, userDetails, onprofilechange, onuserdetailschange }: {
+  let { profileId, userDetails, onprofilechange, onuserdetailschange, connectedDevice = null }: {
     profileId: string | null;
     userDetails: KeyboardUserDetails;
     onprofilechange: (profileId: string | null) => void;
     onuserdetailschange: (details: KeyboardUserDetails) => void;
+    connectedDevice?: KeyboardDevice | null;
   } = $props();
 
   const fieldLabels: Record<DetailField, string> = {
@@ -123,9 +125,32 @@
   <p class="eyebrow">Your keyboard reference</p>
   <h2 id="keyboard-details-heading" tabindex="-1">Keyboard Details</h2>
   <p class="panel-copy">
-    Choose a reference profile or add your own details. AliceType cannot detect your connected keyboard.
+    Choose a reference profile or add your own details. AliceType cannot detect your connected keyboard's physical layout or full specifications.
     These details stay in this browser and are not sent to a server.
   </p>
+
+  <fieldset class="browser-device">
+    <legend>Browser-reported device</legend>
+    {#if connectedDevice}
+      <div class="browser-device-card">
+        <span class="device-source">Shared by your browser</span>
+        <dl class="browser-device-values">
+          <div class="device-product"><dt>Product name</dt><dd>{connectedDevice.productName || 'Not provided'}</dd></div>
+          <div><dt>Vendor ID</dt><dd><code>{deviceId(connectedDevice.vendorId)}</code></dd></div>
+          <div><dt>Product ID</dt><dd><code>{deviceId(connectedDevice.productId)}</code></dd></div>
+          <div><dt>VID:PID (VPID)</dt><dd><code>{deviceId(connectedDevice.vendorId).slice(2)}:{deviceId(connectedDevice.productId).slice(2)}</code></dd></div>
+        </dl>
+        <p class="device-explanation">These details come from the device you authorized, not from your typing. The IDs are identifiers only; they do not verify a brand, model, or layout.</p>
+      </div>
+      <p class="device-limitation"><strong>Reference layout only.</strong> We don't have a verified profile for this device. Its specifications and physical layout remain unknown. Choose a reference profile or add your own notes below.</p>
+    {:else}
+      <div class="browser-device-card">
+        <p class="device-empty-title">No device selected</p>
+        <p class="device-explanation">Choose your keyboard in the connection panel above, or use <strong>Connect keyboard</strong> if available. If your keyboard isn't listed, your browser may not allow device access.</p>
+        <p class="device-explanation">You can still practice, test keys, and add a reference profile or personal notes below.</p>
+      </div>
+    {/if}
+  </fieldset>
 
   <fieldset>
     <legend>Keyboard profile</legend>
@@ -248,6 +273,31 @@
 {/if}
 
 <style>
+  .browser-device-card {
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 0.75rem;
+    padding: clamp(1rem, 3vw, 1.4rem);
+    background: rgb(0 0 0 / 12%);
+    overflow-wrap: anywhere;
+  }
+  .device-source { color: #b8b8b8; font-size: 0.75rem; }
+  .browser-device-values {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+  }
+  .browser-device-values dt { margin-bottom: 0.35rem; color: #b8b8b8; font-size: 0.78rem; }
+  .browser-device-values dd { margin: 0; color: var(--color-text); font-weight: 550; }
+  .device-product dd { font-size: 1.1rem; }
+  .browser-device-card .device-empty-title { margin: 0; color: var(--color-text); font-weight: 600; }
+  .browser-device-card .device-explanation { margin: 0.65rem 0 0; font-size: 0.82rem; }
+  .browser-device .device-limitation { margin: 0.85rem 0 0; font-size: 0.82rem; }
+  .device-limitation strong { color: var(--color-text); font-weight: 600; }
+  @media (max-width: 520px) {
+    .browser-device-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .device-product { grid-column: 1 / -1; }
+  }
   .keyboard-details-panel select,
   .keyboard-details-panel input {
     width: min(100%, 32rem);

@@ -8,14 +8,15 @@
   } from '../keyboard/alice-layout';
   import { expectedTestKey, type KeyboardTestState } from '../keyboard/keyboard-test';
 
-  let { layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice' }: {
+  let { layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false }: {
     layout: readonly AliceKey[];
     feedback?: KeyFeedback;
     testState?: KeyboardTestState;
     errorCode?: string;
     testLayoutLabel?: string;
+    browserLegends?: boolean;
   } = $props();
-  const expectedCode = $derived(testState ? expectedTestKey(testState)?.code : undefined);
+  const expectedCode = $derived(testState ? expectedTestKey(testState, layout)?.code : undefined);
 
   function testStatus(code: string): string {
     if (code === errorCode) return 'unexpected';
@@ -51,7 +52,7 @@
     </span>
   </figcaption>
   <p class="keyboard-note">
-    {testLayoutLabel} layout · US ANSI legends, not detected hardware.
+    {testLayoutLabel} layout · {browserLegends ? 'Browser layout legends (reference legends for missing keys)' : 'US ANSI legends'}, not detected hardware.
     Both spacebars represent the same Space key.
   </p>
 
@@ -72,7 +73,7 @@
     >
       <title id={`${id}-title`}>{testState ? `${testLayoutLabel} keyboard test matrix` : 'Generic Alice keyboard'}</title>
       <desc id={`${id}-description`}>
-        Angled split layout with generic US ANSI legends, not a detected device.
+        Angled split layout with {browserLegends ? 'browser layout legends where available' : 'generic US ANSI legends'}, not a detected device.
         {#if testState}
           Each cell shows its correct-press count. An arrow marks the expected key,
           a plus marks a tested key, and an exclamation mark indicates temporary

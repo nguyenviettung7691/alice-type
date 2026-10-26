@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onDestroy, untrack } from 'svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
-  import { ALICE_CODES, ALICE_LAYOUT, type KeyFeedback } from '../keyboard/alice-layout';
+  import ModeNavigation from './ModeNavigation.svelte';
+  import { ALICE_LAYOUT, type AliceKey, type KeyFeedback } from '../keyboard/alice-layout';
   import {
     applyAction,
     createSession,
@@ -22,7 +23,8 @@
 
   let {
     settings = $bindable({ ...DEFAULT_SETTINGS }), running = $bindable(false),
-    caretStyle = 'block', showLiveStats = true, onsettingschange, oncharacter, oncomplete
+    caretStyle = 'block', showLiveStats = true, onsettingschange, oncharacter, oncomplete,
+    layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false
   }: {
     settings?: PracticeSettings;
     running?: boolean;
@@ -31,6 +33,9 @@
     onsettingschange?: (settings: PracticeSettings) => void;
     oncharacter?: () => void;
     oncomplete?: (record: SessionRecord) => void;
+    layout?: readonly AliceKey[];
+    layoutLabel?: string;
+    browserLegends?: boolean;
   } = $props();
 
   let sessionId = '';
@@ -49,6 +54,7 @@
   const metrics = $derived(session ? getMetrics(session, now) : null);
   const progress = $derived(session ? getProgress(session, now) : null);
   const timed = $derived(settings.mode === 'timed');
+  const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
   const statusMessage = $derived(
     session?.status === 'ready'
       ? 'Select the text or Start typing to begin.'
@@ -194,7 +200,7 @@
     if (action.type === 'character') oncharacter?.();
     if (session.status === 'completed') {
       complete();
-    } else if (action.type === 'character' && ALICE_CODES.has(event.code)) {
+    } else if (action.type === 'character' && layoutCodes.has(event.code)) {
       highlightKey(event.code, correct);
     }
   }
@@ -206,6 +212,9 @@
 
 <section class="practice-panel" data-caret={caretStyle} aria-labelledby="practice-panel-heading" data-status={exerciseError ? 'error' : session?.status ?? 'ready'}>
   <h3 id="practice-panel-heading" class="sr-only" tabindex="-1">Typing practice</h3>
+
+  <ModeNavigation mode={settings.mode} disabled={running}
+    onmodechange={(mode) => changeSettings({ ...settings, mode })} />
 
   <fieldset class="exercise-settings" disabled={running}>
     <legend>Exercise settings</legend>
@@ -316,7 +325,7 @@
   </div>
   {/if}
 
-  <AliceKeyboardVisualizer layout={ALICE_LAYOUT} {feedback} />
+  <AliceKeyboardVisualizer {layout} {feedback} testLayoutLabel={layoutLabel} {browserLegends} />
 
   <div class="practice-bottom">
     <p class="session-note" role="status">{exerciseError ? 'Practice stopped. Restart to generate a new exercise.' : statusMessage}</p>

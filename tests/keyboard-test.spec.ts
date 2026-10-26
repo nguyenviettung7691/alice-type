@@ -1,7 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { ALICE_LAYOUT } from '../src/lib/keyboard/alice-layout';
 import { KEYBOARD_TEST_EFFECTS } from '../src/lib/audio/keyboard-test-sound';
-import { DEFAULT_PREFERENCES, PREFERENCES_KEY, skipOnboarding } from './support';
+import { DEFAULT_PREFERENCES, PREFERENCES_KEY, skipOnboarding, disableDeviceAccess } from './support';
 
 const panel = (page: Page) => page.locator('.keyboard-test-panel');
 const capture = (page: Page) => page.getByRole('region', { name: 'Keyboard test input', exact: true });
@@ -356,6 +356,7 @@ test.describe('test sound and local preferences', () => {
 });
 
 test('migration write failure retains existing values and retry saves v3 without losing them', async ({ page }) => {
+  await disableDeviceAccess(page);
   await page.addInitScript(({ key, defaults }) => {
     const { keyboardTestSoundEnabled, keyboardTestSoundEffect, ...previous } = defaults;
     localStorage.setItem(key, JSON.stringify({ version: 1, settings: {

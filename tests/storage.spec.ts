@@ -1,6 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { type SessionRecord } from '../src/lib/storage/session-history';
-import { DEFAULT_PREFERENCES, PREFERENCES_KEY, skipOnboarding } from './support';
+import { DEFAULT_PREFERENCES, PREFERENCES_KEY, skipOnboarding, disableDeviceAccess } from './support';
 
 const input = (page: Page) => page.getByRole('textbox', { name: 'Typing practice', exact: true });
 const panel = (page: Page) => page.getByRole('region', { name: 'Typing practice', exact: true });
@@ -350,6 +350,32 @@ test.describe('preferences and local history', () => {
 });
 
 test.describe('onboarding and preference recovery', () => {
+  test.beforeEach(async ({ page }) => {
+    await disableDeviceAccess(page);
+  });
+  for (const viewport of [
+    { width: 1280, height: 800 },
+    { width: 375, height: 667 },
+    { width: 667, height: 320 }
+  ]) {
+    test(`welcome dialog is centered and usable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+      await page.setViewportSize(viewport);
+      await page.goto('/');
+      const dialog = page.getByRole('dialog', { name: 'Make room for your rhythm.' });
+      await expect(dialog).toBeVisible();
+      const bounds = await dialog.boundingBox();
+      if (!bounds) throw new Error('Missing welcome dialog bounds');
+      expect(Math.abs(bounds.x + bounds.width / 2 - viewport.width / 2)).toBeLessThanOrEqual(1);
+      expect(Math.abs(bounds.y + bounds.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
+      expect(bounds.x).toBeGreaterThanOrEqual(16);
+      expect(bounds.y).toBeGreaterThanOrEqual(16);
+      expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width - 16);
+      expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height - 16);
+      await dialog.getByRole('button', { name: 'Continue without layout access' }).click();
+      await expect(dialog).toHaveCount(0);
+    });
+  }
+
   test('first use is a keyboard-accessible dialog, skip/Escape work, and no typing starts', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('dialog')).toHaveAccessibleName('Make room for your rhythm.');
@@ -379,6 +405,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(input(page)).toBeFocused();
     await expect(panel(page)).toHaveAttribute('data-status', 'ready');
     await page.evaluate(() => Reflect.get(window, 'finishLayoutMap')());
+    await page.locator('.keyboard-connection summary').click();
     await expect(page.getByRole('status')).toContainText(['Browser layout sample', 'Select the text']);
     await expect(page.getByText(/Browser layout sample/)).toContainText('KeyQ: a');
     await expect(page.getByRole('img', { name: 'Generic Alice keyboard', exact: true })).toHaveAccessibleDescription(/not a detected device/);

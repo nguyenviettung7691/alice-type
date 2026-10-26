@@ -1,10 +1,11 @@
 <script lang="ts">
   import vocabularyNotice from '../typing/word-banks/NOTICE.txt?url&no-inline';
   import vocabularyLicense from '../typing/word-banks/LICENSE-CC-BY-SA-4.0.txt?url&no-inline';
+  import appLicense from '../../../LICENSE?url&no-inline';
 </script>
 
 <footer class="app-footer">
-  <span class="footer-brand">Made for a more comfortable way to type.</span>
+  <span class="footer-brand">Created by Nguyen Viet Tung <span aria-hidden="true">·</span> &copy; 2026 <span aria-hidden="true">·</span> <a href={appLicense}>MIT License</a></span>
   <span>AliceType <span aria-hidden="true">·</span> Timed &amp; Words practice</span>
   <span class="data-notices">
     <a href={vocabularyNotice}>Vocabulary attribution</a>
