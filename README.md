@@ -1,5 +1,7 @@
 # AliceType
 
+![AliceType homepage showing the Practice view with the Alice keyboard visualizer](doc/images/homepage.png)
+
 AliceType is a desktop-oriented typing practice web app for the Alice split-ergonomic keyboard layout. It uses a distraction-free dark interface, a striking orange accent, real-time typing feedback, and configurable practice modes.
 
 ## Project status
