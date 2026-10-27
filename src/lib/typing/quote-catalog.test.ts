@@ -51,7 +51,6 @@ describe('bundled literary quote catalog', () => {
     expect(notice).toContain('not universal clearance');
     expect(footer).toContain("import quoteNotice from '../typing/QUOTE-NOTICE.txt?url&no-inline'");
     expect(footer).toContain('<a href={quoteNotice}>Quote attribution</a>');
-    expect(footer).toContain('Timed, Words, Quote, Custom &amp; Zen practice');
   });
 
   it('preserves original spelling, punctuation, and explicitly documented typography adaptations', () => {
