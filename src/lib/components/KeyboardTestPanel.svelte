@@ -2,7 +2,10 @@
   import { onDestroy } from 'svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import { ALICE_LAYOUT, ALICE_VIEW_BOX, type AliceKey, type InertKey } from '../keyboard/alice-layout';
-  import { classifyTestKey, createKeyboardTest, expectedTestKey, pressTestKey } from '../keyboard/keyboard-test';
+  import {
+    classifyTestKey, createKeyboardTest, expectedTestKey, KEYBOARD_TEST_MODES, pressTestKey, testedKeyCount, testKeyCount,
+    type KeyboardTestMode
+  } from '../keyboard/keyboard-test';
   import {
     KEYBOARD_TEST_EFFECTS, KeyboardTestSound, KeyboardTestSoundError, type KeyboardTestEffect
   } from '../audio/keyboard-test-sound';
@@ -22,9 +25,12 @@
     confirmed?: boolean;
   } = $props();
 
-  let testState = $state(createKeyboardTest());
+  let mode = $state<KeyboardTestMode>('guided');
+  let testState = $state(createKeyboardTest('guided'));
   let errorCode = $state<string>();
   let errorMessage = $state('');
+  let freestyleMessage = $state('');
+  let switchMessage = $state('');
   let audioError = $state('');
   let focused = $state(false);
   let composing = false;
@@ -36,6 +42,14 @@
   const heldCodes = new Set<string>();
   const sound = new KeyboardTestSound();
   const expected = $derived(expectedTestKey(testState, testSequence));
+  const freestyle = $derived(testState.mode === 'freestyle');
+  const modeLabel = $derived(KEYBOARD_TEST_MODES.find((option) => option.id === mode)?.label ?? '');
+  const testedCount = $derived(testedKeyCount(testState, testSequence));
+  const totalPresses = $derived(testState.mode === 'freestyle' ? testState.totalPresses : 0);
+
+  function plural(value: number, singular: string, pluralWord: string) {
+    return `${value} ${value === 1 ? singular : pluralWord}`;
+  }
 
   function clearError() {
     clearTimeout(errorTimer);
@@ -71,14 +85,23 @@
 
   function keydown(event: KeyboardEvent) {
     if (event.target !== region || document.activeElement !== region || composing) return;
-    const action = classifyTestKey(event, expected?.code ?? '');
+    const action = classifyTestKey(event, freestyle || expected?.code === 'Tab');
     if (action === 'exit') { focusButton.focus(); return; }
-    if (!expected || action === 'ignore' || heldCodes.has(event.code)) return;
+    if ((!freestyle && !expected) || action === 'ignore' || heldCodes.has(event.code)) return;
     heldCodes.add(event.code);
     if (['Tab', 'Space', 'Backspace'].includes(event.code)) event.preventDefault();
     clearError();
+    switchMessage = '';
     const next = pressTestKey(testState, event.code, testSequence);
-    if (next === testState) {
+    if (freestyle) {
+      const key = testSequence.find((candidate) => candidate.code === event.code);
+      if (next === testState || !key) {
+        freestyleMessage = `Last key: ${event.code || 'unknown physical code'} is not counted on this layout.`;
+      } else {
+        testState = next;
+        freestyleMessage = `Last key: ${key.legend} (${key.code}), pressed ${plural(testKeyCount(next, key.code), 'time', 'times')}.`;
+      }
+    } else if (next === testState) {
       errorCode = event.code;
       errorMessage = `Unexpected key: ${event.code || 'unknown physical code'}.`;
       errorTimer = setTimeout(clearError, 600);
@@ -88,10 +111,23 @@
     play();
   }
 
-  function restart() {
+  function resetRun(nextMode: KeyboardTestMode) {
     releaseFocus();
-    testState = createKeyboardTest();
+    mode = nextMode;
+    freestyleMessage = '';
+    switchMessage = '';
+    testState = createKeyboardTest(nextMode);
+  }
+
+  function restart() {
+    resetRun(mode);
     region.focus();
+  }
+
+  function selectMode(nextMode: KeyboardTestMode) {
+    if (nextMode === mode) return;
+    resetRun(nextMode);
+    switchMessage = `Switched to ${KEYBOARD_TEST_MODES.find((option) => option.id === nextMode)?.label}. Test reset.`;
   }
 
   onDestroy(() => {
@@ -107,12 +143,28 @@
 <svelte:window onblur={releaseFocus} onfocus={() => { focused = document.activeElement === region; }} />
 
 <section class="practice-panel settings-panel keyboard-test-panel" aria-labelledby="keyboard-test-heading">
-  <p class="eyebrow">One key at a time</p>
+  <p class="eyebrow">{modeLabel}</p>
   <h2 id="keyboard-test-heading" tabindex="-1">Keyboard Test</h2>
+  <div class="test-modes" role="group" aria-labelledby="keyboard-test-mode-label">
+    <p id="keyboard-test-mode-label" class="mode-label">Test mode</p>
+    <div class="mode-buttons">
+      {#each KEYBOARD_TEST_MODES as option}
+        <button type="button" aria-pressed={option.id === mode} class:selected={option.id === mode}
+          onclick={() => selectMode(option.id)}>{option.label}</button>
+      {/each}
+    </div>
+    <p class="mode-note">Switching modes resets the test matrix.</p>
+  </div>
   <p id="keyboard-test-instructions" class="panel-copy">
-    Focus the test area, then press and release each expected physical key. Match positions, not typed characters.
-    Press Tab to leave (except when testing Tab), Shift+Tab to go back, or Escape to leave at any time.
-    Browser shortcuts are not captured. Some system keys may not reach the browser.
+    {#if freestyle}
+      Focus the test area, then press any physical keys in any order, as often as you like. Each key shows how many
+      times it was pressed. Match positions, not typed characters. Tab is counted here: press Escape or Shift+Tab to leave.
+      Browser shortcuts are not captured. Some system keys may not reach the browser.
+    {:else}
+      Focus the test area, then press and release each expected physical key. Match positions, not typed characters.
+      Press Tab to leave (except when testing Tab), Shift+Tab to go back, or Escape to leave at any time.
+      Browser shortcuts are not captured. Some system keys may not reach the browser.
+    {/if}
   </p>
   <button bind:this={focusButton} class="secondary-button" type="button" onclick={() => region.focus()}>
     Focus keyboard test
@@ -135,11 +187,18 @@
     oncompositionend={() => { composing = false; }}
   >
     <p class="test-focus-note">{focused ? 'Listening for physical keys' : 'Focus this area to test your keyboard'}</p>
-    <p class="test-progress">{testState.expectedIndex} of {testSequence.length} keys tested</p>
-    <progress aria-label="Keyboard test progress" value={testState.expectedIndex} max={testSequence.length}></progress>
+    {#if freestyle}
+      <p class="test-progress">{testedCount} of {testSequence.length} keys pressed · {plural(totalPresses, 'total press', 'total presses')}</p>
+    {:else}
+      <p class="test-progress">{testedCount} of {testSequence.length} keys tested</p>
+    {/if}
+    <progress aria-label="Keyboard test progress" value={testedCount} max={testSequence.length}></progress>
     <p class="test-status" role="status" aria-live="polite" aria-atomic="true">
-      {#if expected}
-        {errorMessage} Expected: <strong>{expected.legend}</strong> <span>({expected.code})</span>
+      {#if freestyle}
+        {switchMessage || freestyleMessage || 'Press any key on the diagram.'}
+        {#if testedCount === testSequence.length}Every mapped key has been pressed at least once.{/if}
+      {:else if expected}
+        {switchMessage} {errorMessage} Expected: <strong>{expected.legend}</strong> <span>({expected.code})</span>
       {:else}
         Test complete. Every mapped key was correctly pressed. Restart to test again.
       {/if}
@@ -178,7 +237,8 @@
     </div>
   {/if}
   <button class="primary-button" type="button" onclick={restart}>Restart test</button>
-  <p class="panel-copy">Counts and highlights are temporary. This test never changes practice scores or Stats.</p>
+  <p class="panel-copy">Counts and highlights are temporary and reset when you restart or switch modes.
+    This test never changes practice scores or Stats.</p>
 </section>
 
 <style>
@@ -197,6 +257,33 @@
   .test-status span { font-size: 0.85rem; }
   .effect-control { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; }
   .effect-control label { margin: 0; }
+  .test-modes { margin-block: 1rem; }
+  .mode-label { margin: 0 0 0.65rem; color: #b8b8b8; font-size: 0.78rem; font-weight: 600; }
+  .mode-buttons {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding: 0.3rem;
+    border: 1px solid rgb(255 255 255 / 10%);
+    border-radius: 0.75rem;
+    background: rgb(0 0 0 / 15%);
+  }
+  .mode-buttons button {
+    border: 1px solid transparent;
+    border-radius: 0.5rem;
+    padding: 0.65rem 1rem;
+    color: var(--color-text);
+    background: transparent;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .mode-buttons button.selected {
+    border-color: var(--color-accent);
+    color: var(--color-background);
+    background: var(--color-accent);
+    font-weight: 650;
+  }
+  .mode-note { margin: 0.5rem 0 0; color: #b8b8b8; font-size: 0.8rem; }
   progress { display: block; width: 100%; height: 0.6rem; accent-color: var(--color-accent); }
   progress::-webkit-progress-bar { background: var(--color-background); border-radius: 0.4rem; }
   progress::-webkit-progress-value { background: var(--color-accent); border-radius: 0.4rem; }

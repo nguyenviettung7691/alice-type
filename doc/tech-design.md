@@ -63,7 +63,8 @@ A utility module that dynamically generates the text block based on current sett
 A dedicated keyboard test view presents a visual matrix for the selected keyboard layout and records key presses independently of typing-practice session statistics.
 
 * **Layout and input mapping:** Render keys from a layout profile and associate each rendered key with its physical `KeyboardEvent.code`. The initial profile is the Alice layout map from Phase 3; only offer profiles that are actually implemented. Use `code` for physical key identity and the selected layout profile for displayed legends; use `navigator.keyboard.getLayoutMap()` only where supported. Do not assume every browser or keyboard provides a layout map.
-* **Test behavior:** Guide the user through keys to test. Highlight a key and increment its correct-press count only when the expected physical key is pressed. An unexpected key does not increment the expected key's count and receives separate, temporary error feedback. Show each key's correct-press count in its matrix cell. A completed test can be restarted, which clears highlights and counts for the current test.
+* **Test modes (Phase 9):** **One key at a time** guides the sequence below and tracks correct presses without showing count numbers in key cells. **Freestyle** counts presses of any mapped key in any order and shows each key's press count, with no expected key, mismatch feedback, or completion. Switching modes resets the matrix. See the [Phase 9 Detail Design](./phase-9-detail-design.md).
+* **Test behavior:** Guide the user through keys to test. Highlight a key and increment its correct-press count only when the expected physical key is pressed. An unexpected key does not increment the expected key's count and receives separate, temporary error feedback. Since Phase 9, guided cells show tested state rather than a count number. A completed test can be restarted, which clears highlights and counts for the current test.
 * **Sound effects:** Provide an independent on/off control and selectable effect: Default, Bubble, Horn, Cartoon, Coin, Dog bark, Glass, Donkey, Phone, Punch, Plastic Toy, Sneeze, or Plastic chicken. Sound is off until the user enables it; changing the selection previews the selected effect only when sound is enabled. Use appropriately licensed or original audio assets.
 * **Persistence:** Save the sound enabled state and selected effect in `localStorage`. Test counts and highlights are temporary and are cleared by reset; they are not typing-session statistics.
 * **Input lifecycle:** Handle keyboard events only while the test view is active and focused. Avoid capturing browser/system shortcuts or suppressing normal browser behavior unnecessarily. The view must be usable with keyboard and pointer input.
@@ -106,12 +107,13 @@ Provide a device information view that presents a realistic layout profile and c
 ### 5.4. Keyboard Keys Test Matrix
 
 * Provide a separate test view with a visual matrix matching the selected layout profile.
-* Guide the user through expected keys; highlight each correctly pressed key and show its correct-press count in the key cell.
+* Guide the user through expected keys; highlight each correctly pressed key (Phase 9: without a count number in the key cell).
 * Do not count an unexpected key as a correct press. Show distinct, transient error feedback without changing the expected key's count.
 * Count discrete key presses only; ignore keydown auto-repeat. When enabled, play the selected effect on each non-repeat key press while the test is active.
 * Provide a reset action that clears the current test's counts and highlights.
 * Provide sound on/off and the effects Default, Bubble, Horn, Cartoon, Coin, Dog bark, Glass, Donkey, Phone, Punch, Plastic Toy, Sneeze, and Plastic chicken. Keep sound off by default, persist the toggle and selected effect locally, and preview a selection only when enabled.
 * Keep matrix test counts separate from typing-session scores and missed-key statistics.
+* Phase 9: offer **One key at a time** and **Freestyle** modes. Freestyle allows any order and repeated presses, shows per-key press counts, and has no expected-key or mismatch feedback. One key at a time hides count numbers. Changing mode resets the matrix.
 
 ### 5.5. Keyboard Device Details
 
@@ -174,3 +176,11 @@ Provide a device information view that presents a realistic layout profile and c
 * Implement Zen as unlimited free writing with no target comparison or live practice UI updates outside the text; calculate free-writing WPM on explicit manual Stop. Accuracy is not applicable.
 * Extend mode-aware preferences, backward-compatible local history, and Stats without changing Timed/Words behavior or persisting user writing.
 * Implemented with automated unit and Chromium verification. Follow the [Phase 8 Detail Design](./phase-8-detail-design.md) for mode semantics, ASCII input boundaries, Zen presentation overrides, migrations, and acceptance criteria; see the [implementation plan](./phase-8-implementation-plan.md#verification-results) for evidence and pending manual checks. Difficulty rules remain deferred.
+
+### Phase 9: Keyboard Test Modes
+
+* Add a Keyboard Test mode selector: **One key at a time** (the existing guided sequence) and **Freestyle** (any countable key, any order, unlimited presses with a per-key press count).
+* Freestyle hides and disables the Expected key and Mismatch feedback; both modes share the test matrix visualizer and Test sound settings.
+* Switching modes resets the test matrix. One key at a time no longer shows per-key correct-press count numbers.
+* Mode and counts are not persisted; preferences stay at schema v5.
+* Implemented with automated unit and Chromium verification. Follow the [Phase 9 Detail Design](./phase-9-detail-design.md) and the [Phase 9 Technical Implementation Plan](./phase-9-implementation-plan.md#verification-results).

@@ -79,13 +79,18 @@ test.describe('guided keyboard test', () => {
     await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'expected');
     await expect(cell(page, 'Backquote').locator('.feedback-marker')).toHaveText('>');
     await expect(cell(page, 'Space').locator('rect')).toHaveCount(2);
-    await expect(cell(page, 'Space').locator('.key-count')).toHaveText(['0', '0']);
+    await expect(cell(page, 'Space').locator('.key-count')).toHaveCount(0);
+    await expect(cell(page, 'Space')).toHaveAttribute('data-count', '0');
     await expect(progress(page)).toHaveAttribute('value', '0');
+    await expect(panel(page).getByRole('button', { name: 'One key at a time', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    await expect(panel(page).getByRole('button', { name: 'Freestyle', exact: true })).toHaveAttribute('aria-pressed', 'false');
+    await expect(panel(page).locator('.keyboard-legend')).toContainText('Expected key');
+    await expect(panel(page).locator('.keyboard-legend')).toContainText('Mismatch');
     await expect(effectSelect(page).locator('option')).toHaveText(KEYBOARD_TEST_EFFECTS.map((effect) => effect.label));
     await expect(soundToggle(page)).not.toBeChecked();
     await page.getByText('Text key results', { exact: true }).click();
     await expect(panel(page).getByRole('listitem')).toHaveCount(ALICE_LAYOUT.length);
-    await expect(panel(page).getByRole('listitem').first()).toHaveText('` (Backquote): 0 correct, expected');
+    await expect(panel(page).getByRole('listitem').first()).toHaveText('` (Backquote): expected');
     await expect(page.getByRole('region', { name: 'Typing practice', exact: true })).toBeHidden();
   });
 
@@ -98,7 +103,8 @@ test.describe('guided keyboard test', () => {
     }
     await expect(progress(page)).toHaveAttribute('value', String(ALICE_LAYOUT.length));
     await expect(panel(page).getByRole('status')).toContainText('Test complete');
-    await expect(cell(page, 'Space').locator('.key-count')).toHaveText(['1', '1']);
+    await expect(cell(page, 'Space').locator('.key-count')).toHaveCount(0);
+    await expect(panel(page).locator('.key-count')).toHaveCount(0);
     await page.keyboard.press('Escape');
     await expect(nav(page, 'Focus keyboard test')).toBeFocused();
     await focusTest(page);
@@ -242,6 +248,155 @@ test.describe('guided keyboard test', () => {
       }
     });
   }
+});
+
+test.describe('Freestyle keyboard test', () => {
+  const modeButton = (page: Page, name: string) => panel(page).getByRole('button', { name, exact: true });
+  const status = (page: Page) => panel(page).getByRole('status');
+
+  test.beforeEach(async ({ page }) => {
+    await skipOnboarding(page);
+    await installAudioSpy(page);
+    await page.goto('/');
+    await nav(page, 'Keyboard Test').click();
+    await modeButton(page, 'Freestyle').click();
+  });
+
+  test('selector is keyboard operable, labelled, and defaults to guided on every mount', async ({ page }) => {
+    const group = panel(page).getByRole('group', { name: 'Test mode' });
+    await expect(group.getByRole('button')).toHaveText(['One key at a time', 'Freestyle']);
+    await expect(modeButton(page, 'Freestyle')).toHaveAttribute('aria-pressed', 'true');
+    await expect(modeButton(page, 'Freestyle')).toBeFocused();
+    await expect(panel(page).locator('.eyebrow')).toHaveText('Freestyle');
+    await expect(status(page)).toHaveText('Switched to Freestyle. Test reset.');
+    await page.keyboard.press('Shift+Tab');
+    await expect(modeButton(page, 'One key at a time')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(modeButton(page, 'One key at a time')).toHaveAttribute('aria-pressed', 'true');
+    await expect(status(page)).toContainText('Switched to One key at a time. Test reset.');
+    await page.keyboard.press('Tab');
+    await page.keyboard.press('Space');
+    await expect(modeButton(page, 'Freestyle')).toHaveAttribute('aria-pressed', 'true');
+    await nav(page, 'Practice').click();
+    await nav(page, 'Keyboard Test').click();
+    await expect(modeButton(page, 'One key at a time')).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  test('counts any key in any order with repeat counts and no expected or mismatch feedback', async ({ page }) => {
+    await expect(panel(page).locator('.keyboard-legend')).not.toContainText('Expected key');
+    await expect(panel(page).locator('.keyboard-legend')).not.toContainText('Mismatch');
+    await expect(panel(page).locator('.keyboard-legend')).toContainText('Pressed');
+    await expect(panel(page).locator('[data-test-state="expected"]')).toHaveCount(0);
+    await expect(cell(page, 'Space').locator('.key-count')).toHaveText(['0', '0']);
+    await focusTest(page);
+    await expect(status(page)).toHaveText('Switched to Freestyle. Test reset.');
+    await nav(page, 'Restart test').click();
+    await expect(status(page)).toHaveText('Press any key on the diagram.');
+    for (const code of ['KeyA', 'Slash', 'KeyA', 'Space', 'KeyA']) await page.keyboard.press(code);
+    await expect(cell(page, 'KeyA')).toHaveAttribute('data-count', '3');
+    await expect(cell(page, 'KeyA').locator('.key-count')).toHaveText('3');
+    await expect(cell(page, 'KeyA')).toHaveAttribute('data-test-state', 'pressed');
+    await expect(cell(page, 'KeyA')).toHaveAttribute('data-feedback', 'correct');
+    await expect(cell(page, 'KeyA').locator('.feedback-marker')).toHaveText('+');
+    await expect(cell(page, 'Space').locator('.key-count')).toHaveText(['1', '1']);
+    await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'unpressed');
+    await expect(status(page)).toHaveText('Last key: A (KeyA), pressed 3 times.');
+    await expect(panel(page).locator('.test-progress')).toHaveText(`3 of ${ALICE_LAYOUT.length} keys pressed · 5 total presses`);
+    await expect(progress(page)).toHaveAttribute('value', '3');
+    for (const code of ['', 'Unidentified', 'IntlBackslash']) {
+      await dispatch(page, { key: '1', code });
+      await expect(status(page)).toContainText('is not counted on this layout');
+    }
+    await expect(panel(page).locator('[data-feedback="incorrect"], [data-test-state="unexpected"], [data-test-state="expected"]')).toHaveCount(0);
+    await expect(panel(page).locator('.feedback-marker', { hasText: /[!>]/ })).toHaveCount(0);
+    await expect(status(page)).not.toContainText(/Expected|Unexpected/);
+    await page.getByText('Text key results', { exact: true }).click();
+    await expect(panel(page).getByRole('listitem').filter({ hasText: '(KeyA)' })).toHaveText('A (KeyA): 3 presses');
+    await expect(panel(page).getByRole('listitem').filter({ hasText: '(Slash)' })).toHaveText('/ (Slash): 1 press');
+    expect(await history(page)).toEqual([]);
+  });
+
+  test('filters repeats and held duplicates, never completes, and announces full coverage', async ({ page }) => {
+    await focusTest(page);
+    await dispatch(page, { code: 'KeyA', key: 'a' }, false);
+    await dispatch(page, { code: 'KeyA', key: 'a', repeat: true }, false);
+    await dispatch(page, { code: 'KeyA', key: 'a' }, false);
+    await dispatch(page, { code: 'KeyA', key: 'a', ctrlKey: true });
+    await capture(page).dispatchEvent('keyup', { code: 'KeyA' });
+    await expect(cell(page, 'KeyA')).toHaveAttribute('data-count', '1');
+    await nav(page, 'Restart test').click();
+    await expect(capture(page)).toBeFocused();
+    await expect(cell(page, 'KeyA')).toHaveAttribute('data-count', '0');
+    await expect(modeButton(page, 'Freestyle')).toHaveAttribute('aria-pressed', 'true');
+    for (const key of [...ALICE_LAYOUT].reverse()) await dispatch(page, { code: key.code, key: '' });
+    await expect(progress(page)).toHaveAttribute('value', String(ALICE_LAYOUT.length));
+    await expect(status(page)).toContainText('Every mapped key has been pressed at least once.');
+    await page.keyboard.press('KeyA');
+    await expect(cell(page, 'KeyA')).toHaveAttribute('data-count', '2');
+    await expect(status(page)).not.toContainText('Test complete');
+  });
+
+  test('switching modes resets the matrix; reselecting the active mode keeps counts', async ({ page }) => {
+    await focusTest(page);
+    await page.keyboard.press('KeyQ');
+    await page.keyboard.press('KeyQ');
+    await modeButton(page, 'Freestyle').click();
+    await expect(cell(page, 'KeyQ')).toHaveAttribute('data-count', '2');
+    await modeButton(page, 'One key at a time').click();
+    await expect(modeButton(page, 'One key at a time')).toBeFocused();
+    await expect(panel(page).locator('.keyboard-key[data-count="1"], .keyboard-key[data-count="2"]')).toHaveCount(0);
+    await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'expected');
+    await expect(progress(page)).toHaveAttribute('value', '0');
+    await focusTest(page);
+    await page.keyboard.press('Backquote');
+    await expect(progress(page)).toHaveAttribute('value', '1');
+    await modeButton(page, 'Freestyle').click();
+    await expect(progress(page)).toHaveAttribute('value', '0');
+    await expect(cell(page, 'Backquote')).toHaveAttribute('data-count', '0');
+    await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'unpressed');
+  });
+
+  test('Tab is counted, Shift+Tab and Escape leave, and sound plays once per eligible press', async ({ page }) => {
+    await soundToggle(page).check();
+    await focusTest(page);
+    expect(await dispatch(page, { code: 'Tab', key: 'Tab' })).toBe(true);
+    await page.keyboard.press('Tab');
+    await expect(capture(page)).toBeFocused();
+    await expect(cell(page, 'Tab')).toHaveAttribute('data-count', '2');
+    await page.keyboard.press('KeyX');
+    await dispatch(page, { code: 'Unidentified', key: '?' });
+    await dispatch(page, { code: 'KeyX', key: 'x', repeat: true });
+    await dispatch(page, { code: 'KeyX', key: 'x', metaKey: true });
+    await expect.poll(() => page.evaluate(() => Reflect.get(window, 'testAudioCalls').plays)).toBe(4);
+    await page.keyboard.press('Shift+Tab');
+    await expect(capture(page)).not.toBeFocused();
+    await focusTest(page);
+    await page.keyboard.press('Escape');
+    await expect(nav(page, 'Focus keyboard test')).toBeFocused();
+    await expect(cell(page, 'Tab')).toHaveAttribute('data-count', '2');
+    await modeButton(page, 'One key at a time').click();
+    await page.reload();
+    await nav(page, 'Keyboard Test').click();
+    await expect(soundToggle(page)).toBeChecked();
+    await expect(modeButton(page, 'One key at a time')).toHaveAttribute('aria-pressed', 'true');
+    const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), PREFERENCES_KEY);
+    expect(stored.version).toBe(5);
+    expect(JSON.stringify(stored)).not.toMatch(/freestyle|pressCounts/i);
+  });
+
+  test('caps cell count text at 999+ while results keep the exact count', async ({ page }) => {
+    await focusTest(page);
+    await capture(page).evaluate((element) => {
+      for (let index = 0; index < 1000; index += 1) {
+        element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code: 'KeyJ', key: 'j' }));
+        element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code: 'KeyJ', key: 'j' }));
+      }
+    });
+    await expect(cell(page, 'KeyJ').locator('.key-count')).toHaveText('999+');
+    await expect(cell(page, 'KeyJ')).toHaveAttribute('data-count', '1000');
+    await page.getByText('Text key results', { exact: true }).click();
+    await expect(panel(page).getByRole('listitem').filter({ hasText: '(KeyJ)' })).toHaveText('J (KeyJ): 1000 presses');
+  });
 });
 
 test.describe('test sound and local preferences', () => {

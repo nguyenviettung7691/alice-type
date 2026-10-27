@@ -4,7 +4,7 @@ AliceType is a desktop-oriented typing practice web app for the Alice split-ergo
 
 ## Project status
 
-Phases 1–8 are implemented: the app foundation, typing engine, Alice visualizer, all five practice modes, local storage/polish, guided Keyboard Test matrix, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries for target-copying modes and separate free-writing scores for Zen. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Keyboard Details provides a revisioned catalog with the generic Alice profile plus 23 real Alice-family layouts imported from open-source QMK/VIA data, and locally editable device notes. **Find my layout** suggests catalog layouts from your keyboard's browser-reported vendor/product ID; a layout is used in Practice and Keyboard Test only after you confirm it. Difficulty rules remain deferred. Product design documents:
+Phases 1–9 are implemented: the app foundation, typing engine, Alice visualizer, all five practice modes, local storage/polish, Keyboard Test matrix with guided and Freestyle modes, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries for target-copying modes and separate free-writing scores for Zen. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test offers **One key at a time** and **Freestyle** modes, temporary per-key press counts in Freestyle, and 13 optional sound effects. Keyboard Details provides a revisioned catalog with the generic Alice profile plus 23 real Alice-family layouts imported from open-source QMK/VIA data, and locally editable device notes. **Find my layout** suggests catalog layouts from your keyboard's browser-reported vendor/product ID; a layout is used in Practice and Keyboard Test only after you confirm it. Difficulty rules remain deferred. Product design documents:
 
 - [Technical Design Document](doc/tech-design.md)
 - [Phase 1 Detail Design](doc/phase-1-detail-design.md)
@@ -23,6 +23,8 @@ Phases 1–8 are implemented: the app foundation, typing engine, Alice visualize
 - [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md)
 - [Phase 8 Detail Design](doc/phase-8-detail-design.md) - Quote, Custom, and Zen implementation contract.
 - [Phase 8 Technical Implementation Plan](doc/phase-8-implementation-plan.md) - ordered execution steps, dependencies, and verification gates.
+- [Phase 9 Detail Design](doc/phase-9-detail-design.md) - Keyboard Test modes (One key at a time and Freestyle).
+- [Phase 9 Technical Implementation Plan](doc/phase-9-implementation-plan.md) - ordered execution steps, dependencies, and verification gates.
 
 ## Practice
 
@@ -66,11 +68,13 @@ Phases 1–8 are implemented: the app foundation, typing engine, Alice visualize
 
 ## Keyboard Test
 
-- Open **Keyboard Test**, then activate **Focus keyboard test** or tab to the test input region. Press and release each expected physical key in the generic Alice diagram's stable order. This is a physical `KeyboardEvent.code` test, independent of the character typed or printed on your keycaps.
-- The arrow marks the expected key; correctly tested keys show **+** and a count of one. A wrong key briefly shows **!** without advancing or changing any count. Both spacebars share the same logical Space count. **Text key results** provides a readable list of key states and counts.
+- Open **Keyboard Test**, choose a **Test mode**, then activate **Focus keyboard test** or tab to the test input region. This is a physical `KeyboardEvent.code` test, independent of the character typed or printed on your keycaps. Switching modes resets the test matrix; each visit starts in **One key at a time**.
+- **One key at a time:** press and release each expected physical key in the diagram's stable order. The arrow marks the expected key; correctly tested keys show **+**. A wrong key briefly shows **!** without advancing. Key cells show no count numbers in this mode.
+- **Freestyle:** press any mapped keys in any order, as often as you like. Each key cell shows how many times it was pressed (shown as 999+ above 999), and progress shows keys pressed and total presses. There is no expected key, mismatch highlight, or completion. Keys the layout does not test (such as Escape or dashed keys) are reported but not counted.
+- Both spacebars share the same logical Space key. **Text key results** provides a readable list of key states (One key at a time) or exact press counts (Freestyle).
 - Held-key repeat, composition, and browser/system shortcut combinations are ignored. Standalone modifiers can be tested; their native behavior is not suppressed. Some system keys may be withheld by the browser/OS, so this is not a hardware certification or device-identification tool.
-- Tab leaves the input except when Tab itself is expected. **Shift+Tab** and **Escape** always provide a way out. Focus the separate diagram scroll area for native Left/Right scrolling at narrow widths.
-- **Restart test** clears all run counts, progress, and feedback without changing sound preferences. Blur pauses input while retaining progress; leaving the view or reloading discards the run. Matrix runs never contribute to practice scores, missed-key summaries, or Stats.
+- In One key at a time, Tab leaves the input except when Tab itself is expected. In Freestyle, Tab is counted. **Shift+Tab** and **Escape** always provide a way out. Focus the separate diagram scroll area for native Left/Right scrolling at narrow widths.
+- **Restart test** clears the current mode's counts, progress, and feedback without changing sound preferences. Blur pauses input while retaining progress; leaving the view or reloading discards the run and the mode choice. Matrix runs never contribute to practice scores, missed-key summaries, or Stats.
 - **Keyboard test sound** defaults off and is independent of practice sound. Select Default, Bubble, Horn, Cartoon, Coin, Dog bark, Glass, Donkey, Phone, Punch, Plastic Toy, Sneeze, or Plastic chicken. These are original short synthesized interpretations, not downloaded recordings. Selection changes preview only when enabled; eligible correct and unexpected presses sound once each.
 - The toggle/effect persist in preferences schema v3. Existing v1/v2 preferences migrate while retaining practice/display/onboarding values. A failed migration write preserves valid selections in memory and offers retry without overwriting the original record. No run counts or raw test events are saved.
 
@@ -150,7 +154,7 @@ Maintainers regenerate the snapshot with `npm run import:layouts` (Node 22.18+, 
 7. Keyboard Device Details
 8. Remaining Practice Modes: Quote, Custom, Zen
 
-See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 8 Implementation Plan](doc/phase-8-implementation-plan.md) for the latest implementation and verification record. Difficulty levels, alternate themes, and automatic device identification are not implemented. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred.
+See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 9 Implementation Plan](doc/phase-9-implementation-plan.md) for the latest implementation and verification record. Difficulty levels, alternate themes, and automatic device identification are not implemented. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred.
 
 ## License
 

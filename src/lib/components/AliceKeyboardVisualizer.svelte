@@ -7,7 +7,7 @@
     type InertKey,
     type KeyFeedback
   } from '../keyboard/alice-layout';
-  import { expectedTestKey, type KeyboardTestState } from '../keyboard/keyboard-test';
+  import { expectedTestKey, testKeyCount, type KeyboardTestState } from '../keyboard/keyboard-test';
 
   let {
     layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false,
@@ -31,12 +31,27 @@
   const expectedCode = $derived(testState ? expectedTestKey(testState, testSequence)?.code : undefined);
   const imported = $derived(layoutSource !== 'generic');
   const sequenceCodes = $derived(new Set(testSequence.map((key) => key.code)));
+  const freestyle = $derived(testState?.mode === 'freestyle');
+  const activeError = $derived(freestyle ? undefined : errorCode);
+
+  function count(code: string): number {
+    return testState ? testKeyCount(testState, code) : 0;
+  }
 
   function testStatus(code: string): string {
     if (!sequenceCodes.has(code)) return 'not tested';
-    if (code === errorCode) return 'unexpected';
+    if (freestyle) return count(code) ? 'pressed' : 'unpressed';
+    if (code === activeError) return 'unexpected';
     if (code === expectedCode) return 'expected';
-    return testState?.correctCounts[code] ? 'tested' : 'untested';
+    return count(code) ? 'tested' : 'untested';
+  }
+
+  function marked(code: string): boolean {
+    return !['untested', 'unpressed', 'not tested'].includes(testStatus(code));
+  }
+
+  function plural(value: number, word: string): string {
+    return `${value} ${word}${value === 1 ? '' : 'es'}`;
   }
 
   const id = $props.id();
@@ -59,11 +74,15 @@
     <span class="keyboard-title">{title ?? (testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer')}</span>
     <span class="keyboard-legend">
       <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
-      {#if testState}
-        <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>Expected key</span>
+      {#if freestyle}
+        <span><span class="legend-mark correct" aria-hidden="true">+</span>Pressed</span>
+      {:else}
+        {#if testState}
+          <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>Expected key</span>
+        {/if}
+        <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
+        <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
       {/if}
-      <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
-      <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
       {#if inertKeys.length > 0}
         <span><span class="legend-mark inert" aria-hidden="true"></span>No standard key code</span>
       {/if}
@@ -107,10 +126,14 @@
         {:else}
           Angled split layout with {browserLegends ? 'browser layout legends where available' : 'generic US ANSI legends'}, not a detected device.
         {/if}
-        {#if testState}
-          Each cell shows its correct-press count. An arrow marks the expected key,
-          a plus marks a tested key, and an exclamation mark indicates temporary
-          unexpected input. Text key results are available below the diagram.
+        {#if freestyle}
+          Each countable cell shows how many times it was pressed in this run. A plus
+          marks a pressed key. There is no expected key or mismatch feedback.
+          Text key results are available below the diagram.
+        {:else if testState}
+          An arrow marks the expected key, a plus marks a tested key, and an
+          exclamation mark indicates temporary unexpected input. Text key results
+          are available below the diagram.
         {:else}
           Recent accepted printable presses briefly show an orange plus for correct
           input or a red exclamation mark for a mismatch. Unmapped physical codes
@@ -137,10 +160,10 @@
             class="keyboard-key"
             data-code={key.code}
             data-feedback={testState
-              ? (errorCode === key.code ? 'incorrect' : testState.correctCounts[key.code] ? 'correct' : 'neutral')
+              ? (activeError === key.code ? 'incorrect' : count(key.code) ? 'correct' : 'neutral')
               : feedback[key.code] ?? 'neutral'}
             data-test-state={testState ? testStatus(key.code) : undefined}
-            data-count={testState ? testState.correctCounts[key.code] ?? 0 : undefined}
+            data-count={testState ? count(key.code) : undefined}
           >
             {#each key.keycaps as cap}
               <g transform={keycapTransform(cap)}>
@@ -155,16 +178,16 @@
                   <text
                     class="key-legend"
                     x={cap.x + cap.width / 2}
-                    y={cap.y + cap.height / 2 - (testState ? 5 : 0)}
+                    y={cap.y + cap.height / 2 - (freestyle ? 5 : 0)}
                     dominant-baseline="central"
                     text-anchor="middle"
                   >{key.legend}</text>
-                  {#if testState}
+                  {#if freestyle && sequenceCodes.has(key.code)}
                     <text class="key-count" x={cap.x + cap.width / 2} y={cap.y + cap.height - 6} text-anchor="middle">
-                      {testState.correctCounts[key.code] ?? 0}
+                      {count(key.code) > 999 ? '999+' : count(key.code)}
                     </text>
                   {/if}
-                  {#if testState ? !['untested', 'not tested'].includes(testStatus(key.code)) : feedback[key.code]}
+                  {#if testState ? marked(key.code) : feedback[key.code]}
                     <text
                       class="feedback-marker"
                       x={cap.x + cap.width - 7}
@@ -172,7 +195,7 @@
                       text-anchor="middle"
                       dominant-baseline="central"
                     >{testState
-                        ? (errorCode === key.code ? '!' : expectedCode === key.code ? '>' : '+')
+                        ? (freestyle ? '+' : activeError === key.code ? '!' : expectedCode === key.code ? '>' : '+')
                         : feedback[key.code] === 'correct' ? '+' : '!'}</text>
                   {/if}
                 {/if}
@@ -193,10 +216,10 @@
       <summary>Text key results</summary>
       <ul>
         {#each layout as key (key.code)}
-          <li>{key.legend} ({key.code}): {#if sequenceCodes.has(key.code)}{testState.correctCounts[key.code] ?? 0} correct, {testStatus(key.code)}{:else}not part of the guided test{/if}</li>
+          <li>{key.legend} ({key.code}): {#if !sequenceCodes.has(key.code)}{freestyle ? 'not counted in this test' : 'not part of the guided test'}{:else if freestyle}{plural(count(key.code), 'press')}{:else}{testStatus(key.code)}{/if}</li>
         {/each}
         {#each inertKeys as key (key.id)}
-          <li>{key.legend || 'Unlabeled key'} (no standard key code): not part of the guided test</li>
+          <li>{key.legend || 'Unlabeled key'} (no standard key code): {freestyle ? 'not counted in this test' : 'not part of the guided test'}</li>
         {/each}
       </ul>
     </details>
