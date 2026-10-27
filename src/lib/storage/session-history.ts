@@ -1,27 +1,50 @@
 import { DURATIONS, WORD_LIMITS, WORD_BANK_TIERS } from '../typing/exercise-generator';
-import { getMetrics, type TypingSession } from '../typing/typing-engine';
+import { getMetrics, isZenSession, type PracticeSession } from '../typing/typing-engine';
 import { isRecord, StorageError, storageFailure } from './errors';
 
-export interface SessionRecord {
+interface RecordBase {
+  readonly version: 2;
   readonly id: string;
   readonly completedAt: number;
+  readonly wpm: number;
+  readonly totalAttempts: number;
+}
+
+interface CopyRecord extends RecordBase {
+  readonly accuracy: number;
+  readonly correctAttempts: number;
+  readonly missedKeys: Readonly<Record<string, number>>;
+}
+
+type GeneratedRecord = CopyRecord & {
   readonly mode: 'timed' | 'words';
   readonly limit: number;
   readonly wordBankTier: number;
   readonly punctuation: boolean;
   readonly numbers: boolean;
-  readonly wpm: number;
-  readonly accuracy: number;
-  readonly totalAttempts: number;
-  readonly correctAttempts: number;
+};
+
+type FiniteRecord = CopyRecord & {
+  readonly targetCharacters: number;
+  readonly elapsedMs: number;
+} & ({ readonly mode: 'quote'; readonly quoteId: string } | { readonly mode: 'custom' });
+
+type ZenRecord = RecordBase & {
+  readonly mode: 'zen';
+  readonly retainedCharacters: number;
+  readonly elapsedMs: number;
+  readonly accuracy: null;
+  readonly correctAttempts: null;
   readonly missedKeys: Readonly<Record<string, number>>;
-}
+};
+
+export type SessionRecord = GeneratedRecord | FiniteRecord | ZenRecord;
 
 function finite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
-export function validateSessionRecord(value: unknown): SessionRecord {
+function validateLegacyRecord(value: unknown): GeneratedRecord {
   if (!isRecord(value)
     || typeof value.id !== 'string' || !value.id.trim()
     || !finite(value.completedAt) || value.completedAt < 0 || value.completedAt > 8.64e15
@@ -30,8 +53,20 @@ export function validateSessionRecord(value: unknown): SessionRecord {
     || !(value.mode === 'timed' ? [...DURATIONS] : [...WORD_LIMITS]).some((limit) => limit === value.limit)
     || !WORD_BANK_TIERS.some((tier) => tier === value.wordBankTier)
     || typeof value.punctuation !== 'boolean' || typeof value.numbers !== 'boolean'
-    || !finite(value.wpm) || value.wpm < 0
-    || !finite(value.accuracy) || value.accuracy < 0 || value.accuracy > 100
+    || !finite(value.wpm) || value.wpm < 0) {
+    throw new StorageError('A saved session contains invalid data.');
+  }
+  const scoring = validateScoring(value);
+  return {
+    version: 2,
+    id: value.id, completedAt: value.completedAt, mode: value.mode, limit: value.limit,
+    wordBankTier: Number(value.wordBankTier), punctuation: value.punctuation, numbers: value.numbers,
+    wpm: value.wpm, ...scoring
+  };
+}
+
+function validateScoring(value: Record<string, unknown>) {
+  if (!finite(value.accuracy) || value.accuracy < 0 || value.accuracy > 100
     || !finite(value.totalAttempts) || !Number.isSafeInteger(value.totalAttempts) || value.totalAttempts < 1
     || !finite(value.correctAttempts) || !Number.isSafeInteger(value.correctAttempts)
     || value.correctAttempts < 0 || value.correctAttempts > value.totalAttempts
@@ -53,30 +88,108 @@ export function validateSessionRecord(value: unknown): SessionRecord {
     throw new StorageError('A saved session has inconsistent attempt totals.');
   }
   return {
-    id: value.id, completedAt: value.completedAt, mode: value.mode, limit: value.limit,
-    wordBankTier: Number(value.wordBankTier), punctuation: value.punctuation, numbers: value.numbers,
-    wpm: value.wpm, accuracy: value.accuracy, totalAttempts: value.totalAttempts,
+    accuracy: value.accuracy, totalAttempts: value.totalAttempts,
     correctAttempts: value.correctAttempts, missedKeys
   };
 }
 
+function safeCount(value: unknown, minimum = 0): value is number {
+  return finite(value) && Number.isSafeInteger(value) && value >= minimum;
+}
+
+export function validateSessionRecord(value: unknown): SessionRecord {
+  const invalid = () => new StorageError('A saved session contains invalid data.');
+  if (!isRecord(value) || value.version !== 2
+    || typeof value.id !== 'string' || !value.id.trim()
+    || !finite(value.completedAt) || value.completedAt < 0 || value.completedAt > 8.64e15
+    || !finite(value.wpm) || value.wpm < 0 || !safeCount(value.totalAttempts, 1)) throw invalid();
+
+  const base: RecordBase = {
+    version: 2, id: value.id, completedAt: value.completedAt,
+    wpm: value.wpm, totalAttempts: value.totalAttempts
+  };
+  const generated = value.mode === 'timed' || value.mode === 'words';
+  const finiteCopy = value.mode === 'quote' || value.mode === 'custom';
+  if (!generated && !finiteCopy && value.mode !== 'zen') throw invalid();
+  const branchFields = ['limit', 'wordBankTier', 'punctuation', 'numbers', 'quoteId',
+    'targetCharacters', 'retainedCharacters', 'elapsedMs'];
+  const allowedFields = generated
+    ? ['limit', 'wordBankTier', 'punctuation', 'numbers']
+    : value.mode === 'zen' ? ['retainedCharacters', 'elapsedMs']
+      : value.mode === 'quote' ? ['quoteId', 'targetCharacters', 'elapsedMs'] : ['targetCharacters', 'elapsedMs'];
+  if (branchFields.some((field) => field in value && !allowedFields.includes(field))) throw invalid();
+
+  if (generated) return validateLegacyRecord(value);
+  if (!finite(value.elapsedMs) || value.elapsedMs < 0) throw invalid();
+  if (value.mode === 'zen') {
+    if (!safeCount(value.retainedCharacters) || value.retainedCharacters > value.totalAttempts
+      || value.accuracy !== null || value.correctAttempts !== null
+      || !isRecord(value.missedKeys) || Object.keys(value.missedKeys).length !== 0) throw invalid();
+    return {
+      ...base, mode: 'zen', retainedCharacters: value.retainedCharacters, elapsedMs: value.elapsedMs,
+      accuracy: null, correctAttempts: null, missedKeys: {}
+    };
+  }
+  if (!safeCount(value.targetCharacters, value.mode === 'quote' ? 40 : 1)
+    || value.targetCharacters > (value.mode === 'quote' ? 1000 : 10_000)
+    || value.totalAttempts < value.targetCharacters) throw invalid();
+  if (value.mode === 'quote'
+    && (typeof value.quoteId !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.quoteId))) throw invalid();
+  const scoring = validateScoring(value);
+  const copy = {
+    ...base, targetCharacters: value.targetCharacters, elapsedMs: value.elapsedMs,
+    accuracy: scoring.accuracy, correctAttempts: scoring.correctAttempts, missedKeys: scoring.missedKeys
+  };
+  return value.mode === 'quote'
+    ? { ...copy, mode: 'quote', quoteId: value.quoteId as string }
+    : { ...copy, mode: 'custom' };
+}
+
+export function validateStoredSessionRecord(value: unknown): SessionRecord {
+  return isRecord(value) && value.version === undefined
+    ? validateLegacyRecord(value)
+    : validateSessionRecord(value);
+}
+
 export function completedRecord(
-  session: TypingSession, id: string, startedWallTime: number, missedKeys: Readonly<Record<string, number>>
+  session: PracticeSession, id: string, startedWallTime: number, missedKeys: Readonly<Record<string, number>>
 ): SessionRecord {
   if (session.status !== 'completed' || !session.configuration) {
     throw new StorageError('Only completed configured sessions can be saved.');
   }
   const metrics = getMetrics(session, session.endedAt);
-  const configuration = session.configuration;
-  return validateSessionRecord({
-    id,
-    completedAt: startedWallTime + metrics.elapsedMs,
-    mode: configuration.mode,
-    limit: configuration.mode === 'timed' ? configuration.durationSeconds : configuration.wordLimit,
-    wordBankTier: configuration.wordBankTier, punctuation: configuration.punctuation, numbers: configuration.numbers,
-    wpm: metrics.wpm, accuracy: metrics.accuracy, totalAttempts: session.totalAttempts,
-    correctAttempts: session.correctAttempts, missedKeys
-  });
+  const base = {
+    version: 2, id, completedAt: startedWallTime + metrics.elapsedMs,
+    wpm: metrics.wpm, totalAttempts: session.totalAttempts
+  };
+  if (isZenSession(session)) {
+    return validateSessionRecord({
+      ...base, mode: 'zen', retainedCharacters: session.retainedCharacters, elapsedMs: metrics.elapsedMs,
+      accuracy: null, correctAttempts: null, missedKeys: {}
+    });
+  }
+  const copy = { ...base, accuracy: metrics.accuracy, correctAttempts: session.correctAttempts, missedKeys };
+  const configuration = session.configuration!;
+  switch (configuration.mode) {
+    case 'timed':
+    case 'words':
+      return validateSessionRecord({
+        ...copy, mode: configuration.mode,
+        limit: configuration.mode === 'timed' ? configuration.durationSeconds : configuration.wordLimit,
+        wordBankTier: configuration.wordBankTier, punctuation: configuration.punctuation, numbers: configuration.numbers
+      });
+    case 'quote':
+      return validateSessionRecord({
+        ...copy, mode: 'quote', quoteId: configuration.quoteId,
+        targetCharacters: session.target.length, elapsedMs: metrics.elapsedMs
+      });
+    case 'custom':
+      return validateSessionRecord({
+        ...copy, mode: 'custom', targetCharacters: session.target.length, elapsedMs: metrics.elapsedMs
+      });
+    default:
+      throw new StorageError('Only supported configured sessions can be saved.');
+  }
 }
 
 export function summarizeSessions(records: readonly SessionRecord[]) {
@@ -85,7 +198,18 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
   let bestWpm = 0;
   let wpm = 0;
   let accuracy = 0;
+  let targetCount = 0;
+  let zenCount = 0;
+  let zenBestWpm = 0;
+  let zenWpm = 0;
   for (const record of records) {
+    if (record.mode === 'zen') {
+      zenCount += 1;
+      zenBestWpm = Math.max(zenBestWpm, record.wpm);
+      zenWpm += record.wpm;
+      continue;
+    }
+    targetCount += 1;
     bestWpm = Math.max(bestWpm, record.wpm);
     wpm += record.wpm;
     accuracy += record.accuracy;
@@ -94,9 +218,11 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
     }
   }
   return {
-    count, bestWpm,
-    averageWpm: count ? Math.round(wpm / count) : 0,
-    averageAccuracy: count ? (accuracy / count).toFixed(1) : '0.0',
+    count, targetCount, bestWpm: targetCount ? bestWpm : null,
+    averageWpm: targetCount ? Math.round(wpm / targetCount) : null,
+    averageAccuracy: targetCount ? (accuracy / targetCount).toFixed(1) : null,
+    zenCount, zenBestWpm: zenCount ? zenBestWpm : null,
+    zenAverageWpm: zenCount ? Math.round(zenWpm / zenCount) : null,
     missedKeys: [...keys].sort(([a, x], [b, y]) => y - x || a.localeCompare(b))
   };
 }
@@ -182,7 +308,7 @@ export class SessionHistory {
 
   async read(): Promise<SessionRecord[]> {
     const values: unknown[] = await this.transaction('readonly', (store) => store.getAll());
-    return values.map(validateSessionRecord).sort((a, b) => b.completedAt - a.completedAt || a.id.localeCompare(b.id));
+    return values.map(validateStoredSessionRecord).sort((a, b) => b.completedAt - a.completedAt || a.id.localeCompare(b.id));
   }
 
   async clear(): Promise<void> {

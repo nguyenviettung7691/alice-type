@@ -167,13 +167,23 @@ function validateLayoutConfirmation(value: unknown, profileId: string | null): K
   };
 }
 
-export function validatePreferences(value: unknown): Preferences {
+function validateVersion4(value: unknown): Preferences {
   const existing = validateVersion3(value);
   if (!isRecord(value)) throw new StorageError('Saved preferences contain invalid keyboard details.');
   return {
     ...existing,
     keyboardLayoutConfirmation: validateLayoutConfirmation(value.keyboardLayoutConfirmation, existing.keyboardProfileId)
   };
+}
+
+export function validatePreferences(value: unknown): Preferences {
+  if (!isRecord(value)
+    || (value.mode !== 'timed' && value.mode !== 'words' && value.mode !== 'quote'
+      && value.mode !== 'custom' && value.mode !== 'zen')) {
+    throw new StorageError('Saved preferences contain an invalid practice mode.');
+  }
+  // Historical validators retain their original two-mode contract.
+  return { ...validateVersion4({ ...value, mode: 'timed' }), mode: value.mode };
 }
 
 export class PreferenceMigrationError extends StorageError {
@@ -189,10 +199,11 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     const raw = (storage ?? window.localStorage).getItem(PREFERENCES_KEY);
     if (raw === null) return { ...DEFAULT_PREFERENCES };
     const record: unknown = JSON.parse(raw);
-    if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3 && record.version !== 4)) {
+    if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3
+      && record.version !== 4 && record.version !== 5)) {
       throw new StorageError('Saved preferences use an unsupported schema version.');
     }
-    if (record.version === 4) return validatePreferences(record.settings);
+    if (record.version === 5) return validatePreferences(record.settings);
 
     let migrated: Preferences;
     if (record.version === 1) {
@@ -213,8 +224,10 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
         keyboardUserDetails: {},
         keyboardLayoutConfirmation: null
       });
-    } else {
+    } else if (record.version === 3) {
       migrated = validatePreferences({ ...validateVersion3(record.settings), keyboardLayoutConfirmation: null });
+    } else {
+      migrated = validateVersion4(record.settings);
     }
     try {
       savePreferences(migrated, storage);
@@ -232,7 +245,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
 }
 
 export function savePreferences(settings: Preferences, storage?: PreferenceStorage): void {
-  const record = { version: 4, settings: validatePreferences(settings) };
+  const record = { version: 5, settings: validatePreferences(settings) };
   try {
     (storage ?? window.localStorage).setItem(PREFERENCES_KEY, JSON.stringify(record));
   } catch (error) {

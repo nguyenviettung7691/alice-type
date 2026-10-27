@@ -47,6 +47,7 @@
   let preferences = $state<Preferences>(initial.settings);
   let settings = $state(practicePreferences(initial.settings));
   let running = $state(false);
+  let contentReset = $state(0);
   let view = $state<'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details'>('practice');
   let preferenceError = $state(initial.error);
   let preferenceOperation = $state<'load' | 'save'>(initial.operation);
@@ -207,7 +208,7 @@
   }
 
   function playClick() {
-    if (preferences.soundEnabled) void sound.play().catch(audioFailed);
+    if (settings.mode !== 'zen' && preferences.soundEnabled) void sound.play().catch(audioFailed);
   }
 
   function updateSettings(next: Preferences) {
@@ -225,7 +226,7 @@
     }
     await tick();
     if (!alive) return;
-    if (useLayout) document.getElementById('practice-input')?.focus();
+    if (useLayout) (document.getElementById('practice-input') ?? document.getElementById('custom-draft') ?? document.getElementById('practice-panel-heading'))?.focus();
     else document.querySelector<HTMLButtonElement>('.view-navigation button')?.focus();
   }
 </script>
@@ -268,7 +269,8 @@
       </div>
     {/if}
     <div hidden={view !== 'practice'}>
-      <PracticePanel {settings} bind:running onsettingschange={(next) => changePreferences({ ...preferences, ...next })}
+      <PracticePanel {settings} bind:running active={view === 'practice'} {contentReset}
+        onsettingschange={(next) => changePreferences({ ...preferences, ...next })}
         layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
         inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox} layoutConfirmed={!!appliedLayout}
         browserLegends={layoutLegends !== null}
@@ -277,6 +279,7 @@
     </div>
     {#if view === 'settings'}
       <SettingsPanel settings={preferences} onchange={updateSettings} onpractice={() => navigate('practice')} onreset={() => {
+        contentReset += 1;
         changePreferences({ ...DEFAULT_PREFERENCES, onboardingComplete: preferences.onboardingComplete });
       }} />
     {:else if view === 'stats'}

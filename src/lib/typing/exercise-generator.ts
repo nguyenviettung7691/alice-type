@@ -4,7 +4,8 @@ export const DURATIONS = [15, 30, 60, 120] as const;
 export const WORD_LIMITS = [10, 25, 50, 100] as const;
 export const WORD_BANK_TIERS = [200, 1000, 5000] as const;
 
-export type PracticeMode = 'timed' | 'words';
+export const PRACTICE_MODES = ['timed', 'words', 'quote', 'custom', 'zen'] as const;
+export type PracticeMode = typeof PRACTICE_MODES[number];
 export type RandomSource = () => number;
 
 export class ExerciseGenerationError extends Error {}
@@ -15,10 +16,14 @@ interface GeneratorSettings {
   readonly numbers: boolean;
 }
 
-export type SessionConfiguration = GeneratorSettings & (
+export type GeneratedConfiguration = GeneratorSettings & (
   | { readonly mode: 'timed'; readonly durationSeconds: typeof DURATIONS[number] }
   | { readonly mode: 'words'; readonly wordLimit: typeof WORD_LIMITS[number] }
 );
+export type CopyConfiguration = GeneratedConfiguration
+  | { readonly mode: 'quote'; readonly quoteId: string }
+  | { readonly mode: 'custom' };
+export type SessionConfiguration = CopyConfiguration | { readonly mode: 'zen' };
 
 export interface PracticeSettings extends GeneratorSettings {
   readonly mode: PracticeMode;
@@ -38,7 +43,7 @@ export const DEFAULT_SETTINGS: PracticeSettings = {
 export interface Exercise {
   readonly target: string;
   readonly wordEnds: readonly number[];
-  readonly configuration: SessionConfiguration;
+  readonly configuration: GeneratedConfiguration;
 }
 
 export function validateWordBank(words: readonly string[], expectedSize: number): void {
@@ -60,6 +65,11 @@ export function getWordBank(tier: typeof WORD_BANK_TIERS[number]): readonly stri
 }
 
 export function validateConfiguration(configuration: SessionConfiguration): void {
+  if (configuration.mode === 'zen' || configuration.mode === 'custom') return;
+  if (configuration.mode === 'quote') {
+    if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(configuration.quoteId)) return;
+    throw new ExerciseGenerationError('Unsupported quote identifier.');
+  }
   getWordBank(configuration.wordBankTier);
   if (typeof configuration.punctuation !== 'boolean' || typeof configuration.numbers !== 'boolean') {
     throw new ExerciseGenerationError('Exercise modifiers must be boolean values.');
@@ -72,13 +82,16 @@ export function validateConfiguration(configuration: SessionConfiguration): void
   throw new ExerciseGenerationError('Unsupported practice mode or limit.');
 }
 
-export function getConfiguration(settings: PracticeSettings): SessionConfiguration {
+export function getConfiguration(settings: PracticeSettings): GeneratedConfiguration {
+  if (settings.mode !== 'timed' && settings.mode !== 'words') {
+    throw new ExerciseGenerationError('Only Timed and Words use generated exercises.');
+  }
   const shared = {
     wordBankTier: settings.wordBankTier,
     punctuation: settings.punctuation,
     numbers: settings.numbers
   };
-  const configuration: SessionConfiguration = settings.mode === 'timed'
+  const configuration: GeneratedConfiguration = settings.mode === 'timed'
     ? { ...shared, mode: settings.mode, durationSeconds: settings.durationSeconds }
     : { ...shared, mode: settings.mode, wordLimit: settings.wordLimit };
   validateConfiguration(configuration);
@@ -86,10 +99,13 @@ export function getConfiguration(settings: PracticeSettings): SessionConfigurati
 }
 
 export function generateExercise(
-  configuration: SessionConfiguration,
+  configuration: GeneratedConfiguration,
   random: RandomSource = Math.random
 ): Exercise {
   validateConfiguration(configuration);
+  if (configuration.mode !== 'timed' && configuration.mode !== 'words') {
+    throw new ExerciseGenerationError('Only Timed and Words use generated exercises.');
+  }
   const bank = getWordBank(configuration.wordBankTier);
   const count = configuration.mode === 'words' ? configuration.wordLimit : configuration.durationSeconds * 5;
   const draw = () => {

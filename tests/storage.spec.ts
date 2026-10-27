@@ -116,13 +116,14 @@ test.describe('preferences and local history', () => {
       totalAttempts: exercise.length + 1, correctAttempts: exercise.length - 1, missedKeys: { KeyX: 2 }
     });
     expect(Object.keys(record).sort()).toEqual([
-      'id', 'completedAt', 'mode', 'limit', 'wordBankTier', 'punctuation', 'numbers',
+      'version', 'id', 'completedAt', 'mode', 'limit', 'wordBankTier', 'punctuation', 'numbers',
       'wpm', 'accuracy', 'totalAttempts', 'correctAttempts', 'missedKeys'
     ].sort());
     await page.keyboard.type('extra');
     await page.keyboard.press('Backspace');
     expect(await records(page)).toEqual([record]);
     await nav(page, 'Stats').click();
+    if (record.mode === 'zen') throw new Error('Expected a Words result.');
     await expect(page.getByRole('table')).toContainText(record.accuracy.toFixed(1));
     await expect(page.locator('.missed-keys')).toHaveText('KeyX: 2');
     await page.reload();
@@ -238,7 +239,7 @@ test.describe('preferences and local history', () => {
       const { SessionHistory }: typeof import('../src/lib/storage/session-history') = await import(path);
       const history = new SessionHistory();
       const base = {
-        id: 'one', completedAt: 1000, mode: 'words' as const, limit: 10, wordBankTier: 200,
+        version: 2 as const, id: 'one', completedAt: 1000, mode: 'words' as const, limit: 10, wordBankTier: 200,
         punctuation: false, numbers: false, wpm: 20, accuracy: 100, totalAttempts: 10, correctAttempts: 10, missedKeys: {}
       };
       await history.save(base);
@@ -317,7 +318,7 @@ test.describe('preferences and local history', () => {
       const { SessionHistory }: typeof import('../src/lib/storage/session-history') = await import(path);
       const history = new SessionHistory();
       const base = {
-        id: 'older', completedAt: 1000, mode: 'words' as const, limit: 10, wordBankTier: 200,
+        version: 2 as const, id: 'older', completedAt: 1000, mode: 'words' as const, limit: 10, wordBankTier: 200,
         punctuation: false, numbers: false, wpm: 20, accuracy: 80, totalAttempts: 10,
         correctAttempts: 8, missedKeys: { KeyX: 1 }
       };
@@ -330,7 +331,7 @@ test.describe('preferences and local history', () => {
       } finally { history.close(); }
     });
     await nav(page, 'Stats').click();
-    await expect(page.locator('.stats-summary dd')).toHaveText(['2', '60', '40', '65.0%']);
+    await expect(page.locator('.stats-summary dd')).toHaveText(['2', '2', '60', '40', '65.0%']);
     await expect(page.locator('.history-scroll tbody tr').first()).toContainText('60');
     await expect(page.locator('.missed-keys li')).toHaveText(['KeyX: 2', 'IntlBackslash: 1']);
   });
@@ -458,7 +459,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(input(page)).toBeFocused();
   });
 
-  for (const raw of ['{broken', JSON.stringify({ version: 5, settings: DEFAULT_PREFERENCES })]) {
+  for (const raw of ['{broken', JSON.stringify({ version: 6, settings: DEFAULT_PREFERENCES })]) {
     test(`does not overwrite invalid/future data during onboarding: ${raw.slice(0, 14)}`, async ({ page }) => {
       await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: PREFERENCES_KEY, value: raw });
       await page.goto('/');

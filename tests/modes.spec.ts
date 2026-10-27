@@ -35,7 +35,7 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
-test('defaults to ready Timed 30/200, exposes exact limits, and keeps future modes unavailable', async ({ page }) => {
+test('defaults to ready Timed 30/200, exposes exact limits, and offers all five modes', async ({ page }) => {
   await expect(page.getByRole('button', { name: 'Timed', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByLabel('Duration', { exact: true })).toHaveValue('30');
   await expect(page.getByLabel('Vocabulary', { exact: true })).toHaveValue('200');
@@ -51,8 +51,8 @@ test('defaults to ready Timed 30/200, exposes exact limits, and keeps future mod
   await expect(page.locator('.metric-value')).toHaveText(['—', '—']);
   await expect(input(page)).not.toBeFocused();
   for (const mode of ['Quote', 'Custom', 'Zen']) {
-    await expect(page.getByRole('button', { name: mode, exact: true })).toHaveCount(0);
-    await expect(page.getByText(`${mode}, coming soon`, { exact: true })).toHaveAttribute('aria-disabled', 'true');
+    await expect(page.getByRole('button', { name: mode, exact: true })).toBeEnabled();
+    await expect(page.getByRole('button', { name: mode, exact: true })).toHaveAttribute('aria-pressed', 'false');
   }
 });
 

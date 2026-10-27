@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_SETTINGS, DURATIONS, WORD_BANK_TIERS, WORD_LIMITS,
   generateExercise, getConfiguration, getWordBank, validateConfiguration, validateWordBank,
-  type RandomSource, type SessionConfiguration
+  type RandomSource, type GeneratedConfiguration, type SessionConfiguration
 } from './exercise-generator';
 
 function seeded(seed: number): RandomSource {
@@ -12,7 +12,7 @@ function seeded(seed: number): RandomSource {
   };
 }
 
-const words: SessionConfiguration = {
+const words: GeneratedConfiguration = {
   mode: 'words', wordLimit: 10, wordBankTier: 200, punctuation: false, numbers: false
 };
 
@@ -36,7 +36,7 @@ describe('word banks and configuration', () => {
     expect(() => validateWordBank([], 0)).toThrow('unique lowercase ASCII');
     expect(() => validateWordBank(JSON.parse('[null]'), 1)).toThrow('unique lowercase ASCII');
     for (const invalid of [
-      { ...words, mode: 'zen' }, { ...words, wordLimit: 11 },
+      { ...words, mode: 'unknown' }, { ...words, wordLimit: 11 },
       { ...words, wordBankTier: 201 }, { ...words, punctuation: 'true' },
       { ...words, numbers: null }, { ...words, mode: 'timed', durationSeconds: 45 }
     ]) {

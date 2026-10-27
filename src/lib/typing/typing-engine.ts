@@ -1,7 +1,7 @@
 import {
   validateConfiguration,
   type Exercise,
-  type SessionConfiguration
+  type CopyConfiguration
 } from './exercise-generator';
 
 export const PRACTICE_TEXT =
@@ -12,15 +12,58 @@ interface SessionData {
   readonly input: string;
   readonly totalAttempts: number;
   readonly correctAttempts: number;
-  readonly configuration?: SessionConfiguration;
+  readonly configuration?: CopyConfiguration;
   readonly wordEnds?: readonly number[];
 }
 
-export type TypingSession = SessionData & (
+type Lifecycle =
   | { readonly status: 'ready'; readonly startedAt: null; readonly endedAt: null }
   | { readonly status: 'running'; readonly startedAt: number; readonly endedAt: null }
-  | { readonly status: 'completed'; readonly startedAt: number; readonly endedAt: number }
-);
+  | { readonly status: 'completed'; readonly startedAt: number; readonly endedAt: number };
+export type TypingSession = SessionData & Lifecycle;
+
+interface WritingChunk {
+  readonly text: string;
+  readonly previous: WritingChunk | null;
+}
+
+export type ZenSession = Lifecycle & {
+  readonly kind: 'zen';
+  readonly configuration: { readonly mode: 'zen' };
+  readonly writing: WritingChunk | null;
+  readonly retainedCharacters: number;
+  readonly totalAttempts: number;
+};
+export type PracticeSession = TypingSession | ZenSession;
+
+export function isZenSession(session: PracticeSession): session is ZenSession {
+  return 'kind' in session && session.kind === 'zen';
+}
+
+export function createZenSession(): ZenSession {
+  return {
+    kind: 'zen', configuration: { mode: 'zen' }, writing: null,
+    retainedCharacters: 0, totalAttempts: 0, status: 'ready', startedAt: null, endedAt: null
+  };
+}
+
+export function getWritingWindow(session: ZenSession): string {
+  let chunk = session.writing;
+  let remaining = 2000;
+  const parts: string[] = [];
+  while (chunk && remaining > 0) {
+    const text = chunk.text.slice(-remaining);
+    parts.push(text);
+    remaining -= text.length;
+    chunk = chunk.previous;
+  }
+  return parts.reverse().join('');
+}
+
+export function stopSession(session: PracticeSession, now: number): ZenSession {
+  if (!isZenSession(session)) throw new Error('Only Zen sessions can be stopped manually.');
+  return session.status !== 'running' ? session : { ...session, status: 'completed', endedAt: Math.max(session.startedAt, now) };
+}
 
 export type TypingAction =
   | { readonly type: 'character'; readonly character: string }
@@ -37,7 +80,7 @@ export interface TypingKey {
 
 export function createSession(
   target: string,
-  configuration?: SessionConfiguration,
+  configuration?: CopyConfiguration,
   wordEnds?: readonly number[]
 ): TypingSession {
   if (target.length === 0 || /[^\x20-\x7e]/.test(target)) {
@@ -46,17 +89,20 @@ export function createSession(
 
   let metadata: Pick<SessionData, 'configuration' | 'wordEnds'> = {};
   if (configuration) {
+    if (!['timed', 'words', 'quote', 'custom'].includes(configuration.mode)) {
+      throw new Error('Only target-copying modes can create a finite exercise.');
+    }
     validateConfiguration(configuration);
-    if (!wordEnds || wordEnds.length === 0
+    if ((configuration.mode === 'timed' || configuration.mode === 'words') && (!wordEnds || wordEnds.length === 0
       || (configuration.mode === 'words' && wordEnds.length !== configuration.wordLimit)
       || wordEnds[wordEnds.length - 1] !== target.length
       || wordEnds.some((end, index) => !Number.isInteger(end) || end <= (wordEnds[index - 1] ?? 0)
-        || end > target.length || (index < wordEnds.length - 1 && target[end - 1] !== ' '))) {
+        || end > target.length || (index < wordEnds.length - 1 && target[end - 1] !== ' ')))) {
       throw new Error('Exercise word boundaries must match the configured target.');
     }
     metadata = {
       configuration: Object.freeze({ ...configuration }),
-      wordEnds: Object.freeze([...wordEnds])
+      ...(wordEnds ? { wordEnds: Object.freeze([...wordEnds]) } : {})
     };
   }
 
@@ -116,11 +162,37 @@ export function getTypingAction(event: TypingKey): TypingAction | null {
     : null;
 }
 
+export function applyAction(session: TypingSession, action: TypingAction, now: number): TypingSession;
+export function applyAction(session: ZenSession, action: TypingAction, now: number): ZenSession;
+export function applyAction(session: PracticeSession, action: TypingAction, now: number): PracticeSession;
 export function applyAction(
-  session: TypingSession,
+  session: PracticeSession,
   action: TypingAction,
   now: number
-): TypingSession {
+): PracticeSession {
+  if (isZenSession(session)) {
+    if (session.status === 'completed') return session;
+    if (action.type === 'backspace') {
+      if (!session.writing) return session;
+      const { text, previous } = session.writing;
+      return {
+        ...session, retainedCharacters: session.retainedCharacters - 1,
+        writing: text.length === 1 ? previous : { text: text.slice(0, -1), previous }
+      };
+    }
+    if (!/^[\x20-\x7e]$/.test(action.character)) {
+      throw new Error('A typing action must contain one printable ASCII character.');
+    }
+    const last = session.writing;
+    const writing = last && last.text.length < 256
+      ? { text: last.text + action.character, previous: last.previous }
+      : { text: action.character, previous: last };
+    return {
+      ...session, writing, retainedCharacters: session.retainedCharacters + 1,
+      totalAttempts: session.totalAttempts + 1, status: 'running',
+      startedAt: session.startedAt ?? now, endedAt: null
+    };
+  }
   session = expireSession(session, now);
   if (session.status === 'completed') {
     return session;
@@ -154,7 +226,15 @@ export function applyAction(
     : { ...data, status: 'running', startedAt, endedAt: null };
 }
 
-export function getMetrics(session: TypingSession, now: number) {
+export function getMetrics(session: PracticeSession, now: number) {
+  if (isZenSession(session)) {
+    const elapsedMs = session.status !== 'completed' ? 0 : Math.max(0, session.endedAt - session.startedAt);
+    return {
+      correctCharacters: null, elapsedMs, accuracy: null,
+      wpm: session.status !== 'completed' ? null
+        : elapsedMs === 0 ? 0 : Math.round((session.retainedCharacters / 5) / (elapsedMs / 60_000))
+    };
+  }
   const correctCharacters = Array.from(session.input).reduce(
     (count, character, index) => count + Number(character === session.target[index]),
     0
@@ -178,12 +258,18 @@ export function getMetrics(session: TypingSession, now: number) {
   };
 }
 
-export function getProgress(session: TypingSession, now: number) {
+export function getProgress(session: TypingSession, now: number): { value: number; maximum: number; percent: number };
+export function getProgress(session: PracticeSession, now: number): { value: number; maximum: number; percent: number } | null;
+export function getProgress(session: PracticeSession, now: number) {
+  if (isZenSession(session)) return null;
   const configuration = session.configuration;
   if (!configuration) return { value: 0, maximum: 1, percent: 0 };
-  const maximum = configuration.mode === 'timed' ? configuration.durationSeconds : configuration.wordLimit;
+  const maximum = configuration.mode === 'timed' ? configuration.durationSeconds
+    : configuration.mode === 'words' ? configuration.wordLimit : session.target.length;
   const value = configuration.mode === 'timed'
     ? getMetrics(session, now).elapsedMs / 1000
-    : (session.wordEnds ?? []).filter((end) => session.input.length >= end).length;
+    : configuration.mode === 'words'
+      ? (session.wordEnds ?? []).filter((end) => session.input.length >= end).length
+      : session.input.length;
   return { value, maximum, percent: Math.min(100, Math.max(0, value / maximum * 100)) };
 }

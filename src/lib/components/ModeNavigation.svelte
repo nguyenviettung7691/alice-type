@@ -7,7 +7,8 @@
     onmodechange: (mode: PracticeMode) => void;
   } = $props();
   const modes = [
-    { id: 'timed', label: 'Timed' }, { id: 'words', label: 'Words' }
+    { id: 'timed', label: 'Timed' }, { id: 'words', label: 'Words' },
+    { id: 'quote', label: 'Quote' }, { id: 'custom', label: 'Custom' }, { id: 'zen', label: 'Zen' }
   ] as const;
 </script>
 
@@ -24,9 +25,6 @@
           onclick={() => onmodechange(option.id)}
         >{option.label}</button>
       </li>
-    {/each}
-    {#each ['Quote', 'Custom', 'Zen'] as unavailable}
-      <li><span class="unavailable-mode" aria-disabled="true" title="Coming soon">{unavailable}<span class="sr-only">, coming soon</span></span></li>
     {/each}
   </ul>
 </nav>
@@ -51,14 +49,6 @@
     background: rgb(0 0 0 / 15%);
   }
   li { display: flex; }
-  .unavailable-mode {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.65rem 1rem;
-    color: var(--color-muted);
-    font-size: 0.85rem;
-    cursor: not-allowed;
-  }
   button {
     border: 1px solid transparent;
     border-radius: 0.5rem;

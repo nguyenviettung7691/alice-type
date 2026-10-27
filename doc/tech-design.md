@@ -166,3 +166,11 @@ Provide a device information view that presents a realistic layout profile and c
 * Ensure unavailable hardware information is not presented as automatically detected, and provide a useful unknown/unselected state.
 * Persist selected profiles and user-entered details locally; add catalog profiles to the test matrix only when their physical key mapping is defined and verified.
 * Keyboard Layout Profiles extension (implemented): import reviewed Alice-family layouts from QMK/VIA open-source data into a bundled, attributed GPL-3.0 catalog; rank candidates from WebHID vendor/product IDs and narrow variants with observed key codes; require user confirmation of profile and variant before using the layout in Practice and Keyboard Test (preferences schema v4).
+
+### Phase 8: Remaining Practice Modes
+
+* Implement Quote using a bundled, attributed, rights-reviewed literary quote catalog with random selection and finite target completion.
+* Implement Custom with a paste-friendly editor, explicit text normalization/validation, target preview, and finite practice sessions. Keep draft and target text in memory only.
+* Implement Zen as unlimited free writing with no target comparison or live practice UI updates outside the text; calculate free-writing WPM on explicit manual Stop. Accuracy is not applicable.
+* Extend mode-aware preferences, backward-compatible local history, and Stats without changing Timed/Words behavior or persisting user writing.
+* Implemented with automated unit and Chromium verification. Follow the [Phase 8 Detail Design](./phase-8-detail-design.md) for mode semantics, ASCII input boundaries, Zen presentation overrides, migrations, and acceptance criteria; see the [implementation plan](./phase-8-implementation-plan.md#verification-results) for evidence and pending manual checks. Difficulty rules remain deferred.

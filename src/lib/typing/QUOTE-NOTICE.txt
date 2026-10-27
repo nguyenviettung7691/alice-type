@@ -1,0 +1,89 @@
+AliceType literary passage attribution and rights notice
+Review date: 2026-10-27
+
+These are excerpts of original English literary works, not translations,
+modern summaries, movie dialogue, introductions, annotations, or illustrations.
+Only the literary text is bundled. No source-site branding or license boilerplate
+is part of the practice targets. The source links below are bibliographic
+acknowledgements, not an endorsement or a claim that AliceType is a source-site
+publication. This notice is bundled locally; viewing it makes no source request.
+
+Rights basis and limits
+----------------------
+The reviewed source catalogs identify all three eBooks as public domain in the
+USA. Each downloaded transcription's opening copyright/use statement was also
+reviewed. The underlying English works were first published in 1865, 1813,
+and 1892, respectively, and their US copyright terms have expired. The reviewed
+1894 Austen edition is also out of US copyright. A recent transcription update
+is not treated as permission to copy modern editorial additions.
+
+This review establishes US redistribution of the extracted public-domain text,
+not universal clearance. Check local copyright law before redistribution outside
+the United States. The passages are not relicensed as MIT merely because the
+application code uses MIT. No separate license text is required for these
+public-domain literary excerpts.
+
+Source-use policy reviewed:
+https://www.gutenberg.org/policy/license.html
+Section 1.C permits reuse of unrestricted works with source trademarks removed.
+The policy explicitly permits bibliographic acknowledgements with links without
+trademark use. These are extracted literary sentences, not redistributed eBooks.
+
+1. Lewis Carroll, Alice's Adventures in Wonderland (1865)
+------------------------------------------------------
+Reviewed edition: eBook 11, THE MILLENNIUM FULCRUM EDITION 3.0;
+transcription credited to Arthur DiBianca and David Widger; updated June 26, 2025.
+Catalog / US rights statement: https://www.gutenberg.org/ebooks/11
+Text and edition:
+https://www.gutenberg.org/cache/epub/11/pg11.txt
+Passage location: Chapter I, Down the Rabbit-Hole
+https://www.gutenberg.org/cache/epub/11/pg11-images.html#chap01
+IDs:
+alice-down-the-rabbit-hole
+alice-the-deep-well
+alice-time-to-wonder
+alice-locked-doors
+Adaptation: complete narrative sentences excerpted; source line wrapping
+collapsed to single spaces. Wording and punctuation unchanged.
+Reviewed text, author, edition, rights, and adaptations: 2026-10-27.
+
+2. Jane Austen, Pride and Prejudice (1813)
+----------------------------------------
+Reviewed edition: George Allen, London, 1894; eBook 1342; transcription credited
+to Chuck Greif and the Online Distributed Proofreading Team from Internet
+Archive scans. Plain-text edition reports update September 1, 2026.
+Only Austen's Chapter I text is included, not George Saintsbury's preface,
+Hugh Thomson's illustrations, or image captions.
+Catalog / US rights statement: https://www.gutenberg.org/ebooks/1342
+Text and printed-edition title page:
+https://www.gutenberg.org/cache/epub/1342/pg1342.txt
+Passage location: Chapter I
+https://www.gutenberg.org/cache/epub/1342/pg1342-images.html#Chapter_I
+IDs:
+pride-a-truth-universally-acknowledged
+pride-the-surrounding-families
+pride-netherfield-park
+pride-mrs-long
+Adaptation: source line wrapping collapsed; curly double quotation marks
+changed to straight ASCII double quotes; page-number markers omitted.
+The opening drop-cap "IT" is rendered "It". No paraphrasing or modernization
+of spelling; no emphasis occurs in the selected passages.
+Reviewed text, author, edition, rights, and adaptations: 2026-10-27.
+
+3. Arthur Conan Doyle, The Adventures of Sherlock Holmes (1892)
+------------------------------------------------------------
+Reviewed edition: eBook 1661; English transcription credited to an anonymous
+volunteer and Jose Menendez; updated October 10, 2023.
+Catalog / US rights statement: https://www.gutenberg.org/ebooks/1661
+Text and edition:
+https://www.gutenberg.org/cache/epub/1661/pg1661.txt
+Passage location: A Scandal in Bohemia, section I
+https://www.gutenberg.org/cache/epub/1661/pg1661-images.html#chap01
+IDs:
+holmes-the-lit-rooms
+holmes-pacing-the-room
+holmes-long-nervous-hands
+holmes-the-process-of-deduction
+Adaptation: complete narrative sentences excerpted; source line wrapping
+collapsed to single spaces. Wording and punctuation unchanged.
+Reviewed text, author, edition, rights, and adaptations: 2026-10-27.

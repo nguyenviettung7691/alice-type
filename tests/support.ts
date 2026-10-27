@@ -13,7 +13,7 @@ export async function skipOnboarding(page: Page) {
   await disableDeviceAccess(page);
   await page.addInitScript(({ key, defaults }) => {
     if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 4, settings: defaults }));
+      localStorage.setItem(key, JSON.stringify({ version: 5, settings: defaults }));
     }
   }, { key: PREFERENCES_KEY, defaults: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
 }

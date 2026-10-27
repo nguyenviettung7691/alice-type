@@ -4,7 +4,7 @@ AliceType is a desktop-oriented typing practice web app for the Alice split-ergo
 
 ## Project status
 
-Phases 1–7 are implemented: the app foundation, typing engine, Alice visualizer, generated Timed/Words exercises, local storage/polish, guided Keyboard Test matrix, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Keyboard Details provides a revisioned catalog with the generic Alice profile plus 23 real Alice-family layouts imported from open-source QMK/VIA data, and locally editable device notes. **Find my layout** suggests catalog layouts from your keyboard's browser-reported vendor/product ID; a layout is used in Practice and Keyboard Test only after you confirm it. Other roadmap modes remain unavailable. Product design documents:
+Phases 1–8 are implemented: the app foundation, typing engine, Alice visualizer, all five practice modes, local storage/polish, guided Keyboard Test matrix, and local Keyboard Details view. Preferences persist locally; completed practice sessions appear in Stats with missed-key summaries for target-copying modes and separate free-writing scores for Zen. Keyboard onboarding, optional click sounds, caret styles, and live-stat visibility are available. The independent Keyboard Test includes temporary per-key counts and 13 optional sound effects. Keyboard Details provides a revisioned catalog with the generic Alice profile plus 23 real Alice-family layouts imported from open-source QMK/VIA data, and locally editable device notes. **Find my layout** suggests catalog layouts from your keyboard's browser-reported vendor/product ID; a layout is used in Practice and Keyboard Test only after you confirm it. Difficulty rules remain deferred. Product design documents:
 
 - [Technical Design Document](doc/tech-design.md)
 - [Phase 1 Detail Design](doc/phase-1-detail-design.md)
@@ -21,20 +21,27 @@ Phases 1–7 are implemented: the app foundation, typing engine, Alice visualize
 - [Phase 6 Implementation Plan](doc/phase-6-implementation-plan.md)
 - [Phase 7 Detail Design](doc/phase-7-detail-design.md)
 - [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md)
+- [Phase 8 Detail Design](doc/phase-8-detail-design.md) - Quote, Custom, and Zen implementation contract.
+- [Phase 8 Technical Implementation Plan](doc/phase-8-implementation-plan.md) - ordered execution steps, dependencies, and verification gates.
 
 ## Practice
 
-- The top navbar switches app views. The collapsible Keyboard connection panel sits directly below it at the top of every view. In Practice, a segmented mode selector sits inside the exercise panel above its settings; Timed and Words work, while Quote, Custom, and Zen remain coming soon.
+- The top navbar switches app views. The collapsible Keyboard connection panel sits directly below it at the top of every view. In Practice, the segmented mode selector offers **Timed**, **Words**, **Quote**, **Custom**, and **Zen**.
 - Choose **Timed** (15/30/60/120 seconds) or **Words** (10/25/50/100 base words). The default is Timed, 30 seconds.
-- Choose a **200**, **1000**, or **5000** word vocabulary and optionally enable **Punctuation** and **Numbers**. Both modifiers default to off. Settings and mode selection are locked while running; Restart unlocks them.
+- In Timed/Words, choose a **200**, **1000**, or **5000** word vocabulary and optionally enable **Punctuation** and **Numbers**. Both modifiers default to off. Inactive choices are preserved when switching modes; they do not modify Quote/Custom text. Settings and mode selection are locked while running; Restart unlocks them.
 - Select the exercise text, tab to the practice input, or activate **Start typing**. Focusing alone does not start the session; the first printable key does. Type the full displayed target, including spaces and modifiers. Errors are red and underlined; Backspace removes the last character.
-- WPM counts currently correct characters using five characters per word. Accuracy counts all character attempts, including mistakes later corrected.
+- In target-copying modes, WPM counts currently correct characters using five characters per word. Accuracy counts all character attempts, including mistakes later corrected.
 - Tab leaves the practice input without capturing typing elsewhere. Elapsed time continues while focus is away; use **Resume typing** to return.
 - Timed mode ends at its deadline, even when focus is elsewhere. Its target extends automatically as needed; running out of the initial text does not complete the session.
 - Words mode ends on the final target character even with errors. Progress counts base words, not inserted number tokens; Backspace can reduce progress without erasing attempt history.
-- **Restart** generates a fresh exercise using the same session configuration and resets all metrics. A generation failure displays an explicit error and stops capture until recovery. Completed scores and preferences persist; an unfinished exercise is discarded on reload.
+- **Quote** selects from 12 bundled literary passages across three works, with author/work attribution. **Restart** repeats the same quote; **Next quote** selects another while idle. The passage ends at the final position, even with errors, and progress counts consumed target characters. Source and US public-domain/other-jurisdiction rights information is available from **Quote attribution** in the footer; no quote is fetched at runtime.
+- **Custom** provides a native editor for pasted or entered text. **Apply text** prepares an exact target preview without starting time; review it before **Start typing**. Both the raw draft and normalized target are limited to 10,000 characters (UTF-16 code units for the draft). Line breaks, tabs, and nonbreaking spaces become spaces; repeated spaces collapse; curly quotes, en/em dashes, and ellipses become ASCII equivalents. Other unsupported characters are rejected explicitly, never silently deleted or truncated. **Edit text**, **Cancel editing**, and **Clear text** work while idle. Completion/progress use target characters, including punctuation and spaces.
+- Custom draft/applied text stays only in memory across practice-mode switches. Leaving Practice, restoring defaults, or reloading clears it. A saved Custom mode reloads into an empty editor; unfinished exercises are not restored.
+- **Zen** is free writing with no target, time limit, or word limit. **Focus writing** focuses capture; the first printable key starts time. Only writing and a steady caret update during a run: live metrics, progress, keyboard visualization, and practice sounds are suppressed without changing your preferences. **Stop** saves a result and shows **Free-writing WPM**, elapsed time, retained characters, and total attempts. Free-writing WPM uses retained characters (including spaces) divided by five and elapsed minutes; deleting text reduces the score. Accuracy is **Not applicable** because no target is checked.
+- Zen displays only the trailing 2,000 characters but retains earlier writing in memory for Backspace and full-session scoring. There is no product-level writing cap; browser memory is finite. **Restart**, changing modes, leaving Practice, or reloading releases the writing. Restart/reload of an unfinished run does not save it.
+- **Restart** generates fresh Timed/Words text, repeats the applied Quote/Custom target, or clears Zen writing, always resetting metrics and discarding an unfinished run. Preparation failures display explicit errors and stop capture until recovery. Completed numeric scores and preferences persist.
 - Long exercises scroll within the text area; the active character is kept in view.
-- Input is limited to discrete printable ASCII key presses. Paste, composition/IME input, and held-key repeat are not supported. Browser shortcuts are not captured by the typing engine.
+- Practice capture is limited to discrete printable ASCII key presses. Paste is supported in the Custom editor only, not during typing. Composition/IME input and held-key repeat are unsupported. Browser shortcuts are not captured by the typing engine.
 
 ## Settings, onboarding, and local history
 
@@ -44,9 +51,9 @@ Phases 1–7 are implemented: the app foundation, typing engine, Alice visualize
 - All app data, including device information, stays in the browser; nothing is uploaded. Runtime device details are held only in memory, browser-managed device grants may survive reload, and selected reference profiles/personal notes remain in local preferences. You can revoke device access in browser site settings.
 - Open **Settings** to choose Block, Line, or Underline caret, hide live WPM/accuracy, or enable a quiet generated typing click. Sound is off by default; only accepted printable keys trigger it. Final metrics remain visible when live stats are hidden.
 - Practice preferences (including each mode's inactive limit), display settings, sound selection, and onboarding completion use versioned `localStorage`. **Restore defaults** requires confirmation and does not delete history.
-- **Stats** lists completed exercises newest first, with best/average WPM, average per-session accuracy, and incorrect attempts grouped by physical `KeyboardEvent.code`. Correcting an error does not erase that attempt. Missing physical codes are excluded from key totals, not from accuracy.
-- Session history uses IndexedDB. No target text, typed text, raw event sequence, account, telemetry, or remote synchronization is stored or transmitted. Data belongs to this origin/browser and may be removed by browser storage cleanup.
-- Navigation and settings stay locked during a run. Use **Restart** before switching views or changing preferences; moving focus away still does not pause elapsed time.
+- **Stats** lists all completed exercises newest first. Target-copying best/average WPM, average per-session accuracy, and missed physical `KeyboardEvent.code` summaries exclude Zen; Zen has a separate session count and best/average Free-writing WPM. Averages are arithmetic per-session means. Correcting a target error does not erase that attempt; missing physical codes are excluded from key totals, not accuracy. Zen has no accuracy or missed-key score.
+- Preferences use schema v5 with migration from v1-v4. New history records use format v2 while existing unversioned Timed/Words records remain readable; the IndexedDB database/store/index stay unchanged. No target text, custom drafts, Zen writing, raw event sequence, account, telemetry, or remote synchronization is stored or transmitted. Data belongs to this origin/browser and may be removed by browser storage cleanup.
+- Navigation and settings stay locked during a run. Use **Restart** to abandon a run, or **Stop** to save Zen, before switching views or changing preferences. Moving focus away does not pause elapsed time.
 - Storage failures show explicit warnings and retry controls without blocking practice. Failed session saves remain retryable through restart/navigation for the current page; reload discards unsaved pending results. **Clear history** requires confirmation and is disabled while saves are pending.
 
 ## Alice visualizer
@@ -105,13 +112,17 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Unit tests cover generation/word-bank validation, modifier boundaries, mode deadlines/progress, typing-engine behavior, layout mapping/geometry, guided keyboard-test transitions, synthesized effect bounds, audio lifecycle, preference migration/validation, and history record/summary contracts. Browser tests additionally exercise real IndexedDB upgrades/transactions, blocked access, failed commits/retries/deletion, reload persistence, onboarding, sound filtering/cleanup, native Web Audio effects, pending-play cancellation, full physical-key matrix runs, caret/live-stat preferences, and Phase 2–5 regressions at desktop and narrow widths. They require port 4175 to be available.
+Unit tests cover generation/word-bank validation, quote catalog integrity, Custom normalization, Zen chunked writing/manual-stop metrics, modifier boundaries, mode deadlines/progress, typing-engine behavior, layout mapping/geometry, guided keyboard-test transitions, synthesized effect bounds, audio lifecycle, preference migration/validation, and history record/summary contracts. Browser tests additionally exercise all five practice modes, content cleanup/privacy, real IndexedDB upgrades/transactions, blocked access, failed commits/retries/deletion, reload persistence, onboarding, sound filtering/cleanup, native Web Audio effects, pending-play cancellation, full physical-key matrix runs, and caret/live-stat preferences at desktop and narrow widths. They require port 4175 to be available.
 
 ## Vocabulary data
 
 The bundled English vocabulary is adapted from Hermit Dave's [FrequencyWords](https://github.com/hermitdave/FrequencyWords), derived from OpenSubtitles2018. The three tiers are prefixes of 5000 unique lowercase ASCII entries in source frequency order, not a universal English frequency ranking. No vocabulary is downloaded at runtime.
 
 Vocabulary data is licensed separately under **CC BY-SA 4.0**. See the [attribution and transformation notice](src/lib/typing/word-banks/NOTICE.txt) and [data license](src/lib/typing/word-banks/LICENSE-CC-BY-SA-4.0.txt); both are also accessible from the app footer in production builds.
+
+## Quote data
+
+The bundled catalog contains 12 original-English passages across three literary works. See the [quote attribution and rights notice](src/lib/typing/QUOTE-NOTICE.txt) for exact sources, editions, adaptations, and US public-domain status. Redistribution outside the United States requires checking local copyright law. The notice is available from the app footer; no external quote service or runtime download is used.
 
 ## Keyboard layout data
 
@@ -137,8 +148,9 @@ Maintainers regenerate the snapshot with `npm run import:layouts` (Node 22.18+, 
 5. Storage & Polish
 6. Keyboard Keys Test Matrix
 7. Keyboard Device Details
+8. Remaining Practice Modes: Quote, Custom, Zen
 
-See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 7 Implementation Plan](doc/phase-7-implementation-plan.md) for the latest implementation and verification record. Quote, Custom, and Zen remain unavailable placeholders. Difficulty levels, alternate themes, and automatic device identification are not implemented. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred.
+See the [Technical Design Document](doc/tech-design.md) for the product roadmap and feature intent and the [Phase 8 Implementation Plan](doc/phase-8-implementation-plan.md) for the latest implementation and verification record. Difficulty levels, alternate themes, and automatic device identification are not implemented. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred.
 
 ## License
 

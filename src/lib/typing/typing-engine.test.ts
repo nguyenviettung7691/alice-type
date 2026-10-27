@@ -11,7 +11,7 @@ import {
   type TypingKey,
   type TypingSession
 } from './typing-engine';
-import { generateExercise, type SessionConfiguration } from './exercise-generator';
+import { generateExercise, type GeneratedConfiguration } from './exercise-generator';
 
 function type(session: TypingSession, character: string, now = 0) {
   return applyAction(session, { type: 'character', character }, now);
@@ -175,13 +175,13 @@ describe('keyboard filtering', () => {
   });
 
   describe('mode-aware sessions', () => {
-    const timed: SessionConfiguration = {
+    const timed: GeneratedConfiguration = {
       mode: 'timed', durationSeconds: 15, wordBankTier: 200, punctuation: false, numbers: false
     };
-    const words: SessionConfiguration = {
+    const words: GeneratedConfiguration = {
       mode: 'words', wordLimit: 10, wordBankTier: 200, punctuation: false, numbers: false
     };
-    const create = (configuration: SessionConfiguration) => {
+    const create = (configuration: GeneratedConfiguration) => {
       const exercise = generateExercise(configuration, () => 0);
       return createSession(exercise.target, exercise.configuration, exercise.wordEnds);
     };

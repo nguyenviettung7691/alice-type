@@ -17,7 +17,7 @@
   <p class="panel-copy">Preferences stay in this browser. There is no account or sync.</p>
   <fieldset>
     <legend>Practice</legend>
-    <p>Choose Timed or Words, limits, vocabulary, punctuation, and numbers in the practice view.</p>
+    <p>Choose Timed, Words, Quote, Custom, or Zen in Practice. Limits, vocabulary, punctuation, and numbers apply only to Timed/Words.</p>
     <button type="button" class="secondary-button" onclick={onpractice}>Edit practice settings</button>
   </fieldset>
   <fieldset>
@@ -34,14 +34,14 @@
     <label><input type="checkbox" checked={settings.showLiveStats} onchange={(event) => onchange({
       ...settings, showLiveStats: event.currentTarget.checked
     })} /> Show live WPM and accuracy</label>
-    <p>Final results and history are still available when live statistics are hidden.</p>
+    <p>Final results and history are still available when live statistics are hidden. Zen always hides live statistics and uses a steady caret.</p>
   </fieldset>
   <fieldset>
     <legend>Sound</legend>
     <label><input type="checkbox" checked={settings.soundEnabled} onchange={(event) => onchange({
       ...settings, soundEnabled: event.currentTarget.checked
     })} /> Typing sound</label>
-    <p>A quiet generated click for accepted characters. Sound is off by default.</p>
+    <p>A quiet generated click for accepted characters. Sound is off by default and always suppressed in Zen without changing this preference.</p>
   </fieldset>
   <div class="panel-actions">
     <button type="button" class="secondary-button" onclick={() => { confirming = true; }}>Restore defaults</button>
