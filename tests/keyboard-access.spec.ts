@@ -67,7 +67,7 @@ test('automatically prompts, opens the chooser on activation, and shares browser
   await expect(connection(page)).toContainText('Example Alice HID');
   await expect(connection(page).locator('details')).toHaveAttribute('open', '');
   await expect(connection(page).getByRole('status').filter({ hasText: 'Selected device:' })).toBeVisible();
-  await expect(connection(page)).toContainText('No layout is confirmed for this device');
+  await expect(connection(page)).toContainText('No layout is confirmed yet');
   await expect(legend(page)).toHaveText('a');
   await page.getByRole('button', { name: 'Keyboard Test', exact: true }).click();
   await expect(legend(page)).toHaveText('a');
@@ -167,10 +167,10 @@ test('connecting with Enter retains user activation and focuses practice while t
   expect(await page.evaluate(() => Reflect.get(window, 'chooserHadActivation'))).toBe(true);
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeFocused();
-  await expect(connection(page).getByRole('button', { name: 'Waiting for permission...' })).toBeDisabled();
+  await expect(connection(page).getByRole('button', { name: 'Connecting...' })).toBeDisabled();
   await page.evaluate(() => Reflect.get(window, 'cancelDevicePicker')());
-  await expect(connection(page).getByText(/Keyboard access was not granted/)).toBeVisible();
-  await expect(connection(page).getByRole('button', { name: 'Connect keyboard', exact: true })).toBeEnabled();
+  await expect(connection(page).getByText(/No device was selected/)).toBeVisible();
+  await expect(connection(page).getByRole('button', { name: 'Connect a device', exact: true })).toBeEnabled();
 });
 
 test('restores previously granted access without prompting and clears stale device details on disconnect', async ({ page }) => {
@@ -182,7 +182,7 @@ test('restores previously granted access without prompting and clears stale devi
   await page.evaluate(() => Reflect.get(window, 'changeKeyboardLayout')());
   await expect(legend(page)).toHaveText('z');
   await page.evaluate(() => Reflect.get(window, 'disconnectKeyboard')());
-  await expect(connection(page)).toContainText('No accessible keyboard detected');
+  await expect(connection(page)).toContainText('No device is available right now');
   await expect(connection(page)).not.toContainText('Selected device:');
   await expect(legend(page)).toHaveText('Q');
   await page.getByRole('button', { name: 'Keyboard Details', exact: true }).click();
@@ -199,10 +199,10 @@ for (const scenario of ['denied', 'empty', 'failed'] as const) {
     if (scenario === 'failed') await expect(connection(page)).toContainText('Device policy blocked');
     await connect(page).click();
     await expect(connection(page)).toContainText(
-      scenario === 'denied' ? 'Permission denied' : scenario === 'empty' ? 'not granted' : 'Example Alice HID'
+      scenario === 'denied' ? 'Permission denied' : scenario === 'empty' ? 'No device was selected' : 'Example Alice HID'
     );
     if (scenario !== 'failed') {
-      await expect(connection(page).getByText(/Keyboard access was/)).toBeVisible();
+      await expect(connection(page).getByText(/browser could not connect|No device was selected/)).toBeVisible();
     }
     await page.getByRole('textbox', { name: 'Typing practice', exact: true }).press('a');
     await expect(page.getByRole('region', { name: 'Typing practice', exact: true })).toHaveAttribute('data-status', 'running');
@@ -213,10 +213,10 @@ test('requires explicit device selection when multiple previously authorized dev
   await mockAccess(page, 'multiple', true);
   await page.goto('/');
   await expect(page.getByRole('dialog')).toHaveCount(0);
-  await expect(connection(page)).toContainText('Multiple authorized devices');
+  await expect(connection(page)).toContainText('Several devices are available');
   await expect(connection(page)).not.toContainText('Selected device:');
   await connection(page).locator('summary').click();
-  await page.getByLabel('Choose your keyboard', { exact: true }).selectOption('1');
+  await page.getByLabel('Choose a device', { exact: true }).selectOption('1');
   await expect(connection(page)).toContainText('Selected device: Second HID device');
 });
 
@@ -233,7 +233,7 @@ test('late startup discovery cannot reopen a skipped dialog, but reload without 
   await page.goto('/');
   await page.getByRole('button', { name: 'Explore first' }).click();
   await page.evaluate(() => Reflect.get(window, 'finishDeviceDiscovery')());
-  await expect(connection(page)).toContainText('No accessible keyboard detected');
+  await expect(connection(page)).toContainText('No device is available right now');
   await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.reload();
   await page.evaluate(() => Reflect.get(window, 'finishDeviceDiscovery')());
@@ -249,13 +249,13 @@ test('unsupported detection, skip, and cancelled access remain recoverable and r
   await page.goto('/');
   await expect(page.getByRole('dialog')).toContainText("Device connection isn't available");
   await page.keyboard.press('Escape');
-  await expect(connection(page)).toContainText('Keyboard access was skipped');
+  await expect(connection(page)).toContainText('No problem. You can practice');
   await connection(page).locator('summary').click();
   await page.getByRole('button', { name: 'Refresh key labels' }).click();
-  await expect(connection(page)).toContainText('not supported');
+  await expect(connection(page)).toContainText('not available here');
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
   await page.reload();
-  await expect(connection(page)).toContainText('Keyboard device detection is not supported');
+  await expect(connection(page)).toContainText('Device access is not available in this browser');
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
@@ -268,13 +268,15 @@ for (const width of [320, 1440]) {
     await expect(summary).toContainText('Keyboard connection');
     await expect(summary).toContainText('Example Alice HID');
     await expect(connection(page).locator('details')).not.toHaveAttribute('open');
-    await expect(connection(page).getByRole('button', { name: 'Connect keyboard', exact: true })).toBeHidden();
+    await expect(connection(page).getByRole('button', { name: 'Connect a device', exact: true })).toBeHidden();
     await summary.focus();
     await summary.press('Enter');
     await expect(connection(page).locator('details')).toHaveAttribute('open', '');
-    await expect(connection(page)).toContainText('Private by design.');
-    await expect(connection(page)).toContainText('Nothing is uploaded to a server.');
-    await expect(connection(page).getByRole('button', { name: 'Connect keyboard', exact: true })).toBeVisible();
+    await expect(connection(page)).toContainText('Device access is optional.');
+    await expect(connection(page)).toContainText('practice and test keys without connecting anything');
+    await expect(connection(page)).toContainText('Your information stays private.');
+    await expect(connection(page)).toContainText('does not upload them to a server');
+    await expect(connection(page).getByRole('button', { name: 'Connect a device', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Keyboard Details', exact: true }).click();
     const device = page.getByRole('group', { name: 'Browser-reported device' });
     await expect(device).toContainText('Shared by your browser');
@@ -290,16 +292,16 @@ for (const width of [320, 1440]) {
   });
 }
 
-test('collapsed summary shows yellow selection-needed and green selected-device badges', async ({ page }) => {
+test('collapsed summary shows a yellow device prompt and green selected-device badge', async ({ page }) => {
   await mockAccess(page, 'multiple', true);
   await page.goto('/');
   const summary = connection(page).locator('summary');
   const badge = summary.locator('.connection-badge');
-  await expect(badge).toHaveText('Selection needed');
+  await expect(badge).toHaveText('Choose a device');
   await expect(badge).toHaveCSS('color', 'rgb(245, 206, 114)');
-  await expect(summary).toContainText('No keyboard selected');
+  await expect(summary).toContainText('No device selected');
   await summary.click();
-  await page.getByLabel('Choose your keyboard', { exact: true }).selectOption('1');
+  await page.getByLabel('Choose a device', { exact: true }).selectOption('1');
   await summary.click();
   await expect(badge).toHaveText('Device selected');
   await expect(badge).toHaveCSS('color', 'rgb(140, 219, 172)');
