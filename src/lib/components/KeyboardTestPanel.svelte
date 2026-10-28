@@ -248,7 +248,7 @@
       <button class="secondary-button" type="button" onclick={() => { audioError = ''; }}>Dismiss test sound warning</button>
     </div>
   {/if}
-  <button class="primary-button" type="button" onclick={restart}>Restart test</button>
+  <button class="primary-button danger-button" type="button" onclick={restart}>Restart test</button>
   <p class="panel-copy">Counts and highlights are temporary and reset when you restart or switch modes.
     This test never changes practice scores or Stats.</p>
 </section>

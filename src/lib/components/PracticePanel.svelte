@@ -383,7 +383,7 @@
       {:else if !editing}
         <button class="secondary-button" type="button" disabled={running} onclick={() => { editing = true; clearFeedback(); }}>Edit text</button>
       {/if}
-      <button class="secondary-button" type="button" disabled={running} onclick={() => {
+      <button class="secondary-button danger-button" type="button" disabled={running} onclick={() => {
         draft = ''; customTarget = ''; editing = true; customError = ''; session = null;
       }}>Clear text</button>
     </div>
@@ -495,7 +495,7 @@
         >{zen ? 'Focus writing' : session.status === 'ready' ? 'Start typing' : focused ? 'Typing…' : 'Resume typing'}</button>
       {/if}
       {#if zen}<button class="secondary-button" type="button" disabled={session?.status !== 'running'} onclick={stop}>Stop</button>{/if}
-      <button class="restart-button" type="button" onclick={restart}>Restart</button>
+      <button class="restart-button danger-button" type="button" onclick={restart}>Restart</button>
     </div>
   </div>
 </section>

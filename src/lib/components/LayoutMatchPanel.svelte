@@ -129,7 +129,7 @@
   {/if}
   {#if confirmation}
     <div class="panel-actions">
-      <button class="secondary-button" type="button" onclick={onclear}>Clear confirmation</button>
+      <button class="secondary-button danger-button" type="button" onclick={onclear}>Clear confirmation</button>
     </div>
   {/if}
 
@@ -244,7 +244,7 @@
           Checked: {observed.size > 0 ? [...observed].join(', ') : 'none yet'}.
         </p>
         {#if observed.size > 0}
-          <button class="secondary-button" type="button" onclick={() => { observed = new Set(); }}>Clear checked keys</button>
+          <button class="secondary-button danger-button" type="button" onclick={() => { observed = new Set(); }}>Clear checked keys</button>
         {/if}
       {/if}
 

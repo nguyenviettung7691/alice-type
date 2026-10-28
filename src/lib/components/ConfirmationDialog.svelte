@@ -23,6 +23,6 @@
   <p id={`${id}-description`}>{message}</p>
   <div class="panel-actions">
     <button type="button" class="secondary-button" onclick={oncancel}>Cancel</button>
-    <button type="button" class="primary-button" onclick={onconfirm}>{confirmText}</button>
+    <button type="button" class="primary-button danger-button" onclick={onconfirm}>{confirmText}</button>
   </div>
 </dialog>

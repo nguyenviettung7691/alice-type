@@ -44,7 +44,7 @@
     <p>A quiet generated click for accepted characters. Sound is off by default and always suppressed in Zen without changing this preference.</p>
   </fieldset>
   <div class="panel-actions">
-    <button type="button" class="secondary-button" onclick={() => { confirming = true; }}>Restore defaults</button>
+    <button type="button" class="secondary-button danger-button" onclick={() => { confirming = true; }}>Restore defaults</button>
     <button type="button" class="primary-button" onclick={onpractice}>Back to practice</button>
   </div>
 </section>

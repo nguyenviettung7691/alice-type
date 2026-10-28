@@ -66,7 +66,7 @@
   const confirmationKey = $derived(JSON.stringify(preferences.keyboardLayoutConfirmation));
   let resolvedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
   let layoutNotice = $state('');
-  // The layout shown by Practice and Keyboard Test; a running session is never changed in place.
+  // The layout shared by Practice, Keyboard Test, and Stats; a running session is never changed in place.
   let appliedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
   const confirmedKeys = $derived(appliedLayout ? applyLayoutLegends(appliedLayout.keys, layoutLegends) : null);
   const confirmedSequence = $derived(appliedLayout ? applyLayoutLegends(appliedLayout.testSequence, layoutLegends) : null);
@@ -283,7 +283,10 @@
         changePreferences({ ...DEFAULT_PREFERENCES, onboardingComplete: preferences.onboardingComplete });
       }} />
     {:else if view === 'stats'}
-      <StatsPanel {history} {revision} pending={pending.length > 0} />
+      <StatsPanel {history} {revision} pending={pending.length > 0}
+        layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
+        inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox}
+        layoutConfirmed={!!appliedLayout} browserLegends={layoutLegends !== null} />
     {:else if view === 'keyboard-test'}
       {#key appliedLayout}
         <KeyboardTestPanel

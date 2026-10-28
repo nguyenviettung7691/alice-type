@@ -125,7 +125,8 @@ test.describe('preferences and local history', () => {
     await nav(page, 'Stats').click();
     if (record.mode === 'zen') throw new Error('Expected a Words result.');
     await expect(page.getByRole('table')).toContainText(record.accuracy.toFixed(1));
-    await expect(page.locator('.missed-keys')).toHaveText('KeyX: 2');
+    await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"]')).toHaveAttribute('data-count', '2');
+    await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"] .key-count')).toHaveText('2');
     await page.reload();
     await nav(page, 'Stats').click();
     await expect(page.getByRole('cell', { name: 'Words / 10 words', exact: true })).toBeVisible();
@@ -333,7 +334,9 @@ test.describe('preferences and local history', () => {
     await nav(page, 'Stats').click();
     await expect(page.locator('.stats-summary dd')).toHaveText(['2', '2', '60', '40', '65.0%']);
     await expect(page.locator('.history-scroll tbody tr').first()).toContainText('60');
-    await expect(page.locator('.missed-keys li')).toHaveText(['KeyX: 2', 'IntlBackslash: 1']);
+    await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"]')).toHaveAttribute('data-count', '2');
+    await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"]')).toHaveAttribute('data-heat', '1');
+    await expect(page.locator('.unmapped-misses li')).toHaveText(['IntlBackslash: 1 miss']);
   });
 
   test('a database closed during an open does not retain a usable connection', async ({ page }) => {

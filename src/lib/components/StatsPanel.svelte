@@ -2,11 +2,19 @@
   import { StorageError } from '../storage/errors';
   import { SessionHistory, summarizeSessions, type SessionRecord } from '../storage/session-history';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
+  import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
+  import { type AliceKey, type InertKey } from '../keyboard/alice-layout';
 
-  let { history, revision, pending }: {
+  let { history, revision, pending, layout, layoutLabel, inertKeys = [], viewBox, layoutConfirmed, browserLegends }: {
     history: SessionHistory;
     revision: number;
     pending: boolean;
+    layout: readonly AliceKey[];
+    layoutLabel: string;
+    inertKeys?: readonly InertKey[];
+    viewBox?: string;
+    layoutConfirmed: boolean;
+    browserLegends: boolean;
   } = $props();
   let records = $state<SessionRecord[]>([]);
   let loading = $state(true);
@@ -16,6 +24,9 @@
   let clearing = $state(false);
   let refresh = $state(0);
   const summary = $derived(summarizeSessions(records));
+  const missedCounts = $derived(Object.fromEntries(summary.missedKeys));
+  const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
+  const unmappedMisses = $derived(summary.missedKeys.filter(([code]) => !layoutCodes.has(code)));
 
   function modeLabel(record: SessionRecord): string {
     switch (record.mode) {
@@ -77,50 +88,77 @@
     {#if !records.length}
       <p class="empty-state">No saved sessions yet. Complete a Timed, Words, Quote, or Custom exercise, or stop a Zen session to see your progress.</p>
     {:else}
-      <dl class="stats-summary">
-        <div><dt>Completed sessions</dt><dd>{summary.count}</dd></div>
-        <div><dt>Target-copying sessions</dt><dd>{summary.targetCount}</dd></div>
-        <div><dt>Best target-verified WPM</dt><dd>{summary.bestWpm ?? 'Not available'}</dd></div>
-        <div><dt>Average target-verified WPM</dt><dd>{summary.averageWpm ?? 'Not available'}</dd></div>
-        <div><dt>Average target-copying accuracy</dt><dd>{summary.averageAccuracy === null ? 'Not available' : `${summary.averageAccuracy}%`}</dd></div>
-        {#if summary.zenCount}
-          <div><dt>Zen sessions</dt><dd>{summary.zenCount}</dd></div>
-          <div><dt>Best free-writing WPM</dt><dd>{summary.zenBestWpm}</dd></div>
-          <div><dt>Average free-writing WPM</dt><dd>{summary.zenAverageWpm}</dd></div>
+      <section class="stats-section" aria-labelledby="stats-summary-heading">
+        <div class="stats-section-heading">
+          <h3 id="stats-summary-heading">Stats summary</h3>
+          <span class="stats-badge">All time</span>
+        </div>
+        <dl class="stats-summary">
+          <div><dt>Completed sessions</dt><dd>{summary.count}</dd></div>
+          <div><dt>Target-copying sessions</dt><dd>{summary.targetCount}</dd></div>
+          <div><dt>Best target-verified WPM</dt><dd>{summary.bestWpm ?? 'Not available'}</dd></div>
+          <div><dt>Average target-verified WPM</dt><dd>{summary.averageWpm ?? 'Not available'}</dd></div>
+          <div><dt>Average target-copying accuracy</dt><dd>{summary.averageAccuracy === null ? 'Not available' : `${summary.averageAccuracy}%`}</dd></div>
+          {#if summary.zenCount}
+            <div><dt>Zen sessions</dt><dd>{summary.zenCount}</dd></div>
+            <div><dt>Best free-writing WPM</dt><dd>{summary.zenBestWpm}</dd></div>
+            <div><dt>Average free-writing WPM</dt><dd>{summary.zenAverageWpm}</dd></div>
+          {/if}
+        </dl>
+        <p class="panel-copy">Target-verified WPM and accuracy summarize only Timed, Words, Quote, and Custom sessions. Averages are arithmetic per-session means. Zen free-writing WPM measures retained writing, is not target-verified, and is summarized separately.</p>
+      </section>
+      <section class="stats-section" aria-labelledby="recent-sessions-heading">
+        <div class="stats-section-heading">
+          <div>
+            <h3 id="recent-sessions-heading">Recent sessions</h3>
+            <p class="panel-copy">Newest first. Scroll to explore your history.</p>
+          </div>
+          <span class="stats-badge">{summary.count} saved</span>
+        </div>
+        <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
+        <div class="history-scroll" role="region" aria-label="Session history table" tabindex="0">
+          <table>
+            <caption class="sr-only">Completed sessions, newest first</caption>
+            <thead><tr><th scope="col">Completed</th><th scope="col">Mode / limit</th><th scope="col">WPM</th><th scope="col">Accuracy</th></tr></thead>
+            <tbody>
+              {#each records as record (record.id)}
+                <tr>
+                  <td><time datetime={new Date(record.completedAt).toISOString()} title={new Date(record.completedAt).toString()}>{new Date(record.completedAt).toLocaleString()}</time></td>
+                  <td>{modeLabel(record)}</td>
+                  <td>{record.mode === 'zen' ? `Free-writing WPM: ${record.wpm}` : record.wpm}</td>
+                  <td>{record.accuracy === null ? 'Not applicable' : `${record.accuracy.toFixed(1)}%`}</td>
+                </tr>
+              {/each}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      <section class="stats-section" aria-labelledby="missed-keys-heading">
+        <div class="stats-section-heading">
+          <h3 id="missed-keys-heading">Most-missed physical keys</h3>
+          <span class="stats-badge">{layoutLabel}</span>
+        </div>
+        <p class="panel-copy">Target-copying incorrect attempts, including mistakes later corrected. Zen is excluded. Codes identify physical positions, not detected key legends. Missing codes are excluded.</p>
+        <AliceKeyboardVisualizer {layout} {inertKeys} {viewBox} {browserLegends}
+          testLayoutLabel={layoutLabel} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'}
+          title="Missed-key heatmap" {missedCounts} />
+        {#if !summary.missedKeys.length}<p class="empty-state">No physical-key errors recorded. All mapped keys show zero misses.</p>{/if}
+        {#if unmappedMisses.length}
+          <div class="unmapped-misses">
+            <h4>Keys outside the selected layout</h4>
+            <p class="panel-copy">These historical physical codes have no keycap in this layout. They still contribute to the heat ceiling.</p>
+            <ul>
+              {#each unmappedMisses as [code, count]}<li><code>{code}</code>: {count} {count === 1 ? 'miss' : 'misses'}</li>{/each}
+            </ul>
+          </div>
         {/if}
-      </dl>
-      <p class="panel-copy">Target-verified WPM and accuracy summarize only Timed, Words, Quote, and Custom sessions. Averages are arithmetic per-session means. Zen free-writing WPM measures retained writing, is not target-verified, and is summarized separately.</p>
-      <h3>Recent sessions</h3>
-      <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
-      <div class="history-scroll" role="region" aria-label="Session history table" tabindex="0">
-        <table>
-          <caption class="sr-only">Completed sessions, newest first</caption>
-          <thead><tr><th scope="col">Completed</th><th scope="col">Mode / limit</th><th scope="col">WPM</th><th scope="col">Accuracy</th></tr></thead>
-          <tbody>
-            {#each records as record (record.id)}
-              <tr>
-                <td><time datetime={new Date(record.completedAt).toISOString()} title={new Date(record.completedAt).toString()}>{new Date(record.completedAt).toLocaleString()}</time></td>
-                <td>{modeLabel(record)}</td>
-                <td>{record.mode === 'zen' ? `Free-writing WPM: ${record.wpm}` : record.wpm}</td>
-                <td>{record.accuracy === null ? 'Not applicable' : `${record.accuracy.toFixed(1)}%`}</td>
-              </tr>
-            {/each}
-          </tbody>
-        </table>
-      </div>
-      <h3>Most-missed physical keys</h3>
-      <p class="panel-copy">Target-copying incorrect attempts, including mistakes later corrected. Zen is excluded. Codes identify physical positions, not detected key legends. Missing codes are excluded.</p>
-      {#if summary.missedKeys.length}
-        <ul class="missed-keys">
-          {#each summary.missedKeys as [code, count]}<li><code>{code}</code>: {count}</li>{/each}
-        </ul>
-      {:else}<p>No physical-key errors recorded.</p>{/if}
+      </section>
     {/if}
   {/if}
   {#if pending}<p class="panel-copy">Resolve pending session saves before clearing history.</p>{/if}
   <div class="panel-actions">
     <button class="secondary-button" type="button" disabled={loading || clearing} onclick={() => { message = ''; refresh += 1; }}>Refresh history</button>
-    <button class="secondary-button" type="button" disabled={pending || loading || clearing} onclick={() => { confirming = true; }}>Clear history</button>
+    <button class="secondary-button danger-button" type="button" disabled={pending || loading || clearing} onclick={() => { confirming = true; }}>Clear history</button>
   </div>
 </section>
 

@@ -11,7 +11,8 @@
 
   let {
     layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false,
-    testSequence = layout, inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutSource = 'generic', title
+    testSequence = layout, inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutSource = 'generic', title,
+    missedCounts
   }: {
     layout: readonly AliceKey[];
     feedback?: KeyFeedback;
@@ -27,12 +28,23 @@
     /** Generic reference layout, an imported layout the user confirmed, or an unconfirmed preview. */
     layoutSource?: 'generic' | 'confirmed' | 'preview';
     title?: string;
+    missedCounts?: Readonly<Record<string, number>>;
   } = $props();
   const expectedCode = $derived(testState ? expectedTestKey(testState, testSequence)?.code : undefined);
   const imported = $derived(layoutSource !== 'generic');
   const sequenceCodes = $derived(new Set(testSequence.map((key) => key.code)));
   const freestyle = $derived(testState?.mode === 'freestyle');
   const activeError = $derived(freestyle ? undefined : errorCode);
+  const heatmap = $derived(missedCounts !== undefined);
+  const maxMisses = $derived(Math.max(0, ...Object.values(missedCounts ?? {})));
+
+  function misses(code: string): number {
+    return missedCounts && Object.hasOwn(missedCounts, code) ? missedCounts[code] : 0;
+  }
+
+  function heat(code: string): number {
+    return maxMisses ? misses(code) / maxMisses : 0;
+  }
 
   function count(code: string): number {
     return testState ? testKeyCount(testState, code) : 0;
@@ -69,11 +81,13 @@
   });
 </script>
 
-<figure class="keyboard-visualizer" data-layout-source={layoutSource}>
+<figure class="keyboard-visualizer" class:heatmap data-layout-source={layoutSource}>
   <figcaption>
     <span class="keyboard-title">{title ?? (testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer')}</span>
     <span class="keyboard-legend">
-      {#if layoutSource !== 'preview'}
+      {#if heatmap}
+        <span class="heat-scale"><span>0 misses</span><span class="heat-gradient" aria-hidden="true"></span><span>{maxMisses} max</span></span>
+      {:else if layoutSource !== 'preview'}
         <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
         {#if freestyle}
           <span><span class="legend-mark correct" aria-hidden="true">+</span>Pressed</span>
@@ -90,6 +104,9 @@
       {/if}
     </span>
   </figcaption>
+  {#if heatmap}
+    <p class="keyboard-note">Numbers show miss counts. Heat = key misses / highest miss count across all recorded physical keys; not a per-key error percentage. Zero misses stay neutral.</p>
+  {/if}
   {#if layoutSource === 'preview'}
     <p class="keyboard-note">Preview, not confirmed · Default key labels may differ from yours. Dashed keys are not testable.</p>
   {:else if imported}
@@ -120,7 +137,7 @@
       aria-labelledby={`${id}-title`}
       aria-describedby={`${id}-description`}
     >
-      <title id={`${id}-title`}>{testState
+      <title id={`${id}-title`}>{heatmap ? `${testLayoutLabel} missed-key heatmap` : testState
         ? `${testLayoutLabel} keyboard test matrix`
         : imported ? `${testLayoutLabel} keyboard` : 'Generic Alice keyboard'}</title>
       <desc id={`${id}-description`}>
@@ -130,7 +147,10 @@
         {:else}
           Angled split layout with {browserLegends ? 'browser layout legends where available' : 'generic US ANSI legends'}, not a detected device.
         {/if}
-        {#if freestyle}
+        {#if heatmap}
+          Each mapped key shows its miss count. Color intensity is relative to the highest recorded miss count ({maxMisses}).
+          Exact counts and physical codes are available in Text key results below.
+        {:else if freestyle}
           Each countable cell shows how many times it was pressed in this run. A plus
           marks a pressed key. There is no expected key or mismatch feedback.
           Text key results are available below the diagram.
@@ -163,13 +183,17 @@
         {#each layout as key (key.code)}
           <g
             class="keyboard-key"
+            class:heat-key={heatmap}
             data-code={key.code}
-            data-feedback={testState
+            data-feedback={heatmap ? 'neutral' : testState
               ? (activeError === key.code ? 'incorrect' : count(key.code) ? 'correct' : 'neutral')
               : feedback[key.code] ?? 'neutral'}
             data-test-state={testState ? testStatus(key.code) : undefined}
-            data-count={testState ? count(key.code) : undefined}
+            data-count={heatmap ? misses(key.code) : testState ? count(key.code) : undefined}
+            data-heat={heatmap ? heat(key.code) : undefined}
+            style:--key-heat={heatmap ? `${heat(key.code) * 100}%` : undefined}
           >
+            {#if heatmap}<title>{key.legend} ({key.code}): {misses(key.code)} {misses(key.code) === 1 ? 'miss' : 'misses'}</title>{/if}
             {#each key.keycaps as cap}
               <g transform={keycapTransform(cap)}>
                 <rect
@@ -183,16 +207,16 @@
                   <text
                     class="key-legend"
                     x={cap.x + cap.width / 2}
-                    y={cap.y + cap.height / 2 - (freestyle ? 5 : 0)}
+                    y={cap.y + cap.height / 2 - (freestyle || heatmap ? 5 : 0)}
                     dominant-baseline="central"
                     text-anchor="middle"
                   >{key.legend}</text>
-                  {#if freestyle && sequenceCodes.has(key.code)}
+                  {#if heatmap || (freestyle && sequenceCodes.has(key.code))}
                     <text class="key-count" x={cap.x + cap.width / 2} y={cap.y + cap.height - 6} text-anchor="middle">
-                      {count(key.code) > 999 ? '999+' : count(key.code)}
+                      {heatmap ? misses(key.code) : count(key.code) > 999 ? '999+' : count(key.code)}
                     </text>
                   {/if}
-                  {#if testState ? marked(key.code) : feedback[key.code]}
+                  {#if !heatmap && (testState ? marked(key.code) : feedback[key.code])}
                     <text
                       class="feedback-marker"
                       x={cap.x + cap.width - 7}
@@ -216,7 +240,19 @@
       Scroll to see all keys. Keyboard: focus the diagram and use Left/Right arrows.
     </p>
   {/if}
-  {#if testState}
+  {#if heatmap}
+    <details class="key-results">
+      <summary>Text key results</summary>
+      <ul>
+        {#each layout as key (key.code)}
+          <li>{key.legend} ({key.code}): {misses(key.code)} {misses(key.code) === 1 ? 'miss' : 'misses'}</li>
+        {/each}
+        {#each inertKeys as key (key.id)}
+          <li>{key.legend || 'Unlabeled key'} (no standard key code): miss count unavailable</li>
+        {/each}
+      </ul>
+    </details>
+  {:else if testState}
     <details class="key-results">
       <summary>Text key results</summary>
       <ul>
@@ -391,4 +427,19 @@
   .inert-key .key-legend { fill: var(--color-muted); }
 
   .legend-mark.inert { border-style: dashed; }
+
+  .heat-gradient {
+    width: 6rem;
+    height: 0.65rem;
+    border: 1px solid var(--color-muted);
+    border-radius: 1rem;
+    background: linear-gradient(to right, var(--color-background), #9b282a);
+  }
+
+  .heat-key rect {
+    fill: color-mix(in srgb, #9b282a var(--key-heat), var(--color-background));
+    stroke: color-mix(in srgb, var(--color-error) var(--key-heat), var(--color-muted));
+  }
+
+  .heat-key .key-count { fill: var(--color-text); }
 </style>

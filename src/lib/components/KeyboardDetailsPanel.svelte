@@ -288,7 +288,7 @@
     {:else}
       <div class="panel-actions">
         <button bind:this={editButton} class="secondary-button" type="button" onclick={beginEditing}>Edit device details</button>
-        <button class="secondary-button" type="button" disabled={Object.keys(userDetails).length === 0}
+        <button class="secondary-button danger-button" type="button" disabled={Object.keys(userDetails).length === 0}
           onclick={() => { confirmingClear = true; }}>Clear my details</button>
       </div>
     {/if}

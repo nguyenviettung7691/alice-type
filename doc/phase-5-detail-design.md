@@ -150,10 +150,14 @@ Replace the non-interactive Stats placeholder with an accessible Stats view. Sho
 - Best WPM and average WPM, calculated from stored session WPM values.
 - Average accuracy, calculated as the arithmetic mean of each session's accuracy; label the method.
 - A recent-session list ordered newest first, with date/time, mode and limit, WPM, and accuracy.
-- A most-missed-keys summary aggregated from stored `missedKeys`, ordered by count descending. Use physical `KeyboardEvent.code` as identity and show a neutral code/legend where the generic layout has no mapped key; do not claim a detected key legend.
+- A most-missed-keys heatmap aggregated from stored `missedKeys`, using the same active Alice layout, geometry, and browser/reference legends as Practice and Keyboard Test. Each mapped key shows its exact miss count, including zero. Heat intensity is `key miss count / highest aggregated physical-key miss count`, with zero neutral and the ceiling the strongest red; it is not a per-key accuracy/error percentage. Shared-code keycaps share the count and heat. Inert keycaps remain dashed without fabricated counts. Provide expandable text results and list historical codes outside the selected layout separately; those codes still contribute to the ceiling. Do not claim detected hardware or legends.
 - An explicit empty state when there are no saved sessions.
 
 Read history from IndexedDB when the Stats view opens and after a successful save or deletion. Keep derived summaries in memory only. Use semantic headings, table/list markup with labels, and concise dates with an accessible full timestamp. Do not add animated or rapidly updating live announcements.
+
+Stats uses three distinct bordered sections: **Stats summary**, **Recent sessions**, and **Most-missed physical keys**. Summary metrics use responsive individual cards with aligned numeric baselines and tabular digits, preserving the separate target-copying and Zen definitions. History scrolls horizontally and vertically inside a maximum 25rem viewport with sticky column headers, alternating rows, and right-aligned numeric columns. The keyboard diagram retains its keyboard-scrollable narrow-screen presentation.
+
+Destructive actions throughout the app use the shared red/error button treatment, including clear history/text/details/layout confirmation/checked keys, restore defaults, and practice/test restarts. Confirmation dialogs retain a neutral Cancel action and a filled red confirmation action. Existing confirmation, persistence, and reset behavior is unchanged.
 
 Validate every stored record on read, including records missing an indexed timestamp; fail explicitly rather than silently skipping malformed history. Sort validated records newest-first (with stable ID tie-breaking). The v1 time index is created for future indexed retrieval; current reads inspect the entire store for validation.
 
