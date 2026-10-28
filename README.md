@@ -6,7 +6,7 @@ A desktop-oriented typing practice app for Alice split-ergonomic layouts.
 Built with Svelte, TypeScript, and Vite, with a charcoal interface, an orange
 accent, and real-time feedback. Everything runs in your browser.
 
-[Open AliceType](https://nguyenviettung7691.github.io/alice-type/) ·
+[Open AliceType](https://alice-type.nguyenviettung.id.vn/) ·
 [Technical design](doc/tech-design.md) ·
 [Deployment workflow](.github/workflows/deploy-pages.yml)
 
@@ -174,17 +174,21 @@ It uploads `dist/` as a Pages artifact and deploys through the `github-pages`
 environment using GitHub's built-in token; no personal access token is required.
 Browser integration tests remain a separate local check.
 
-The build takes its base path from GitHub Pages configuration so assets work at
-`/alice-type/` as well as a root/custom-domain deployment. Local development keeps
-Vite's default `/` base. To preview the project-path build:
+The deployment build uses Vite's relative base (`./`) so asset URLs resolve from
+the page location, both at `/alice-type/` and at the custom-domain root. This
+avoids baking a repository path into the artifact that becomes invalid when a
+custom domain is configured. Local development keeps Vite's default `/` base.
+To preview the deployment build:
 
 ```sh
-npm run build -- --base=/alice-type/
-npm run preview -- --base=/alice-type/
+npm run build -- --base=./
+npm run preview
 ```
 
-Open the preview URL with `/alice-type/` appended. Changing the deployment origin
-does not migrate existing browser preferences or history.
+Open the printed preview URL. After changing Pages domain settings, rerun the
+deployment workflow to replace any older artifact built with an absolute base.
+Changing the deployment origin does not migrate existing browser preferences or
+history.
 
 ## Design and roadmap
 
