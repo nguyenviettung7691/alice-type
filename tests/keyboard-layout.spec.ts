@@ -86,8 +86,8 @@ test.describe('Keyboard layout profiles', () => {
     await expect(page.getByRole('img', { name: 'Keychron Q8 ANSI keyboard test matrix' })).toBeVisible();
     const progress = page.getByRole('progressbar', { name: 'Keyboard test progress' });
     await expect(progress).not.toHaveAttribute('max', '60');
-    await expect(page.locator('.keyboard-test-panel .keyboard-key[data-code="Escape"]')).toHaveAttribute('data-test-state', 'not tested');
-    await expect(page.locator('.key-results')).toContainText('Esc (Escape): not part of the guided test');
+    await expect(page.locator('.keyboard-test-panel .keyboard-key[data-code="Escape"]')).toHaveAttribute('data-test-state', 'expected');
+    await expect(page.locator('.key-results')).toContainText('Esc (Escape): expected');
     await expect(page.locator('.keyboard-test-panel .inert-key').first()).toBeAttached();
     const expectedCode = (await page.locator('.test-status span').textContent())!.replace(/[()]/g, '');
     await page.getByRole('region', { name: 'Keyboard test input' }).focus();
@@ -97,12 +97,12 @@ test.describe('Keyboard layout profiles', () => {
     const testPanel = page.locator('.keyboard-test-panel');
     await testPanel.getByRole('button', { name: 'Freestyle', exact: true }).click();
     await expect(progress).toHaveAttribute('value', '0');
-    await expect(testPanel.locator('.keyboard-key[data-code="Escape"] .key-count')).toHaveCount(0);
+    await expect(testPanel.locator('.keyboard-key[data-code="Escape"] .key-count')).toHaveText('0');
     await expect(testPanel.locator('.inert-key .key-count')).toHaveCount(0);
     const region = page.getByRole('region', { name: 'Keyboard test input' });
     await region.focus();
     await region.evaluate((element) => {
-      for (const code of ['F1', 'Space', 'Space']) {
+      for (const code of ['Escape', 'Space', 'Space']) {
         element.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, code }));
         element.dispatchEvent(new KeyboardEvent('keyup', { bubbles: true, code }));
       }
@@ -112,9 +112,10 @@ test.describe('Keyboard layout profiles', () => {
     const spaceCounts = await space.locator('.key-count').count();
     expect(spaceCounts).toBeGreaterThan(0);
     await expect(space.locator('.key-count')).toHaveText(Array(spaceCounts).fill('2'));
-    await expect(testPanel.locator('.keyboard-key[data-code="F1"][data-count]:not([data-count="0"])')).toHaveCount(0);
-    await expect(page.locator('.key-results')).toContainText('Esc (Escape): not counted in this test');
-    await expect(progress).toHaveAttribute('value', '1');
+    await expect(testPanel.locator('.keyboard-key[data-code="F1"]')).toHaveCount(0);
+    await expect(testPanel.locator('.keyboard-key[data-code="Escape"]')).toHaveAttribute('data-count', '1');
+    await expect(page.locator('.key-results')).toContainText('Esc (Escape): 1 press');
+    await expect(progress).toHaveAttribute('value', '2');
     expect(external).toEqual([]);
   });
 

@@ -351,7 +351,7 @@ Extend `keyboard-profiles.ts` and `alice-layout.ts` types without changing gener
   Never assign a code by position or legend. Legends come from the mapped code (for example `A`, `Backspace`) or a short keycode name for uncoded keys.
 - Several keys with the same code (split spacebars, duplicate `KeyB`) merge into one logical key with several keycaps, so they share one count, as the generic Space does.
 - **Variants.** Each VIA `layouts.labels` entry becomes a group: a string label is a two-option toggle (*No*/*Yes*), and an array is `[name, ...options]`. A resolved variant selects one option per group (default option 0). Keys outside groups always appear.
-- **Test sequence.** Coded keys sorted by matrix `(row, col)`. Escape and F1–F24 are drawn and highlighted, but are left out of the guided sequence: Escape always exits the test (Phase 6), and function keys commonly trigger browser actions.
+- **Test sequence.** Every coded key in the selected variant is included in matrix `(row, col)` order, including Escape and function keys when present. Shift+Tab remains available to leave the focused test region.
 - **Test-matrix eligibility** (extends section 5.3). A resolved variant is eligible when geometry is complete and finite, every printable alphanumeric key of the generic Alice layout (`KeyA`–`KeyZ`, `Digit0`–`Digit9`, `Space`) has a code, and the source references are complete. Eligibility is a property of catalog data. Whether the profile matches the user's keyboard is decided only by user confirmation.
 
 ### 14.5 Candidate ranking
@@ -387,7 +387,7 @@ Ranking runs locally on bundled data. Observed codes are kept in memory only and
 
 - The confirmed, eligible profile and variant replace the generic Alice layout in both the Practice visualizer and Keyboard Test, resolved when each view mounts. A running practice session or test run is never changed in place, following section 12.
 - Browser layout-map legends still overlay reference legends by physical code. Keys without a standard code show their source legend and receive no highlight.
-- The test sequence covers the resolved variant's coded keys in matrix `(row, col)` order, excluding Escape and F1–F24 (section 14.4). Shared codes keep the existing shared-count behavior. Phase 6 counts, reset, sound, and statistics isolation are unchanged. The text key results list marks the excluded keys as not part of the guided test.
+- The test sequence covers every resolved variant's coded key in matrix `(row, col)` order (section 14.4). Shared codes keep the existing shared-count behavior. Phase 6 counts, reset, sound, and statistics isolation are unchanged.
 - Stats and session history keep storing missed keys by physical code only. Profile data is not added to history.
 - When the confirmed profile is not eligible, use and label the generic Alice layout as before and explain why.
 

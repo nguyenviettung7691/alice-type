@@ -58,7 +58,11 @@ export function testedKeyCount(state: KeyboardTestState, layout: readonly AliceK
   return new Set(layout.map((key) => key.code).filter((code) => testKeyCount(state, code) > 0)).size;
 }
 
-export function classifyTestKey(event: TestKeyEvent, captureTab: boolean): 'ignore' | 'exit' | 'press' {
+export function classifyTestKey(
+  event: TestKeyEvent,
+  captureTab: boolean,
+  captureEscape = false
+): 'ignore' | 'exit' | 'press' {
   if (event.repeat || event.isComposing || event.key === 'Process') return 'ignore';
   const control = event.code === 'ControlLeft' || event.code === 'ControlRight';
   const alt = event.code === 'AltLeft' || event.code === 'AltRight';
@@ -66,7 +70,7 @@ export function classifyTestKey(event: TestKeyEvent, captureTab: boolean): 'igno
   const shift = event.code === 'ShiftLeft' || event.code === 'ShiftRight';
   if ((event.ctrlKey && !control) || (event.altKey && !alt) || (event.metaKey && !meta)
     || (event.shiftKey && (control || alt || meta))) return 'ignore';
-  if (event.code === 'Escape') return 'exit';
+  if (event.code === 'Escape' && !captureEscape) return 'exit';
   if (event.code === 'Tab' && (event.shiftKey || !captureTab)) return 'ignore';
   if (shift && (event.ctrlKey || event.altKey || event.metaKey)) return 'ignore';
   return 'press';

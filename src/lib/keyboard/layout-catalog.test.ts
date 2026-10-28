@@ -43,9 +43,9 @@ describe('imported keyboard layout catalog', () => {
         expect(layout.missingCodes).toEqual([]);
         expect(layout.viewBox.split(' ').map(Number).every(Number.isFinite)).toBe(true);
         expect(new Set(layout.keys.map((key) => key.code)).size).toBe(layout.keys.length);
-        expect(layout.testSequence.some((key) => /^(Escape|F\d+)$/.test(key.code))).toBe(false);
+        expect(new Set(layout.testSequence.map((key) => key.code))).toEqual(new Set(layout.keys.map((key) => key.code)));
         for (const code of REQUIRED_LAYOUT_CODES) expect(layout.testSequence.some((key) => key.code === code)).toBe(true);
-        expect(untestedCodes(layout).every((code) => /^(Escape|F\d+)$/.test(code))).toBe(true);
+        expect(untestedCodes(layout)).toEqual([]);
       }
     }
   });

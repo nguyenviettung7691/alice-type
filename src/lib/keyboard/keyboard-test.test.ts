@@ -87,14 +87,25 @@ describe('guided physical keyboard test', () => {
     expect(classifyTestKey(event(code, { [flag]: true }), false)).toBe('press');
   });
 
-  it('captures unmodified Tab only when requested and always permits keyboard exit', () => {
+  it('captures Tab and Escape only when present and permits Shift+Tab to leave', () => {
     expect(classifyTestKey(event('Tab'), true)).toBe('press');
     expect(classifyTestKey(event('Tab'), false)).toBe('ignore');
     expect(classifyTestKey(event('Tab', { shiftKey: true }), true)).toBe('ignore');
     expect(classifyTestKey(event('Escape'), false)).toBe('exit');
     expect(classifyTestKey(event('Escape'), true)).toBe('exit');
+    expect(classifyTestKey(event('Escape'), false, true)).toBe('press');
+    expect(classifyTestKey(event('Escape', { shiftKey: true }), false, true)).toBe('press');
     expect(classifyTestKey(event('Escape', { ctrlKey: true }), false)).toBe('ignore');
+    expect(classifyTestKey(event('Tab', { shiftKey: true }), true, true)).toBe('ignore');
     expect(classifyTestKey(event('ArrowRight'), false)).toBe('press');
+  });
+});
+
+describe('layout key coverage', () => {
+  it('includes Escape and every function key in the generic Alice test layout', () => {
+    const codes = new Set(ALICE_LAYOUT.map((key) => key.code));
+    expect(codes.has('Escape')).toBe(true);
+    for (let index = 1; index <= 12; index += 1) expect(codes.has(`F${index}`)).toBe(true);
   });
 });
 
@@ -117,7 +128,7 @@ describe('Freestyle keyboard test', () => {
   it('returns the identical state for codes outside the active sequence', () => {
     const sequence = ALICE_LAYOUT.filter((key) => key.code !== 'KeyQ');
     const initial = createKeyboardTest('freestyle');
-    for (const code of ['', 'Unidentified', 'Escape', 'F1', 'IntlBackslash', 'KeyQ']) {
+    for (const code of ['', 'Unidentified', 'Fn', 'IntlBackslash', 'KeyQ']) {
       expect(pressTestKey(initial, code, sequence)).toBe(initial);
     }
     const next = pressTestKey(initial, 'KeyA', sequence);

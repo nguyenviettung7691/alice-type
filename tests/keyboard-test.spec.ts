@@ -163,7 +163,7 @@ test.describe('guided keyboard test', () => {
     await expect(panel(page).getByRole('status')).toContainText('Unexpected');
   });
 
-  test('Tab, Shift+Tab, Escape, controls, and unfocused input remain keyboard safe', async ({ page }) => {
+  test('Tab, Shift+Tab, controls, and unfocused input remain keyboard safe', async ({ page }) => {
     expect(await dispatch(page, { code: 'Backquote', key: '`' })).toBe(false);
     await focusTest(page);
     await page.keyboard.press('Tab');
@@ -173,9 +173,6 @@ test.describe('guided keyboard test', () => {
     await expect(progress(page)).toHaveAttribute('value', '0');
     await focusTest(page);
     await page.keyboard.press('Shift+Tab');
-    await expect(nav(page, 'Focus keyboard test')).toBeFocused();
-    await focusTest(page);
-    await page.keyboard.press('Escape');
     await expect(nav(page, 'Focus keyboard test')).toBeFocused();
     await focusTest(page);
     for (const key of ALICE_LAYOUT.slice(0, ALICE_LAYOUT.findIndex((key) => key.code === 'Tab'))) {
@@ -188,6 +185,22 @@ test.describe('guided keyboard test', () => {
     await expect(cell(page, 'Tab')).toHaveAttribute('data-count', '1');
     await page.keyboard.press('Tab');
     await expect(capture(page)).not.toBeFocused();
+  });
+
+  test('counts Escape and F1-F12 from the active layout', async ({ page }) => {
+    await focusTest(page);
+    const escapeAndFunctionKeys = ['Escape', ...Array.from({ length: 12 }, (_, index) => `F${index + 1}`)];
+    for (const key of ALICE_LAYOUT.filter((key) => !escapeAndFunctionKeys.includes(key.code))) {
+      await dispatch(page, { code: key.code, key: key.legend });
+    }
+    for (const code of escapeAndFunctionKeys) {
+      const defaultPrevented = await dispatch(page, { code, key: code });
+      if (code !== 'Escape') expect(defaultPrevented).toBe(true);
+      await expect(cell(page, code)).toHaveAttribute('data-test-state', 'tested');
+    }
+    await expect(progress(page)).toHaveAttribute('value', String(ALICE_LAYOUT.length));
+    await page.keyboard.press('Shift+Tab');
+    await expect(nav(page, 'Focus keyboard test')).toBeFocused();
   });
 
   test('blur preserves progress but clears errors, teardown discards it, and practice is unchanged', async ({ page }) => {
@@ -356,7 +369,7 @@ test.describe('Freestyle keyboard test', () => {
     await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'unpressed');
   });
 
-  test('Tab is counted, Shift+Tab and Escape leave, and sound plays once per eligible press', async ({ page }) => {
+  test('Tab and Escape are counted, Shift+Tab leaves, and sound plays once per eligible press', async ({ page }) => {
     await soundToggle(page).check();
     await focusTest(page);
     expect(await dispatch(page, { code: 'Tab', key: 'Tab' })).toBe(true);
@@ -372,6 +385,9 @@ test.describe('Freestyle keyboard test', () => {
     await expect(capture(page)).not.toBeFocused();
     await focusTest(page);
     await page.keyboard.press('Escape');
+    await expect(capture(page)).toBeFocused();
+    await expect(cell(page, 'Escape')).toHaveAttribute('data-count', '1');
+    await page.keyboard.press('Shift+Tab');
     await expect(nav(page, 'Focus keyboard test')).toBeFocused();
     await expect(cell(page, 'Tab')).toHaveAttribute('data-count', '2');
     await modeButton(page, 'One key at a time').click();

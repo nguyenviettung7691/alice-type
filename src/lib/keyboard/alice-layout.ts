@@ -34,10 +34,10 @@ export function keycapTransform(cap: AliceKeycap): string | undefined {
 
 export type KeyFeedback = Readonly<Partial<Record<string, 'correct' | 'incorrect'>>>;
 
-export const ALICE_VIEW_BOX = '0 0 860 315';
+export const ALICE_VIEW_BOX = '0 0 860 360';
 export const ALICE_HALF_TRANSFORMS: Readonly<Record<KeyboardHalf, string>> = {
-  left: 'translate(28 38) rotate(10 171 117)',
-  right: 'translate(452 38) rotate(-10 189 117)'
+  left: 'translate(28 80) rotate(10 171 117)',
+  right: 'translate(452 80) rotate(-10 189 117)'
 };
 
 function key(
@@ -122,7 +122,21 @@ export const ALICE_LAYOUT: readonly AliceKey[] = [
   },
   key('AltRight', 'Alt', 'right', 168, 192, 54),
   key('MetaRight', 'Meta', 'right', 228, 192, 54),
-  key('ControlRight', 'Ctrl', 'right', 288, 192, 90)
+  key('ControlRight', 'Ctrl', 'right', 288, 192, 90),
+
+  key('Escape', 'Esc', 'left', 0, -48),
+  key('F1', 'F1', 'left', 48, -48),
+  key('F2', 'F2', 'left', 96, -48),
+  key('F3', 'F3', 'left', 144, -48),
+  key('F4', 'F4', 'left', 192, -48),
+  key('F5', 'F5', 'left', 240, -48),
+  key('F6', 'F6', 'left', 288, -48),
+  key('F7', 'F7', 'right', 0, -48),
+  key('F8', 'F8', 'right', 48, -48),
+  key('F9', 'F9', 'right', 96, -48),
+  key('F10', 'F10', 'right', 144, -48),
+  key('F11', 'F11', 'right', 192, -48),
+  key('F12', 'F12', 'right', 240, -48)
 ];
 
 export const ALICE_CODES: ReadonlySet<string> = new Set(ALICE_LAYOUT.map((entry) => entry.code));

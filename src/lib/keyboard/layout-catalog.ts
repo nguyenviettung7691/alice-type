@@ -81,8 +81,6 @@ export const REQUIRED_LAYOUT_CODES: readonly string[] = [
   ...'0123456789'.split('').map((digit) => `Digit${digit}`),
   'Space'
 ];
-const UNTESTED_CODES = /^(Escape|F([1-9]|1\d|2[0-4]))$/;
-
 const loaders = import.meta.glob<ImportedLayoutProfile>('./layout-data/profiles/*.json', { import: 'default' });
 
 export class LayoutProfileLoadError extends Error {
@@ -176,7 +174,6 @@ export function resolveImportedLayout(
   }
   const keys = [...coded.values()].map((value) => value.key);
   const testSequence = [...coded.values()]
-    .filter((value) => !UNTESTED_CODES.test(value.key.code))
     .sort((a, b) => a.order - b.order)
     .map((value) => value.key);
 

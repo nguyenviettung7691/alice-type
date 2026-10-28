@@ -43,6 +43,7 @@
   const sound = new KeyboardTestSound();
   const expected = $derived(expectedTestKey(testState, testSequence));
   const freestyle = $derived(testState.mode === 'freestyle');
+  const captureEscape = $derived(testSequence.some((key) => key.code === 'Escape'));
   const modeLabel = $derived(KEYBOARD_TEST_MODES.find((option) => option.id === mode)?.label ?? '');
   const testedCount = $derived(testedKeyCount(testState, testSequence));
   const totalPresses = $derived(testState.mode === 'freestyle' ? testState.totalPresses : 0);
@@ -85,11 +86,19 @@
 
   function keydown(event: KeyboardEvent) {
     if (event.target !== region || document.activeElement !== region || composing) return;
-    const action = classifyTestKey(event, freestyle || expected?.code === 'Tab');
+    const action = classifyTestKey(
+      event,
+      freestyle || expected?.code === 'Tab',
+      captureEscape && (freestyle || expected !== undefined)
+    );
     if (action === 'exit') { focusButton.focus(); return; }
-    if ((!freestyle && !expected) || action === 'ignore' || heldCodes.has(event.code)) return;
+    if (action === 'ignore') return;
+    const mappedFunctionKey = /^F\d+$/.test(event.code)
+      && testSequence.some((key) => key.code === event.code);
+    if (mappedFunctionKey) event.preventDefault();
+    if ((!freestyle && !expected) || heldCodes.has(event.code)) return;
     heldCodes.add(event.code);
-    if (['Tab', 'Space', 'Backspace'].includes(event.code)) event.preventDefault();
+    if (['Tab', 'Space', 'Backspace', 'Escape'].includes(event.code)) event.preventDefault();
     clearError();
     switchMessage = '';
     const next = pressTestKey(testState, event.code, testSequence);
@@ -158,19 +167,22 @@
   <p id="keyboard-test-instructions" class="panel-copy">
     {#if freestyle}
       Focus the test area, then press any physical keys in any order, as often as you like. Each key shows how many
-      times it was pressed. Match positions, not typed characters. Tab is counted here: press Escape or Shift+Tab to leave.
-      Browser shortcuts are not captured. Some system keys may not reach the browser.
+      times it was pressed. Match positions, not typed characters. Tab is counted here. {captureEscape
+        ? 'Escape is counted on this layout; press Shift+Tab to leave.'
+        : 'Press Escape or Shift+Tab to leave.'}
+      Modified browser shortcuts are not captured. Some system keys may not reach the browser.
     {:else}
       Focus the test area, then press and release each expected physical key. Match positions, not typed characters.
-      Press Tab to leave (except when testing Tab), Shift+Tab to go back, or Escape to leave at any time.
-      Browser shortcuts are not captured. Some system keys may not reach the browser.
+      Press Tab to leave (except when testing Tab) and Shift+Tab to go back or leave.
+      {captureEscape ? 'Escape is testable on this layout.' : 'Escape also leaves the test.'}
+      Modified browser shortcuts are not captured. Some system keys may not reach the browser.
     {/if}
   </p>
   <button bind:this={focusButton} class="secondary-button" type="button" onclick={() => region.focus()}>
     Focus keyboard test
   </button>
 
-  <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (A physical-key test needs an explicitly focusable region; Escape and Shift+Tab always leave.) -->
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (A physical-key test needs an explicitly focusable region; Shift+Tab always leaves.) -->
   <div
     bind:this={region}
     class="test-input"

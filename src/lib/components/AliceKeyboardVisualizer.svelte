@@ -136,7 +136,8 @@
           Text key results are available below the diagram.
         {:else if testState}
           An arrow marks the expected key, a plus marks a tested key, and an
-          exclamation mark indicates temporary unexpected input. Text key results
+          exclamation mark indicates temporary unexpected input. Escape and function
+          keys are testable when present on the selected layout. Text key results
           are available below the diagram.
         {:else if layoutSource !== 'preview'}
           Recent accepted printable presses briefly show an orange plus for correct

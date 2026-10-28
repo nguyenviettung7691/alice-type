@@ -50,7 +50,7 @@ describe('generic Alice layout', () => {
   });
 
   it('uses finite positive geometry without overlap or clipping after half transforms', () => {
-    expect(ALICE_VIEW_BOX).toBe('0 0 860 315');
+    expect(ALICE_VIEW_BOX).toBe('0 0 860 360');
     const caps = ALICE_LAYOUT.flatMap((key) => key.keycaps);
     for (const cap of caps) {
       if (!cap.half) throw new Error('Generic Alice keycaps must belong to a half');
@@ -61,7 +61,7 @@ describe('generic Alice layout', () => {
         expect(Number.isFinite(value)).toBe(true);
       }
       expect(cap.x).toBeGreaterThanOrEqual(0);
-      expect(cap.y).toBeGreaterThanOrEqual(0);
+      expect(cap.y).toBeGreaterThanOrEqual(-48);
       expect(cap.width).toBeGreaterThan(0);
       expect(cap.height).toBeGreaterThan(0);
       expect(cap.x + cap.width).toBeLessThanOrEqual(378);
@@ -79,7 +79,7 @@ describe('generic Alice layout', () => {
           expect(transformedX).toBeGreaterThanOrEqual(0);
           expect(transformedX).toBeLessThanOrEqual(860);
           expect(transformedY).toBeGreaterThanOrEqual(0);
-          expect(transformedY).toBeLessThanOrEqual(315);
+          expect(transformedY).toBeLessThanOrEqual(360);
         }
       }
     }

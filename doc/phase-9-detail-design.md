@@ -43,10 +43,10 @@ The new mode is named **Freestyle**. It is short, is clearly the opposite of a g
 
 ### 3.2 Out of scope
 
-- Changing the guided sequence order, the set of countable codes, input filtering, Escape/Shift+Tab exits, or the Phase 6 600 ms Mismatch timer in One key at a time.
+- Changing input filtering or the Phase 6 600 ms Mismatch timer in One key at a time.
 - Persisting the selected test mode, counts, highlights, or any run data. No preferences schema change.
 - Key-up timing, chatter or ghosting detection, rollover (NKRO) measurement, press-duration statistics, heat-map color scales, or export of test results.
-- Testing keys that the active layout does not map to a countable physical code (Escape, function keys, dashed keys without a standard code, or codes outside the layout).
+- Testing dashed keys without a standard physical code or codes outside the selected layout.
 - Changes to Practice, typing sound, Stats, session history, Keyboard Details, or layout matching.
 - New frameworks, dependencies, global keyboard listeners, or permissions.
 
@@ -57,7 +57,7 @@ The new mode is named **Freestyle**. It is short, is clearly the opposite of a g
 | Stack | Keep Svelte 5, TypeScript, existing styles, Vitest, and Playwright. No new dependency. |
 | Mode model | Add `KeyboardTestMode = 'guided' \| 'freestyle'` and a discriminated `KeyboardTestState` union keyed by `mode`, so guided-only fields cannot exist in a Freestyle state. |
 | State ownership | `KeyboardTestPanel` owns the selected mode and one state value. `keyboard-test.ts` stays pure: no DOM, audio, storage, or Svelte imports. |
-| Countable keys | Both modes count only codes in the active `testSequence`. Freestyle uses the sequence as a set; ordering is irrelevant. |
+| Countable keys | Both modes count every physical code in the active selected layout's `testSequence`, including Escape and function keys when present. Freestyle uses the sequence as a set; ordering is irrelevant. |
 | Physical identity | Unchanged: `KeyboardEvent.code` only, never `KeyboardEvent.key` or legends. |
 | Visualizer reuse | Keep one `AliceKeyboardVisualizer`; it derives guided or Freestyle presentation from `testState.mode`. No second matrix component or copied geometry. |
 | Sound reuse | Keep the existing Test sound fieldset, `KeyboardTestSound`, preferences, preview, and failure handling unchanged and shared by both modes. |
@@ -107,18 +107,18 @@ Freestyle never completes. Pressing every countable key at least once changes on
 
 ### 5.3 Panel event handling
 
-The existing `keydown` pipeline is preserved: focused-region check, composition guard, `classifyTestKey`, Escape exit, held-code duplicate rejection, default prevention for Tab/Space/Backspace, then a mode-specific step.
+The existing `keydown` pipeline is preserved: focused-region check, composition guard, `classifyTestKey`, held-code duplicate rejection, default prevention for Tab/Space/Backspace, mapped Escape, and mapped function keys, then a mode-specific step. Escape is tested when present in the selected layout; Shift+Tab remains an exit path.
 
 | Step | One key at a time | Freestyle |
 | --- | --- | --- |
 | Completed run | Ignore input until restart (unchanged). | Not applicable. |
 | Countable code | Expected code advances and counts once; other codes set the Mismatch error (unchanged). | Increment that code's count; never set `errorCode` or an error timer. |
-| Code not countable (unknown, empty, Escape-like untested codes, outside layout) | Mismatch message (unchanged). | Do not count; show the neutral "not counted" status (section 6.4). No Mismatch highlight. |
+| Code not countable (unknown, empty, outside layout) | Mismatch message (unchanged). | Do not count; show the neutral "not counted" status (section 6.4). No Mismatch highlight. |
 | Test sound | One play per eligible press (unchanged). | One play per eligible press, counted or not, matching guided behavior for unexpected keys. |
 
 Auto-repeat, held duplicate keydowns, composition, and Ctrl/Alt/Meta shortcut combinations remain ignored in both modes, so holding a key adds exactly one Freestyle press. A standalone modifier key counts when pressed alone; a Shift+letter press counts the letter (and the earlier Shift keydown) as today.
 
-Tab in Freestyle: unmodified Tab is a countable key and is consumed (`preventDefault`) while the region is focused, because there is no expected key to decide when Tab should be released. Escape always moves focus to **Focus keyboard test**, and Shift+Tab always leaves, as in Phase 6. The Freestyle instructions state this explicitly so the region is never a keyboard trap.
+Tab in Freestyle: unmodified Tab is a countable key and is consumed (`preventDefault`) while the region is focused, because there is no expected key to decide when Tab should be released. Escape is counted when present in the selected layout; Shift+Tab always leaves so the region is never a keyboard trap.
 
 ### 5.4 Reset rules
 
@@ -150,8 +150,8 @@ Add a **Test mode** group directly below the heading and before the instructions
 
 The `keyboard-test-instructions` paragraph (referenced by the region's `aria-describedby`) is mode-specific.
 
-- **One key at a time:** existing copy, unchanged.
-- **Freestyle:** "Focus the test area, then press any physical keys in any order, as often as you like. Each key shows how many times it was pressed. Match positions, not typed characters. Tab is counted here: press Escape or Shift+Tab to leave. Browser shortcuts are not captured. Some system keys may not reach the browser."
+- **One key at a time:** "Focus the test area, then press and release each expected physical key. Match positions, not typed characters. Press Tab to leave (except when testing Tab) and Shift+Tab to go back or leave. Escape is testable on this layout when present; otherwise Escape leaves the test. Modified browser shortcuts are not captured. Some system keys may not reach the browser."
+- **Freestyle:** "Focus the test area, then press any physical keys in any order, as often as you like. Each key shows how many times it was pressed. Match positions, not typed characters. Tab is counted here. Escape is counted when it is part of this layout; press Shift+Tab to leave. Modified browser shortcuts are not captured. Some system keys may not reach the browser."
 
 ### 6.3 Progress
 
@@ -205,7 +205,7 @@ The **Test sound** fieldset, effect selector, preview rule, audio-failure alert,
 
 - The mode selector is reachable by Tab, operable with Enter/Space, exposes the active mode through `aria-pressed`, and has a visible label; state is not conveyed by color alone.
 - Mode switching keeps focus on the activated button so keyboard users are not moved unexpectedly; the status region announces the reset.
-- Freestyle Tab capture is documented in the region's description, and Escape plus Shift+Tab always leave (WCAG 2.1.2 No Keyboard Trap).
+- Freestyle Tab capture is documented in the region's description, and Shift+Tab always leaves (WCAG 2.1.2 No Keyboard Trap). Escape is testable when present in the selected layout.
 - Freestyle announcements are a single, atomic "Last key" sentence per press, replacing rather than queuing earlier text. Repeat and held-key events never announce.
 - Count text in Freestyle cells keeps sufficient contrast on both neutral and orange-filled keycaps using the existing `.key-count` color rules.
 - The responsive scrollable diagram, its keyboard scroll help, and reduced-motion behavior are unchanged.
@@ -226,7 +226,7 @@ The **Test sound** fieldset, effect selector, preview rule, audio-failure alert,
 | `src/lib/components/KeyboardTestPanel.svelte` | Add the Test mode selector, mode state, reset-on-switch, mode-specific instructions/progress/status, Freestyle keydown branch, and Tab capture rule. Keep sound and focus lifecycle shared. |
 | `src/lib/components/AliceKeyboardVisualizer.svelte` | Derive guided/Freestyle cell states, markers, legend, counts, description, and results from `testState.mode`. Hide guided count text. Practice (no `testState`) is unchanged. |
 | `tests/keyboard-test.spec.ts` | Update guided assertions that expect visible counts or "N correct" results; add Freestyle and mode-switch scenarios. |
-| `tests/keyboard-layout.spec.ts` | Confirm a confirmed imported layout works in Freestyle and that untested codes stay uncounted. |
+| `tests/keyboard-layout.spec.ts` | Confirm a confirmed imported layout works in Freestyle and every selected key code is countable. |
 | `src/App.svelte`, preferences, audio, Practice, Stats | No change expected. |
 | `README.md`, `doc/tech-design.md` | Describe the two modes once implemented. |
 
@@ -248,7 +248,7 @@ Phase 9 is complete when all of the following are true:
 - Freestyle never renders the Expected key prompt, `>` marker, Expected key or Mismatch legend entries, `expected`/`unexpected` test states, `incorrect` feedback, or error-colored status. Non-countable eligible presses are reported neutrally and are not counted.
 - Freestyle has no completion state; covering every countable key is announced but counting continues.
 - Switching to the other mode resets counts, highlights, progress, status, held keys, and pending sound; re-selecting the active mode keeps counts. **Restart test** resets only the active mode.
-- Auto-repeat, held duplicates, composition, and modified shortcuts never count in either mode. Escape and Shift+Tab always leave; Freestyle counts and consumes unmodified Tab.
+- Auto-repeat, held duplicates, composition, and modified shortcuts never count in either mode. Shift+Tab always leaves; Escape is testable when present in the selected layout; Freestyle counts and consumes unmodified Tab.
 - Test sound, effect preview, persistence, and audio-failure handling behave identically in both modes and remain independent of practice sound.
 - Generic Alice and confirmed imported layouts both work in both modes; shared-code keycaps show identical states and counts; inert and untested keys are never counted or highlighted.
 - No test data or mode appears in preferences, IndexedDB, Stats, or network traffic. Preferences remain schema v5.
@@ -257,7 +257,7 @@ Phase 9 is complete when all of the following are true:
 ## 12. Risks and implementation notes
 
 - **Type migration:** Existing code reads `testState.correctCounts` directly. Route all reads through `testKeyCount` so Freestyle states cannot be misread as guided states.
-- **Tab trap perception:** Consuming Tab in Freestyle is intentional so Tab can be tested. Keep the instruction copy and Escape/Shift+Tab exits covered by browser tests.
+- **Tab trap perception:** Consuming Tab in Freestyle is intentional so Tab can be tested. Keep the instruction copy and Shift+Tab exit covered by browser tests.
 - **Announcement volume:** Fast Freestyle typing changes the status on every press. Keep the region atomic and short; do not add extra live regions or per-key announcements.
 - **Large counts:** Cell text space is small. Cap only the visual text at "999+"; never cap the stored count or results text.
 - **Regression in guided tests:** Existing Playwright assertions on `.key-count` text and "0 correct, expected" must change deliberately to the new guided contract, not be deleted.
