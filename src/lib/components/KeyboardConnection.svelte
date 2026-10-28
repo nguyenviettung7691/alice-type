@@ -15,6 +15,7 @@
 
   const { hid, keyboard } = browserKeyboardAccess();
   let prompt = $state(false);
+  let expanded = $state(false);
   let busy = $state(false);
   let warning = $state('');
   let layoutMessage = $state('');
@@ -113,6 +114,7 @@
   function finish(choice: 'device' | 'layout' | 'skip') {
     dismissed = true;
     prompt = false;
+    if (choice !== 'skip') expanded = true;
     if (choice === 'device') {
       void connect();
       void requestLayout();
@@ -149,7 +151,7 @@
 </script>
 
 <section class="notice keyboard-connection" aria-label="Keyboard connection">
-  <details>
+  <details bind:open={expanded}>
     <summary>
       <span class="connection-title">Keyboard connection</span>
       <span class="connection-badge" data-tone={busy ? 'pending' : !hid ? 'neutral' : selected ? (warning ? 'warning' : 'success') : 'warning'}>
