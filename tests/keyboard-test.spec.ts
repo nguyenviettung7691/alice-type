@@ -131,15 +131,15 @@ test.describe('guided keyboard test', () => {
     await expect(cell(page, 'Backquote')).toHaveAttribute('data-count', '1');
     await page.clock.runFor(600);
     await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'tested');
-    await expect(panel(page).getByRole('status')).not.toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).not.toContainText("That wasn't the highlighted key.");
     for (const code of ['', 'Unidentified', 'IntlBackslash']) {
       await dispatch(page, { key: '1', code });
       await expect(progress(page)).toHaveAttribute('value', '1');
-      await expect(panel(page).getByRole('status')).toContainText('Unexpected key');
+      await expect(panel(page).getByRole('status')).toContainText("That wasn't the highlighted key.");
     }
     await dispatch(page, { key: 'not the displayed legend', code: 'Digit1' });
     await expect(progress(page)).toHaveAttribute('value', '2');
-    await expect(panel(page).getByRole('status')).not.toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).not.toContainText("That wasn't the highlighted key.");
     await nav(page, 'Restart test').click();
     await page.clock.runFor(1000);
     await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'expected');
@@ -157,10 +157,10 @@ test.describe('guided keyboard test', () => {
     await dispatch(page, { code: 'Backquote', key: '`' }, false);
     await dispatch(page, { code: 'Backquote', key: '`' }, false);
     await expect(progress(page)).toHaveAttribute('value', '1');
-    await expect(panel(page).getByRole('status')).not.toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).not.toContainText("That wasn't the highlighted key.");
     await capture(page).dispatchEvent('keyup', { code: 'Backquote' });
     await dispatch(page, { code: 'Backquote', key: '`' });
-    await expect(panel(page).getByRole('status')).toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).toContainText("That wasn't the highlighted key.");
   });
 
   test('Tab, Shift+Tab, controls, and unfocused input remain keyboard safe', async ({ page }) => {
@@ -209,7 +209,7 @@ test.describe('guided keyboard test', () => {
     await page.keyboard.press('Backquote');
     await page.keyboard.press('KeyX');
     await nav(page, 'Focus keyboard test').focus();
-    await expect(panel(page).getByRole('status')).not.toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).not.toContainText("That wasn't the highlighted key.");
     await focusTest(page);
     await expect(progress(page)).toHaveAttribute('value', '1');
     await page.keyboard.press('Digit1');
@@ -231,14 +231,14 @@ test.describe('guided keyboard test', () => {
     await dispatch(page, { code: 'Backquote', key: '`' }, false);
     await dispatch(page, { code: 'Digit1', key: '1', ctrlKey: true }, false);
     await dispatch(page, { code: 'KeyX', key: 'x' }, false);
-    await expect(panel(page).getByRole('status')).toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).toContainText("That wasn't the highlighted key.");
     await page.evaluate(() => window.dispatchEvent(new Event('blur')));
-    await expect(panel(page).getByRole('status')).not.toContainText('Unexpected');
+    await expect(panel(page).getByRole('status')).not.toContainText("That wasn't the highlighted key.");
     await expect(progress(page)).toHaveAttribute('value', '1');
     await page.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect(panel(page).getByText('Listening for physical keys')).toBeVisible();
+    await expect(panel(page).getByText('Ready for key presses')).toBeVisible();
     await dispatch(page, { code: 'Backquote', key: '`' });
-    await expect(panel(page).getByRole('status')).toContainText('Unexpected key: Backquote');
+    await expect(panel(page).getByRole('status')).toContainText("That wasn't the highlighted key.");
     await dispatch(page, { code: 'Digit1', key: '1' });
     await expect(progress(page)).toHaveAttribute('value', '2');
   });
@@ -276,11 +276,11 @@ test.describe('Freestyle keyboard test', () => {
   });
 
   test('selector is keyboard operable, labelled, and defaults to guided on every mount', async ({ page }) => {
-    const group = panel(page).getByRole('group', { name: 'Test mode' });
+    const group = panel(page).getByRole('group', { name: 'Choose a test style' });
     await expect(group.getByRole('button')).toHaveText(['One key at a time', 'Freestyle']);
     await expect(modeButton(page, 'Freestyle')).toHaveAttribute('aria-pressed', 'true');
     await expect(modeButton(page, 'Freestyle')).toBeFocused();
-    await expect(panel(page).locator('.eyebrow')).toHaveText('Freestyle');
+    await expect(panel(page).locator('.eyebrow')).toHaveText('Keyboard check');
     await expect(status(page)).toHaveText('Switched to Freestyle. Test reset.');
     await page.keyboard.press('Shift+Tab');
     await expect(modeButton(page, 'One key at a time')).toBeFocused();
@@ -304,7 +304,7 @@ test.describe('Freestyle keyboard test', () => {
     await focusTest(page);
     await expect(status(page)).toHaveText('Switched to Freestyle. Test reset.');
     await nav(page, 'Restart test').click();
-    await expect(status(page)).toHaveText('Press any key on the diagram.');
+    await expect(status(page)).toHaveText('Press any mapped key to count it.');
     for (const code of ['KeyA', 'Slash', 'KeyA', 'Space', 'KeyA']) await page.keyboard.press(code);
     await expect(cell(page, 'KeyA')).toHaveAttribute('data-count', '3');
     await expect(cell(page, 'KeyA').locator('.key-count')).toHaveText('3');
@@ -313,16 +313,16 @@ test.describe('Freestyle keyboard test', () => {
     await expect(cell(page, 'KeyA').locator('.feedback-marker')).toHaveText('+');
     await expect(cell(page, 'Space').locator('.key-count')).toHaveText(['1', '1']);
     await expect(cell(page, 'Backquote')).toHaveAttribute('data-test-state', 'unpressed');
-    await expect(status(page)).toHaveText('Last key: A (KeyA), pressed 3 times.');
-    await expect(panel(page).locator('.test-progress')).toHaveText(`3 of ${ALICE_LAYOUT.length} keys pressed · 5 total presses`);
+    await expect(status(page)).toHaveText('A was pressed 3 times.');
+    await expect(panel(page).locator('.test-progress')).toHaveText(`3 of ${ALICE_LAYOUT.length} keys tried · 5 key presses`);
     await expect(progress(page)).toHaveAttribute('value', '3');
     for (const code of ['', 'Unidentified', 'IntlBackslash']) {
       await dispatch(page, { key: '1', code });
-      await expect(status(page)).toContainText('is not counted on this layout');
+      await expect(status(page)).toContainText("isn't part of this layout, so it wasn't counted.");
     }
     await expect(panel(page).locator('[data-feedback="incorrect"], [data-test-state="unexpected"], [data-test-state="expected"]')).toHaveCount(0);
     await expect(panel(page).locator('.feedback-marker', { hasText: /[!>]/ })).toHaveCount(0);
-    await expect(status(page)).not.toContainText(/Expected|Unexpected/);
+    await expect(status(page)).not.toContainText("wasn't the highlighted key");
     await page.getByText('Text key results', { exact: true }).click();
     await expect(panel(page).getByRole('listitem').filter({ hasText: '(KeyA)' })).toHaveText('A (KeyA): 3 presses');
     await expect(panel(page).getByRole('listitem').filter({ hasText: '(Slash)' })).toHaveText('/ (Slash): 1 press');
@@ -343,7 +343,7 @@ test.describe('Freestyle keyboard test', () => {
     await expect(modeButton(page, 'Freestyle')).toHaveAttribute('aria-pressed', 'true');
     for (const key of [...ALICE_LAYOUT].reverse()) await dispatch(page, { code: key.code, key: '' });
     await expect(progress(page)).toHaveAttribute('value', String(ALICE_LAYOUT.length));
-    await expect(status(page)).toContainText('Every mapped key has been pressed at least once.');
+    await expect(status(page)).toContainText('All mapped keys have been pressed at least once.');
     await page.keyboard.press('KeyA');
     await expect(cell(page, 'KeyA')).toHaveAttribute('data-count', '2');
     await expect(status(page)).not.toContainText('Test complete');
@@ -478,12 +478,12 @@ test.describe('test sound and local preferences', () => {
     await expect(effectSelect(page)).toHaveValue('dog-bark');
     expect(await page.evaluate(() => Reflect.get(window, 'testAudioCalls').contexts)).toBe(0);
     await expect(progress(page)).toHaveAttribute('value', '0');
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await expect(page.getByLabel('Typing sound', { exact: true })).not.toBeChecked();
     await page.getByLabel('Typing sound', { exact: true }).check();
     await nav(page, 'Keyboard Test').click();
     await soundToggle(page).uncheck();
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await expect(page.getByLabel('Typing sound', { exact: true })).toBeChecked();
     await nav(page, 'Restore defaults').click();
     await page.getByRole('dialog').getByRole('button', { name: 'Restore defaults', exact: true }).click();
@@ -502,7 +502,7 @@ test.describe('test sound and local preferences', () => {
     await expect(progress(page)).toHaveAttribute('value', '1');
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '').settings, PREFERENCES_KEY);
     expect(saved.keyboardTestSoundEnabled).toBe(true);
-    await nav(page, 'Dismiss test sound warning').click();
+    await nav(page, 'Dismiss warning').click();
     await expect(panel(page).getByRole('alert')).toHaveCount(0);
     await soundToggle(page).check();
     await expect(soundToggle(page)).toBeChecked();

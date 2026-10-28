@@ -61,7 +61,7 @@ test('pointer text selection focuses input and shows non-color feedback', async 
   await expect(characters(page).first()).toHaveCSS('text-decoration-line', 'underline');
   await expect(characters(page).nth(1)).toHaveCSS('background-color', 'rgb(255, 93, 0)');
   await expect(page.locator('label.practice-text')).toHaveCSS('outline-style', 'solid');
-  await expect(page.getByRole('status')).toHaveText(/Session started/);
+  await expect(page.getByRole('status')).toHaveText(/You are typing/);
 });
 
 test('supports keyboard activation of the explicit start control', async ({ page }) => {
@@ -220,7 +220,7 @@ for (const width of [1440, 768, 320]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     expect(await panel(page).evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await expect(input(page)).toHaveAccessibleName('Typing practice');
-    await expect(input(page)).toHaveAccessibleDescription(/Time continues when focus moves away/);
+    await expect(input(page)).toHaveAccessibleDescription(/clock keeps running/);
   });
 }
 

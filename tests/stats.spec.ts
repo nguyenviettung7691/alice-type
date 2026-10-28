@@ -144,7 +144,7 @@ test('destructive actions use error colors without changing confirmation behavio
   await expectDanger(nav(page, 'Restart'));
   await nav(page, 'Custom').click();
   await expectDanger(nav(page, 'Clear text'));
-  await nav(page, 'Settings').click();
+  await nav(page, 'Practice').click();
   await expectDanger(nav(page, 'Restore defaults'));
   await nav(page, 'Restore defaults').click();
   await expectDanger(page.getByRole('dialog').getByRole('button', { name: 'Restore defaults' }), true);

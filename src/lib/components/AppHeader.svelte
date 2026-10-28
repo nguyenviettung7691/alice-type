@@ -1,13 +1,12 @@
 <script lang="ts">
   let { disabled, view, onviewchange }: {
     disabled: boolean;
-    view: 'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details';
-    onviewchange: (view: 'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
+    view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details';
+    onviewchange: (view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
   } = $props();
   const views = [
     { id: 'practice', label: 'Practice' }, { id: 'keyboard-test', label: 'Keyboard Test' },
-    { id: 'keyboard-details', label: 'Keyboard Details' },
-    { id: 'settings', label: 'Settings' }, { id: 'stats', label: 'Stats' }
+    { id: 'keyboard-details', label: 'Keyboard Details' }, { id: 'stats', label: 'Stats' }
   ] as const;
 </script>
 

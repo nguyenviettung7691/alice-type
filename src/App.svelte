@@ -3,7 +3,6 @@
   import AppFooter from './lib/components/AppFooter.svelte';
   import AppHeader from './lib/components/AppHeader.svelte';
   import PracticePanel from './lib/components/PracticePanel.svelte';
-  import SettingsPanel from './lib/components/SettingsPanel.svelte';
   import StatsPanel from './lib/components/StatsPanel.svelte';
   import KeyboardConnection from './lib/components/KeyboardConnection.svelte';
   import { applyLayoutLegends, type KeyboardDevice } from './lib/keyboard/keyboard-access';
@@ -48,7 +47,7 @@
   let settings = $state(practicePreferences(initial.settings));
   let running = $state(false);
   let contentReset = $state(0);
-  let view = $state<'practice' | 'settings' | 'stats' | 'keyboard-test' | 'keyboard-details'>('practice');
+  let view = $state<'practice' | 'stats' | 'keyboard-test' | 'keyboard-details'>('practice');
   let preferenceError = $state(initial.error);
   let preferenceOperation = $state<'load' | 'save'>(initial.operation);
   let preserveStored = initial.operation === 'load';
@@ -211,10 +210,16 @@
     if (settings.mode !== 'zen' && preferences.soundEnabled) void sound.play().catch(audioFailed);
   }
 
-  function updateSettings(next: Preferences) {
-    const enabling = next.soundEnabled && !preferences.soundEnabled;
-    changePreferences(next);
+  function updateSound(soundEnabled: boolean) {
+    const enabling = soundEnabled && !preferences.soundEnabled;
+    changePreferences({ ...preferences, soundEnabled });
     if (enabling) audioError = '';
+  }
+
+  function restoreDefaults() {
+    contentReset += 1;
+    changePreferences({ ...DEFAULT_PREFERENCES, onboardingComplete: preferences.onboardingComplete });
+    audioError = '';
   }
 
   async function finishOnboarding(focusPractice: boolean) {
@@ -264,7 +269,7 @@
       {/if}
     {/each}
     {#if audioError}
-      <div class="notice" role="alert"><p>{audioError} Sound is off for this visit. Enable it in Settings to retry.</p>
+      <div class="notice" role="alert"><p>{audioError} Sound is off for this visit. Turn on Typing sound in Practice to retry.</p>
         <button class="secondary-button" type="button" onclick={() => { audioError = ''; }}>Dismiss sound warning</button>
       </div>
     {/if}
@@ -275,14 +280,13 @@
         inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox} layoutConfirmed={!!appliedLayout}
         browserLegends={layoutLegends !== null}
         caretStyle={preferences.caretStyle} showLiveStats={preferences.showLiveStats}
+        soundEnabled={preferences.soundEnabled}
+        oncaretchange={(caretStyle) => changePreferences({ ...preferences, caretStyle })}
+        onlivestatschange={(showLiveStats) => changePreferences({ ...preferences, showLiveStats })}
+        onsoundchange={updateSound} onreset={restoreDefaults}
         oncharacter={playClick} oncomplete={completed} />
     </div>
-    {#if view === 'settings'}
-      <SettingsPanel settings={preferences} onchange={updateSettings} onpractice={() => navigate('practice')} onreset={() => {
-        contentReset += 1;
-        changePreferences({ ...DEFAULT_PREFERENCES, onboardingComplete: preferences.onboardingComplete });
-      }} />
-    {:else if view === 'stats'}
+    {#if view === 'stats'}
       <StatsPanel {history} {revision} pending={pending.length > 0}
         layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
         inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox}

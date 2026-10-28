@@ -49,12 +49,10 @@ test.describe('preferences and local history', () => {
     await page.getByLabel('Numbers', { exact: true }).check();
     const exercise = await target(page);
     await page.evaluate(() => { Math.random = () => 0.5; });
-    await nav(page, 'Settings').click();
-    await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeFocused();
+    await nav(page, 'Practice').click();
     await page.getByLabel('Caret style').selectOption('underline');
     await page.getByLabel('Show live WPM and accuracy').uncheck();
     await page.getByLabel('Typing sound', { exact: true }).check();
-    await nav(page, 'Back to practice').click();
     expect(await target(page)).toBe(exercise);
     await expect(panel(page)).toHaveAttribute('data-caret', 'underline');
     await expect(page.locator('.metric-value')).toHaveCount(0);
@@ -65,7 +63,7 @@ test.describe('preferences and local history', () => {
     await expect(page.getByLabel('Numbers', { exact: true })).toBeChecked();
     await nav(page, 'Timed').click();
     await expect(page.getByLabel('Duration', { exact: true })).toHaveValue('120');
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await expect(page.getByLabel('Caret style')).toHaveValue('underline');
     await expect(page.getByLabel('Typing sound', { exact: true })).toBeChecked();
     await expect(page.getByLabel('Show live WPM and accuracy')).not.toBeChecked();
@@ -73,7 +71,7 @@ test.describe('preferences and local history', () => {
 
   test('restores defaults only after confirmation and leaves history intact', async ({ page }) => {
     await completeWords(page);
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await page.getByLabel('Caret style').selectOption('line');
     await nav(page, 'Restore defaults').click();
     await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
@@ -82,14 +80,13 @@ test.describe('preferences and local history', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Restore defaults', exact: true }).click();
     await expect(page.getByLabel('Caret style')).toHaveValue('block');
     expect(await records(page)).toHaveLength(1);
-    await nav(page, 'Back to practice').click();
     await expect(page.getByLabel('Duration', { exact: true })).toHaveValue('30');
   });
 
   test('disables view/settings changes during a run and preserves completed practice across navigation', async ({ page }) => {
     await nav(page, 'Start typing').click();
     await page.keyboard.type('y');
-    for (const name of ['Practice', 'Settings', 'Stats', 'Timed', 'Words']) await expect(nav(page, name)).toBeDisabled();
+    for (const name of ['Practice', 'Stats', 'Timed', 'Words']) await expect(nav(page, name)).toBeDisabled();
     await nav(page, 'Restart').click();
     await completeWords(page);
     const final = await page.locator('.metric-value').allTextContents();
@@ -414,7 +411,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(panel(page)).toHaveAttribute('data-status', 'ready');
     await page.evaluate(() => Reflect.get(window, 'finishLayoutMap')());
     await expect(page.locator('.keyboard-connection details')).toHaveAttribute('open', '');
-    await expect(page.getByRole('status')).toContainText(['Browser layout sample', 'Select the text']);
+    await expect(page.getByRole('status')).toContainText(['Browser layout sample', 'Press Start typing']);
     await expect(page.getByText(/Browser layout sample/)).toContainText('KeyQ: a');
     await expect(page.getByRole('img', { name: 'Generic Alice keyboard', exact: true })).toHaveAccessibleDescription(/not a detected device/);
   });
@@ -502,10 +499,9 @@ test.describe('display, sound, and responsive views', () => {
 
   test('caret variants are visible and hidden live metrics return for final results', async ({ page }) => {
     for (const style of ['line', 'underline', 'block']) {
-      await nav(page, 'Settings').click();
+      await nav(page, 'Practice').click();
       await page.getByLabel('Caret style').selectOption(style);
       await page.getByLabel('Show live WPM and accuracy').uncheck();
-      await nav(page, 'Back to practice').click();
       await expect(panel(page)).toHaveAttribute('data-caret', style);
       await expect(page.locator('.typing-character.active')).toHaveCSS('box-shadow', style === 'line'
         ? 'rgb(255, 93, 0) -2px 0px 0px 0px' : style === 'underline'
@@ -546,9 +542,8 @@ test.describe('display, sound, and responsive views', () => {
     await page.keyboard.type('y');
     expect(await page.evaluate(() => Reflect.get(window, 'audioCalls').clicks)).toBe(0);
     await nav(page, 'Restart').click();
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await page.getByLabel('Typing sound', { exact: true }).check();
-    await nav(page, 'Back to practice').click();
     await nav(page, 'Start typing').click();
     await page.keyboard.type('yx');
     await page.keyboard.press('Backspace');
@@ -587,25 +582,24 @@ test.describe('display, sound, and responsive views', () => {
 
   test('audio failure disables sound in memory, reports it, and preserves typing', async ({ page }) => {
     await page.evaluate(() => { Object.defineProperty(window, 'AudioContext', { value: undefined }); });
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await page.getByLabel('Typing sound', { exact: true }).check();
-    await nav(page, 'Back to practice').click();
     await nav(page, 'Start typing').click();
     await page.keyboard.type('y');
     await expect(page.getByRole('alert')).toContainText('Web Audio is unavailable');
     await expect(page.locator('.typing-character.correct')).toHaveCount(1);
     await nav(page, 'Restart').click();
-    await nav(page, 'Settings').click();
+    await nav(page, 'Practice').click();
     await expect(page.getByLabel('Typing sound', { exact: true })).not.toBeChecked();
   });
 
   for (const width of [1440, 768, 320]) {
-    test(`Settings, Stats, and confirmations fit ${width}px without page overflow`, async ({ page }) => {
+    test(`Practice, Stats, and confirmations fit ${width}px without page overflow`, async ({ page }) => {
       await page.setViewportSize({ width, height: 900 });
       await completeWords(page);
-      for (const view of ['Settings', 'Stats']) {
+      for (const [view, heading] of [['Practice', 'Typing practice'], ['Stats', 'Stats']]) {
         await nav(page, view).click();
-        await expect(page.getByRole('heading', { name: view, exact: true })).toBeVisible();
+        await expect(page.getByRole('heading', { name: heading, exact: true })).toBeAttached();
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       }
       await nav(page, 'Clear history').click();

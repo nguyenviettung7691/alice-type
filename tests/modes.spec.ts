@@ -66,7 +66,7 @@ test('keeps connection above every view and mode selection inside Practice', asy
     const header = await page.locator('header').boundingBox();
     const connection = await page.locator('.keyboard-connection').boundingBox();
     const selector = await modes.boundingBox();
-    const settings = await page.getByRole('group', { name: 'Exercise settings' }).boundingBox();
+    const settings = await page.getByRole('group', { name: 'Practice options' }).boundingBox();
     if (!header || !connection || !selector || !settings) throw new Error('Missing app layout');
     expect(connection.y - (header.y + header.height)).toBeGreaterThanOrEqual(0);
     expect(connection.y - (header.y + header.height)).toBeLessThanOrEqual(24);
@@ -74,7 +74,7 @@ test('keeps connection above every view and mode selection inside Practice', asy
     expect(settings.y).toBeGreaterThanOrEqual(selector.y + selector.height);
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
   }
-  for (const name of ['Settings', 'Stats', 'Keyboard Test', 'Keyboard Details']) {
+  for (const name of ['Stats', 'Keyboard Test', 'Keyboard Details']) {
     await page.getByRole('button', { name, exact: true }).click();
     await expect(modes).toBeHidden();
     await expect(page.locator('main > .keyboard-connection')).toBeVisible();
@@ -119,7 +119,7 @@ test('mode selection is keyboard-operable, preserves inactive choices, and locks
   for (const name of ['Timed', 'Words']) await expect(page.getByRole('button', { name, exact: true })).toBeDisabled();
   for (const name of ['Word limit', 'Vocabulary']) await expect(page.getByLabel(name, { exact: true })).toBeDisabled();
   for (const name of ['Punctuation', 'Numbers']) await expect(page.getByRole('checkbox', { name, exact: true })).toBeDisabled();
-  await expect(page.getByText('Restart to change mode or settings.')).toBeVisible();
+  await expect(page.getByText('Options are locked while you type. Restart to change them.')).toBeVisible();
   await page.getByRole('button', { name: 'Restart', exact: true }).click();
   await expect(page.getByLabel('Word limit', { exact: true })).toBeEnabled();
   await expect(page.getByLabel('Word limit', { exact: true })).toHaveValue('50');

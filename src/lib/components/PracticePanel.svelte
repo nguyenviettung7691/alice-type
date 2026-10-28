@@ -19,14 +19,16 @@
     ExerciseGenerationError, generateExercise, getConfiguration,
     type PracticeSettings
   } from '../typing/exercise-generator';
-  import { type CaretStyle } from '../storage/preferences';
+  import { CARET_STYLES, type CaretStyle } from '../storage/preferences';
+  import ConfirmationDialog from './ConfirmationDialog.svelte';
   import { completedRecord, type SessionRecord } from '../storage/session-history';
   import { prepareCustomText } from '../typing/custom-text';
   import { selectQuote, type Quote } from '../typing/quote-catalog';
 
   let {
     settings = $bindable({ ...DEFAULT_SETTINGS }), running = $bindable(false),
-    caretStyle = 'block', showLiveStats = true, onsettingschange, oncharacter, oncomplete,
+    caretStyle = 'block', showLiveStats = true, soundEnabled = false,
+    onsettingschange, oncaretchange, onlivestatschange, onsoundchange, onreset, oncharacter, oncomplete,
     layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false,
     inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutConfirmed = false,
     active = true, contentReset = 0
@@ -35,7 +37,12 @@
     running?: boolean;
     caretStyle?: CaretStyle;
     showLiveStats?: boolean;
+    soundEnabled?: boolean;
     onsettingschange?: (settings: PracticeSettings) => void;
+    oncaretchange?: (caretStyle: CaretStyle) => void;
+    onlivestatschange?: (showLiveStats: boolean) => void;
+    onsoundchange?: (soundEnabled: boolean) => void;
+    onreset?: () => void;
     oncharacter?: () => void;
     oncomplete?: (record: SessionRecord) => void;
     layout?: readonly AliceKey[];
@@ -60,6 +67,7 @@
   let normalized = $state(false);
   let customError = $state('');
   let resultHeading = $state<HTMLHeadingElement>();
+  let confirmingReset = $state(false);
   const customPreparation = $derived.by(() => {
     try { return { value: prepareCustomText(draft), error: '' }; }
     catch (error) {
@@ -85,12 +93,12 @@
   const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
   const statusMessage = $derived(
     !session
-      ? 'Apply text to prepare a Custom exercise.'
+      ? 'Paste your text and choose Apply text to get started.'
       : session.status === 'ready'
-      ? 'Select the text or Start typing to begin.'
+      ? 'Press Start typing, or just begin typing, when you are ready.'
       : session?.status === 'completed'
-        ? `Session complete. ${{ timed: 'Time is up.', words: 'Word limit reached.', quote: 'Quote complete.', custom: 'Custom text complete.', zen: 'Zen stopped.' }[settings.mode]} Restart to practice again.`
-        : 'Session started. Use Backspace to correct mistakes.'
+        ? `Session complete. ${{ timed: 'Time is up.', words: 'Word limit reached.', quote: 'Quote complete.', custom: 'Custom text complete.', zen: 'Zen stopped.' }[settings.mode]} Choose Restart to practice again.`
+        : 'You are typing. Use Backspace to fix mistakes.'
   );
 
   $effect(() => {
@@ -322,7 +330,7 @@
 
   {#if settings.mode === 'timed' || settings.mode === 'words'}
   <fieldset class="exercise-settings" disabled={running}>
-    <legend>Exercise settings</legend>
+    <legend>Practice options</legend>
     {#if timed}
       <label>Duration
         <select aria-label="Duration" value={settings.durationSeconds} onchange={(event) => {
@@ -365,9 +373,9 @@
     <p class="quote-attribution" data-quote-id={quote.id}>{quote.author} - {quote.workTitle}</p>
     <button class="secondary-button" type="button" disabled={running} onclick={nextQuote}>Next quote</button>
   {:else if settings.mode === 'custom'}
-    <p id="custom-privacy">Paste text here to prepare an exercise. Your text stays in memory and is not saved.
-      Leaving Practice or restoring defaults clears it; switching practice modes keeps it.</p>
-    <p id="custom-format">Use printable ASCII text, up to 10,000 characters. Whitespace becomes spaces; curly quotes, dashes, and ellipses are normalized. Review the target before typing.</p>
+    <p id="custom-privacy">Paste any text you want to practice. It stays in this tab and is never saved.
+      It clears when you leave Practice or restore defaults, but survives switching modes.</p>
+    <p id="custom-format">Up to 10,000 printable ASCII characters. Line breaks become spaces, and curly quotes, dashes, and ellipses are converted to plain versions. Check the result before you start typing.</p>
     {#if editing}
       <label class="custom-label" for="custom-draft">Custom text</label>
       <textarea id="custom-draft" bind:value={draft} aria-describedby="custom-privacy custom-format custom-error"
@@ -389,15 +397,15 @@
     </div>
   {/if}
   {#if !zen}
-  <p class="settings-note">{running ? 'Restart to change mode or settings.' : 'Choose an exercise, then start typing.'}</p>
+  <p class="settings-note">{running ? 'Options are locked while you type. Restart to change them.' : 'Pick a mode and options, then start typing.'}</p>
   {:else}
-    <p id="zen-instructions">Free writing: only your recent 2,000 characters are displayed, but Backspace can edit earlier writing.
-      Use printable ASCII keys; paste and composition are unsupported. Tab leaves writing; time continues while unfocused.
-      Stop saves a result. Restart discards an unfinished run and unlocks navigation. Sound and live statistics are off in Zen.</p>
+    <p id="zen-instructions">Free writing: type whatever you like. Only your latest 2,000 characters are shown, but Backspace can still edit earlier text.
+      Use printable ASCII keys; paste and IME input are not supported. Tab leaves the writing area, and the clock keeps running while you are away.
+      Stop saves your result; Restart discards an unfinished run. Sound and live stats are always off in Zen.</p>
   {/if}
 
   {#if exerciseError}
-    <p role="alert" class="exercise-error">Exercise unavailable: {exerciseError} Restart to try again.</p>
+    <p role="alert" class="exercise-error">We couldn't prepare this exercise: {exerciseError} Choose Restart to try again.</p>
   {/if}
   {#if session && !(settings.mode === 'custom' && editing)}
   {#if metrics}
@@ -432,9 +440,9 @@
 
   {#if !zen}
   <p id="typing-instructions" class="sr-only">
-    Type the target text one key at a time. Backspace corrects the last character.
-    Tab leaves the practice input. Time continues when focus moves away.
-    Paste and composition input are not supported in this exercise.
+    Type the text shown, one key at a time. Backspace fixes the last character.
+    Tab leaves the typing area. The clock keeps running if focus moves away.
+    Paste and IME input are not supported.
   </p>
   {/if}
   <input
@@ -485,7 +493,7 @@
   {/if}
 
   <div class="practice-bottom">
-    {#if !zen}<p class="session-note" role="status">{exerciseError ? 'Practice stopped. Restart to generate a new exercise.' : statusMessage}</p>{/if}
+    {#if !zen}<p class="session-note" role="status">{exerciseError ? 'Practice stopped. Choose Restart for a new exercise.' : statusMessage}</p>{/if}
     <div class="practice-actions">
       {#if session && !exerciseError && session.status !== 'completed' && !(settings.mode === 'custom' && editing)}
         <button
@@ -498,7 +506,36 @@
       <button class="restart-button danger-button" type="button" onclick={restart}>Restart</button>
     </div>
   </div>
+
+  <fieldset class="preferences" disabled={running}>
+    <legend>Display and sound</legend>
+    <label>Caret style
+      <select value={caretStyle} onchange={(event) => {
+        const next = CARET_STYLES.find((style) => style === event.currentTarget.value);
+        if (!next) throw new Error('Unsupported caret selection.');
+        oncaretchange?.(next);
+      }}>
+        {#each CARET_STYLES as style}<option value={style}>{style[0].toUpperCase() + style.slice(1)}</option>{/each}
+      </select>
+    </label>
+    <label class="modifier"><input type="checkbox" checked={showLiveStats}
+      onchange={(event) => onlivestatschange?.(event.currentTarget.checked)} />Show live WPM and accuracy</label>
+    <label class="modifier"><input type="checkbox" checked={soundEnabled}
+      onchange={(event) => onsoundchange?.(event.currentTarget.checked)} />Typing sound</label>
+    <p class="settings-note">Results and history are saved even when live stats are hidden. Typing sound is a soft click for each accepted key and is off by default. Preferences stay in this browser.</p>
+    <button type="button" class="secondary-button danger-button" onclick={() => { confirmingReset = true; }}>Restore defaults</button>
+  </fieldset>
 </section>
+
+{#if confirmingReset}
+  <ConfirmationDialog
+    title="Restore default preferences?"
+    message="This resets your practice options, caret, live stats, and sound to their defaults. Your session history is kept."
+    confirmText="Restore defaults"
+    oncancel={() => { confirmingReset = false; }}
+    onconfirm={() => { confirmingReset = false; onreset?.(); }}
+  />
+{/if}
 
 <style>
   textarea {
@@ -530,7 +567,7 @@
     scrollbar-color: var(--color-accent) var(--color-surface);
   }
 
-  .exercise-settings {
+  .exercise-settings, .preferences {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -543,12 +580,21 @@
     font-size: 0.8rem;
   }
 
-  .exercise-settings legend {
+  .preferences {
+    margin-top: 2rem;
+    border-top: 1px solid rgb(255 255 255 / 10%);
+    border-bottom: 0;
+    padding: 1rem 0 0;
+  }
+
+  .preferences .settings-note { flex-basis: 100%; margin: 0; }
+
+  .exercise-settings legend, .preferences legend {
     margin-bottom: 0.75rem;
     font-weight: 600;
   }
 
-  .exercise-settings label {
+  .exercise-settings label, .preferences label {
     display: flex;
     align-items: center;
     gap: 0.5rem;
@@ -573,7 +619,7 @@
     accent-color: var(--color-accent);
   }
 
-  .exercise-settings:disabled {
+  .exercise-settings:disabled, .preferences:disabled {
     opacity: 0.6;
   }
 

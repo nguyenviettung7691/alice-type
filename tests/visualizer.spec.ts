@@ -242,7 +242,7 @@ for (const width of [1440, 768, 320]) {
       await expect(scrollArea(page)).toHaveCSS('outline-style', 'solid');
       await page.keyboard.press('ArrowRight');
       await expect.poll(() => scrollArea(page).evaluate((el) => el.scrollLeft)).toBeGreaterThan(0);
-      await expect(page.getByRole('status')).toHaveText(/Select the text/);
+      await expect(page.getByRole('status')).toHaveText(/Press Start typing/);
     }
   });
 }

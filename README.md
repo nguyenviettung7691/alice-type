@@ -144,11 +144,11 @@ product names, and device IDs do not reliably identify physical geometry,
 model, firmware, or hardware features. AliceType never opens HID devices or
 reads/writes HID reports.
 
-## Settings, history, and privacy
+## Preferences, history, and privacy
 
-**Settings** offers Block, Line, or Underline carets, live-stat visibility, and
-optional generated typing clicks. Sound is off by default. **Restore defaults**
-requires confirmation and does not delete history.
+The **Practice** page includes Block, Line, or Underline carets, live-stat
+visibility, and optional generated typing clicks (off by default). **Restore
+defaults** requires confirmation and does not delete history.
 
 Preferences, selected profiles, confirmed layouts, and personal notes use
 versioned `localStorage`. Completed scores use IndexedDB. **Stats** separates
