@@ -227,6 +227,9 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
   };
 }
 
+// About three years of daily practice at roughly one session per day, kept small enough for fast reads and rendering.
+export const MAX_SESSION_HISTORY = 1000;
+
 export class SessionHistory {
   private connection: IDBDatabase | undefined;
   private opening: Promise<IDBDatabase> | undefined;
@@ -303,7 +306,34 @@ export class SessionHistory {
 
   async save(record: SessionRecord): Promise<void> {
     const validated = validateSessionRecord(record);
-    await this.transaction('readwrite', (store) => store.put(validated));
+    const db = await this.open();
+    await new Promise<void>((resolve, reject) => {
+      try {
+        const transaction = db.transaction('sessions', 'readwrite');
+        const store = transaction.objectStore('sessions');
+        store.put(validated);
+        const countRequest = store.count();
+        countRequest.onsuccess = () => {
+          let excess = countRequest.result - MAX_SESSION_HISTORY;
+          if (excess <= 0) return;
+          // Oldest sessions first; the index is ordered by completedAt ascending.
+          const cursorRequest = store.index('completedAt').openKeyCursor();
+          cursorRequest.onsuccess = () => {
+            const cursor = cursorRequest.result;
+            if (!cursor || excess <= 0) return;
+            store.delete(cursor.primaryKey);
+            excess -= 1;
+            cursor.continue();
+          };
+        };
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(storageFailure(
+          'History transaction failed', transaction.error ?? new StorageError('The transaction was aborted.')
+        ));
+      } catch (error) {
+        reject(storageFailure('History transaction failed', error));
+      }
+    });
   }
 
   async read(): Promise<SessionRecord[]> {

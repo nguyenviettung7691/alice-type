@@ -1,6 +1,6 @@
 <script lang="ts">
   import { StorageError } from '../storage/errors';
-  import { SessionHistory, summarizeSessions, type SessionRecord } from '../storage/session-history';
+  import { MAX_SESSION_HISTORY, SessionHistory, summarizeSessions, type SessionRecord } from '../storage/session-history';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import { type AliceKey, type InertKey } from '../keyboard/alice-layout';
@@ -27,6 +27,43 @@
   const missedCounts = $derived(Object.fromEntries(summary.missedKeys));
   const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
   const unmappedMisses = $derived(summary.missedKeys.filter(([code]) => !layoutCodes.has(code)));
+
+  type SortKey = 'completedAt' | 'mode' | 'wpm' | 'accuracy';
+  let sortKey = $state<SortKey>('completedAt');
+  let sortDirection = $state<'asc' | 'desc'>('desc');
+  const sortedRecords = $derived.by(() => {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    const value = (record: SessionRecord): number | string | null => {
+      switch (sortKey) {
+        case 'completedAt': return record.completedAt;
+        case 'mode': return modeLabel(record);
+        case 'wpm': return record.wpm;
+        case 'accuracy': return record.accuracy;
+      }
+    };
+    return [...records].sort((a, b) => {
+      const x = value(a);
+      const y = value(b);
+      if (x === y) return 0;
+      if (x === null) return 1;
+      if (y === null) return -1;
+      return (typeof x === 'string' && typeof y === 'string' ? x.localeCompare(y) : Number(x) - Number(y)) * direction;
+    });
+  });
+
+  function sortBy(key: SortKey) {
+    if (sortKey === key) sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    else { sortKey = key; sortDirection = key === 'mode' ? 'asc' : 'desc'; }
+  }
+
+  function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+    return sortKey === key ? (sortDirection === 'asc' ? 'ascending' : 'descending') : 'none';
+  }
+
+  function percentColor(value: number): string {
+    const percent = Math.min(100, Math.max(0, value));
+    return `color-mix(in srgb, var(--color-accent) ${percent}%, #fff)`;
+  }
 
   function modeLabel(record: SessionRecord): string {
     switch (record.mode) {
@@ -98,7 +135,7 @@
           <div><dt>Target-copying sessions</dt><dd>{summary.targetCount}</dd></div>
           <div><dt>Best target-verified WPM</dt><dd>{summary.bestWpm ?? 'Not available'}</dd></div>
           <div><dt>Average target-verified WPM</dt><dd>{summary.averageWpm ?? 'Not available'}</dd></div>
-          <div><dt>Average target-copying accuracy</dt><dd>{summary.averageAccuracy === null ? 'Not available' : `${summary.averageAccuracy}%`}</dd></div>
+          <div><dt>Average target-copying accuracy</dt><dd>{#if summary.averageAccuracy === null}Not available{:else}<span class="percent-value" style:color={percentColor(Number(summary.averageAccuracy))}>{summary.averageAccuracy}%</span>{/if}</dd></div>
           {#if summary.zenCount}
             <div><dt>Zen sessions</dt><dd>{summary.zenCount}</dd></div>
             <div><dt>Best free-writing WPM</dt><dd>{summary.zenBestWpm}</dd></div>
@@ -111,22 +148,30 @@
         <div class="stats-section-heading">
           <div>
             <h3 id="recent-sessions-heading">Recent sessions</h3>
-            <p class="panel-copy">Newest first. Scroll to explore your history.</p>
+            <p class="panel-copy">Newest first by default; select a column heading to sort. Up to {MAX_SESSION_HISTORY} sessions are kept; the oldest are removed beyond that.</p>
           </div>
           <span class="stats-badge">{summary.count} saved</span>
         </div>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
         <div class="history-scroll" role="region" aria-label="Session history table" tabindex="0">
           <table>
-            <caption class="sr-only">Completed sessions, newest first</caption>
-            <thead><tr><th scope="col">Completed</th><th scope="col">Mode / limit</th><th scope="col">WPM</th><th scope="col">Accuracy</th></tr></thead>
+            <caption class="sr-only">Completed sessions, sortable by column</caption>
+            <thead><tr>
+              {#each [['completedAt', 'Completed'], ['mode', 'Mode / limit'], ['wpm', 'WPM'], ['accuracy', 'Accuracy']] as const as [key, label]}
+                <th scope="col" aria-sort={ariaSort(key)}>
+                  <button class="sort-button" type="button" onclick={() => sortBy(key)}>
+                    {label}<span aria-hidden="true">{sortKey === key ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+                  </button>
+                </th>
+              {/each}
+            </tr></thead>
             <tbody>
-              {#each records as record (record.id)}
+              {#each sortedRecords as record (record.id)}
                 <tr>
                   <td><time datetime={new Date(record.completedAt).toISOString()} title={new Date(record.completedAt).toString()}>{new Date(record.completedAt).toLocaleString()}</time></td>
                   <td>{modeLabel(record)}</td>
                   <td>{record.mode === 'zen' ? `Free-writing WPM: ${record.wpm}` : record.wpm}</td>
-                  <td>{record.accuracy === null ? 'Not applicable' : `${record.accuracy.toFixed(1)}%`}</td>
+                  <td>{#if record.accuracy === null}Not applicable{:else}<span class="percent-value" style:color={percentColor(record.accuracy)}>{record.accuracy.toFixed(1)}%</span>{/if}</td>
                 </tr>
               {/each}
             </tbody>

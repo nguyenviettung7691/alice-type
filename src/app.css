@@ -245,7 +245,6 @@ dialog h2 {
   max-width: 100%;
   max-height: 25rem;
   overflow: auto;
-  scrollbar-gutter: stable;
   border: 1px solid rgb(255 255 255 / 12%);
   border-radius: 0.65rem;
 }
@@ -277,6 +276,24 @@ dialog h2 {
 
 .history-scroll :is(th, td):nth-child(n + 3) {
   text-align: right;
+}
+
+.sort-button {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sort-button:hover {
+  color: var(--color-accent);
+}
+
+.sort-button:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
 }
 
 .history-scroll tbody tr:nth-child(even) {

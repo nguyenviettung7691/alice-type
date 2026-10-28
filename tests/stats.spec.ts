@@ -57,6 +57,17 @@ test('separates sections, aligns metric cards, and bounds history with a sticky 
   expect(bounds.height).toBeLessThanOrEqual(400);
   expect(bounds.content).toBeGreaterThan(bounds.height);
   expect(bounds.overflow).toBe('auto');
+  const widths = await scroll.evaluate((element) => ({
+    scroll: element.clientWidth, table: element.querySelector('table')!.getBoundingClientRect().width,
+    section: element.closest('.stats-section')!.clientWidth
+  }));
+  expect(widths.table).toBeGreaterThanOrEqual(widths.scroll - 1);
+  expect(widths.scroll).toBeGreaterThan(widths.section * 0.85);
+  await expect(scroll.locator('.percent-value').first()).toHaveCSS('color', /^color\(srgb 1 0\.[3-9]/);
+  await scroll.getByRole('button', { name: /^WPM/ }).click();
+  await expect(scroll.locator('th[aria-sort="descending"]')).toContainText('WPM');
+  await scroll.getByRole('button', { name: /^WPM/ }).click();
+  await expect(scroll.locator('tbody tr').first()).toContainText('40');
   const header = scroll.locator('th').first();
   await scroll.focus();
   const headerOffset = async () => (await header.boundingBox())!.y - (await scroll.boundingBox())!.y;
