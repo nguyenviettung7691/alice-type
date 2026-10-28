@@ -57,12 +57,14 @@ test.describe('Keyboard layout profiles', () => {
     const candidate = matchPanel(page).locator('[data-candidate="keychron-q8-ansi"]');
     await expect(candidate).toContainText('Keychron Q8 ANSI');
     await expect(candidate).toContainText('Suggested — not confirmed');
-    await expect(candidate).toContainText('Vendor/product ID 0x3434:0x0180 matches');
+    await expect(candidate).toContainText('USB ID 0x3434:0x0180 matches');
     await expect(matchPanel(page)).not.toContainText(/\bdetected (?!hardware|device)/i);
     await expect(matchPanel(page)).toContainText('Active layout: Generic Alice');
     const preview = matchPanel(page).locator('.keyboard-visualizer');
     await expect(preview).toHaveAttribute('data-layout-source', 'preview');
     await expect(preview).toContainText('Preview, not confirmed');
+    await expect(preview.getByText('Correct press', { exact: true })).toHaveCount(0);
+    await expect(preview.getByText('Mismatch', { exact: true })).toHaveCount(0);
     await expect(preview.locator('g[transform^="rotate"]').first()).toBeAttached();
     expect(await saved(page)).toEqual({ version: 5, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
 
@@ -119,12 +121,13 @@ test.describe('Keyboard layout profiles', () => {
   test('reports no match, browses the catalog, eliminates variants by key presses, and clears', async ({ page }) => {
     await setup(page, { device: UNKNOWN });
     await nav(page, 'Keyboard Details').click();
-    await expect(matchPanel(page)).toContainText('No catalog layout matches 0x1234:0xABCD');
+    await expect(matchPanel(page)).toContainText('No match for this device');
     await expect(matchPanel(page).locator('.candidate')).toHaveCount(0);
     await page.getByLabel('Browse catalog layouts', { exact: true }).selectOption('projectkb-alice');
     const longBackspace = page.getByRole('group', { name: 'Long Backspace', exact: true });
     await expect(longBackspace.getByRole('radio', { name: 'Off' })).toBeChecked();
-    await expect(longBackspace).toContainText('Distinguishing keys: Delete.');
+    await matchPanel(page).getByText('Key check & layout sources', { exact: true }).click();
+    await expect(matchPanel(page)).toContainText('Distinguishing keys: Delete.');
 
     await page.getByLabel('Check with key presses (optional)', { exact: true }).focus();
     await page.keyboard.press('Delete');
@@ -161,6 +164,7 @@ test.describe('Keyboard layout profiles', () => {
   test('selecting a different reference profile clears the confirmation', async ({ page }) => {
     await setup(page, { stored: storedWith(confirmation()) });
     await nav(page, 'Keyboard Details').click();
+    await page.locator('.details-disclosure > summary').click();
     await expect(page.getByLabel('Reference profile', { exact: true })).toHaveValue('projectkb-alice');
     await page.getByLabel('Reference profile', { exact: true }).selectOption('generic-alice');
     const stored = await saved(page);
@@ -194,5 +198,92 @@ test.describe('Keyboard layout profiles', () => {
       expect(response.ok()).toBe(true);
       expect(await response.text()).toContain(text);
     }
+  });
+
+  test('finds layouts by board name without a device and keeps review and activation explicit', async ({ page }) => {
+    const external = await setup(page);
+    await nav(page, 'Keyboard Details').click();
+    const before = await saved(page);
+    await expect(page.locator('.details-disclosure')).not.toHaveAttribute('open');
+    await expect(page.locator('.device-disclosure')).not.toHaveAttribute('open');
+    await page.getByRole('searchbox', { name: 'Board name', exact: true }).fill('Keychron Q8 ISO');
+    const candidates = matchPanel(page).locator('.candidate');
+    await expect(candidates).toHaveCount(4);
+    await expect(candidates.first()).toHaveAttribute('data-candidate', 'keychron-q8-iso');
+    await expect(candidates.first()).toContainText('Name match only');
+    await expect(matchPanel(page).locator('.keyboard-visualizer')).toHaveCount(0);
+    await nav(page, 'Review Keychron Q8 ISO').click();
+    await expect(matchPanel(page).locator('.keyboard-visualizer')).toHaveAttribute('data-layout-source', 'preview');
+    await expect(matchPanel(page).locator('.layout-status')).toContainText('Generic Alice');
+
+    await page.getByRole('searchbox', { name: 'Board name', exact: true }).fill('Chalice');
+    await expect(candidates).toHaveCount(1);
+    await expect(matchPanel(page).getByRole('heading', { name: 'Review Keychron Q8 ISO', exact: true })).toBeVisible();
+    expect(await saved(page)).toEqual(before);
+    await nav(page, 'Confirm this layout').click();
+    expect((await saved(page)).settings.keyboardLayoutConfirmation).toMatchObject({
+      profileId: 'keychron-q8-iso', confirmedFor: null
+    });
+    expect(external).toEqual([]);
+  });
+
+  test('suggests from a browser name even when its USB IDs are not in the catalog', async ({ page }) => {
+    await setup(page, { device: { ...UNKNOWN, productName: 'Keychron Q8' } });
+    await nav(page, 'Keyboard Details').click();
+    await expect(matchPanel(page).locator('.candidate')).toHaveCount(4);
+    await expect(matchPanel(page).locator('.candidate').first()).toContainText('Device name "Keychron Q8"');
+    await expect(matchPanel(page).locator('.layout-status')).toContainText('Generic Alice');
+    expect((await saved(page)).settings.keyboardLayoutConfirmation).toBeNull();
+  });
+
+  for (const hint of [
+    { details: { name: 'My board', model: 'Keychron Q8 ISO' }, id: 'keychron-q8-iso', matchedName: 'Keychron Q8 ISO' },
+    { details: { name: 'My board', brand: 'ProjectKB', model: 'Alice' }, id: 'projectkb-alice', matchedName: 'ProjectKB Alice' }
+  ]) {
+  test(`uses saved notes for ${hint.matchedName} without requiring a connection`, async ({ page }) => {
+    await setup(page, { stored: { version: 5, settings: {
+      ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardUserDetails: hint.details
+    } } });
+    await nav(page, 'Keyboard Details').click();
+    await expect(matchPanel(page).locator('.candidate').first()).toHaveAttribute('data-candidate', hint.id);
+    await expect(matchPanel(page).locator('.candidate').first()).toContainText(`Your board name "${hint.matchedName}"`);
+    expect((await saved(page)).settings.keyboardLayoutConfirmation).toBeNull();
+  });
+  }
+
+  test('keeps selection and preview side by side with bounded scrolling on desktop', async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 1000 });
+    await setup(page, { device: Q8 });
+    await nav(page, 'Keyboard Details').click();
+    await expect(matchPanel(page).locator('.keyboard-visualizer')).toBeVisible();
+    const choices = await matchPanel(page).locator('.layout-choices').boundingBox();
+    const review = await matchPanel(page).locator('.layout-review').boundingBox();
+    expect(review!.x).toBeGreaterThan(choices!.x + choices!.width);
+    expect(Math.abs(review!.y - choices!.y)).toBeLessThan(2);
+    const finder = await matchPanel(page).boundingBox();
+    expect(finder!.height).toBeLessThan(650);
+    await page.getByRole('searchbox', { name: 'Board name', exact: true }).fill('Keychron Q8');
+    const listHeight = await matchPanel(page).locator('.candidate-list').evaluate((element) => element.clientHeight);
+    expect(listHeight).toBeLessThanOrEqual(310);
+  });
+
+  test('supports name search, preview, variants, and confirmation at mobile widths', async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 740 });
+    await setup(page);
+    await nav(page, 'Keyboard Details').click();
+    const search = page.getByRole('searchbox', { name: 'Board name', exact: true });
+    await search.fill('ProjectKB Alice');
+    await search.press('Tab');
+    await expect(nav(page, 'Review ProjectKB Alice')).toBeFocused();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'Review ProjectKB Alice', exact: true })).toBeFocused();
+    await expect(matchPanel(page).locator('.keyboard-visualizer')).toBeVisible();
+    await page.getByRole('group', { name: 'Long RShift', exact: true }).getByRole('radio', { name: 'On', exact: true }).check();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+    await nav(page, 'Confirm this layout').click();
+    await expect(matchPanel(page).locator('.layout-status')).toContainText('ProjectKB Alice Confirmed by you');
+    await search.fill('a board not in the catalog');
+    await expect(matchPanel(page)).toContainText('No suggestions for');
+    await expect(page.getByLabel('Browse catalog layouts', { exact: true })).toBeVisible();
   });
 });

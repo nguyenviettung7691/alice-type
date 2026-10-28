@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import { deviceId, type KeyboardDevice } from '../keyboard/keyboard-access';
   import {
@@ -9,8 +9,9 @@
   import { distinguishingCodes, eliminatedVariantOptions, rankLayoutCandidates } from '../keyboard/layout-matching';
   import { type KeyboardLayoutConfirmation } from '../storage/preferences';
 
-  let { connectedDevice = null, confirmation, layoutNotice = '', onconfirm, onclear }: {
+  let { connectedDevice = null, boardNames = [], confirmation, layoutNotice = '', onconfirm, onclear }: {
     connectedDevice?: KeyboardDevice | null;
+    boardNames?: readonly string[];
     confirmation: KeyboardLayoutConfirmation | null;
     /** Recoverable problem with the saved confirmation (stale, ineligible, or failed to load). */
     layoutNotice?: string;
@@ -18,7 +19,8 @@
     onclear: () => void;
   } = $props();
 
-  const candidates = $derived(rankLayoutCandidates(connectedDevice, LAYOUT_CATALOG.profiles));
+  let boardName = $state('');
+  const candidates = $derived(rankLayoutCandidates(connectedDevice, LAYOUT_CATALOG.profiles, boardName.trim() ? [boardName] : boardNames));
   const confirmedEntry = $derived(findCatalogEntry(confirmation?.profileId));
   const deviceMismatch = $derived(!!confirmation?.confirmedFor && !!connectedDevice
     && (confirmation.confirmedFor.vendorId !== connectedDevice.vendorId
@@ -42,8 +44,14 @@
       : defaultVariant(entry);
   }
 
+  async function review(id: string) {
+    choose(id);
+    await tick();
+    document.getElementById('layout-review-heading')?.focus();
+  }
+
   // Start from the saved confirmation, else the best suggestion; later evidence never switches the review automatically.
-  untrack(() => choose(confirmation?.profileId ?? rankLayoutCandidates(connectedDevice, LAYOUT_CATALOG.profiles)[0]?.entry.id ?? ''));
+  untrack(() => choose(confirmation?.profileId ?? candidates[0]?.entry.id ?? ''));
 
   $effect(() => {
     const id = selectedId;
@@ -95,10 +103,7 @@
 
 <fieldset class="layout-match" aria-labelledby="layout-match-heading">
   <legend><span id="layout-match-heading" tabindex="-1">Find my layout</span></legend>
-  <p>
-    Suggestions come from bundled VIA and QMK data matched against the vendor/product ID your browser reports.
-    AliceType cannot detect your physical layout, so nothing changes until you confirm a layout.
-  </p>
+  <p class="finder-intro">Nothing changes until you confirm a layout.</p>
 
   <div class="layout-status" role="status">
     {#if confirmation && confirmedEntry}
@@ -128,21 +133,33 @@
     </div>
   {/if}
 
-  <h3>Suggestions</h3>
-  {#if !connectedDevice}
-    <p>No device is selected. Choose your keyboard in the connection panel to get suggestions, or browse the catalog below.</p>
-  {:else if candidates.length === 0}
-    <p>No catalog layout matches {deviceId(connectedDevice.vendorId)}:{deviceId(connectedDevice.productId)}. The generic Alice layout stays active. You can still browse the catalog below.</p>
+  <div class="finder-grid">
+  <div class="layout-choices">
+  <label for="layout-board-name">Board name</label>
+  <input id="layout-board-name" name="board-name" type="search" autocomplete="off" spellcheck="false"
+    maxlength="120" bind:value={boardName} placeholder="e.g. Keychron Q8…" aria-describedby="board-name-help" />
+  <p id="board-name-help" class="variant-hint">Search by model. No connection needed.</p>
+  <h3>Suggestions <span class="result-count" role="status" aria-label={`${candidates.length} suggested layouts`}>({candidates.length})</span></h3>
+  {#if candidates.length === 0}
+    <p class="empty-suggestions">
+      {#if boardName.trim()}
+        No suggestions for “{boardName}”. Try another model or browse all layouts.
+      {:else if connectedDevice}
+        No match for this device. Try its board name or browse all layouts.
+      {:else}
+        Enter your board name, or browse all layouts below.
+      {/if}
+    </p>
   {:else}
-    <ul class="candidate-list">
+    <ul class="candidate-list" aria-label="Suggested layouts">
       {#each candidates as candidate (candidate.entry.id)}
         <li class="candidate" data-candidate={candidate.entry.id}>
-          <p><strong>{candidate.entry.displayName}</strong> <span class="source-label">Suggested — not confirmed</span></p>
-          <ul class="candidate-reasons">
-            {#each candidate.reasons as reason}<li>{reason}</li>{/each}
-          </ul>
-          <button class="secondary-button" type="button" aria-label={`Review ${candidate.entry.displayName}`}
-            onclick={() => choose(candidate.entry.id)}>Review this layout</button>
+          <button class="candidate-button" type="button" aria-label={`Review ${candidate.entry.displayName}`}
+            aria-pressed={selectedId === candidate.entry.id} onclick={() => review(candidate.entry.id)}>
+            <strong>{candidate.entry.displayName}</strong>
+            <span class="source-label">Suggested — not confirmed</span>
+            <span class="candidate-reasons">{candidate.reasons.join(' ')}</span>
+          </button>
         </li>
       {/each}
     </ul>
@@ -152,21 +169,33 @@
   <select id="layout-catalog-select" value={selectedId} onchange={(event) => choose(event.currentTarget.value)}>
     <option value="">Choose a layout to review</option>
     {#each sortedEntries as entry (entry.id)}
-      <option value={entry.id}>{entry.displayName} ({deviceId(entry.vendorId)}:{deviceId(entry.productId)})</option>
+      <option value={entry.id}>{entry.displayName}</option>
     {/each}
   </select>
+  </div>
 
   {#if selectedEntry}
     <section class="layout-review" aria-labelledby="layout-review-heading">
-      <h3 id="layout-review-heading">Review {selectedEntry.displayName}</h3>
-      <p class="catalog-sources">
-        Sources:
-        <a href={selectedEntry.sources.via.url} target="_blank" rel="noreferrer">VIA definition</a>,
-        <a href={selectedEntry.sources.qmkInfo.url} target="_blank" rel="noreferrer">QMK keyboard info</a>,
-        <a href={selectedEntry.sources.keymap.url} target="_blank" rel="noreferrer">QMK default keymap</a>
-        (layer {selectedEntry.sources.keymap.layer}). Legends come from the default keymap; your firmware may differ.
-      </p>
+      <h3 id="layout-review-heading" tabindex="-1">Review {selectedEntry.displayName}</h3>
+      <p class="variant-hint">Does this match your keyboard? Check the shape and key sizes.</p>
 
+      {#if loadError}
+        <p class="layout-warning" role="alert">{loadError}</p>
+      {:else if !preview}
+        <p role="status">Loading layout preview…</p>
+      {:else if preview.layout}
+        <AliceKeyboardVisualizer layout={preview.layout.keys} inertKeys={preview.layout.inertKeys} viewBox={preview.layout.viewBox}
+          layoutSource="preview" testLayoutLabel={selectedEntry.displayName} title="Layout preview" />
+        {#if !preview.eligible}
+          <p class="layout-warning" role="alert">
+            This variant cannot be used: missing keys {preview.layout.missingCodes.join(', ') || 'or invalid key shapes'}.
+          </p>
+        {/if}
+      {:else}
+        <p class="layout-warning" role="alert">{preview.error}</p>
+      {/if}
+
+      <div class="variant-options">
       {#each selectedEntry.groups as group, groupIndex (groupIndex)}
         <fieldset class="variant-group">
           <legend>{group.label}</legend>
@@ -179,18 +208,37 @@
               {option}{#if ruledOut}{' '}<span class="ruled-out">— ruled out by your key presses</span>{/if}
             </label>
           {/each}
-          {#if hints.get(groupIndex)}
-            <p class="variant-hint">Distinguishing keys: {hints.get(groupIndex)?.join(', ')}.</p>
-          {:else}
-            <p class="variant-hint">Key presses cannot tell these options apart; compare the preview with your keyboard.</p>
-          {/if}
         </fieldset>
+      {/each}
+      </div>
+      <div class="panel-actions">
+        <button class="primary-button" type="button" disabled={!preview?.eligible || alreadyConfirmed} onclick={confirm}>
+          {alreadyConfirmed ? 'Layout confirmed' : 'Confirm this layout'}
+        </button>
+      </div>
+
+      <details class="layout-help">
+      <summary>{selectedEntry.groups.length > 0 ? 'Key check & layout sources' : 'Layout sources'}</summary>
+      <p class="catalog-sources">
+        Sources:
+        <a href={selectedEntry.sources.via.url} target="_blank" rel="noreferrer">VIA definition</a>,
+        <a href={selectedEntry.sources.qmkInfo.url} target="_blank" rel="noreferrer">QMK keyboard info</a>,
+        <a href={selectedEntry.sources.keymap.url} target="_blank" rel="noreferrer">QMK default keymap</a>
+        (layer {selectedEntry.sources.keymap.layer}). Legends come from the default keymap; your firmware may differ.
+      </p>
+
+      {#each selectedEntry.groups as group, groupIndex (groupIndex)}
+          {#if hints.get(groupIndex)}
+            <p class="variant-hint">{group.label} — Distinguishing keys: {hints.get(groupIndex)?.join(', ')}.</p>
+          {:else}
+            <p class="variant-hint">{group.label}: compare the preview; key presses cannot tell these options apart.</p>
+          {/if}
       {/each}
 
       {#if selectedEntry.groups.length > 0}
         <label for="layout-key-check">Check with key presses (optional)</label>
         <input id="layout-key-check" type="text" readonly autocomplete="off" aria-describedby="layout-key-check-help"
-          placeholder="Focus here and press the distinguishing keys" onkeydown={checkKey} />
+          placeholder="Press a key to check…" onkeydown={checkKey} />
         <p id="layout-key-check-help" class="variant-hint">
           Pressed keys only rule out options; they never confirm a layout. Nothing is saved.
           Checked: {observed.size > 0 ? [...observed].join(', ') : 'none yet'}.
@@ -200,29 +248,12 @@
         {/if}
       {/if}
 
-      {#if loadError}
-        <p class="layout-warning" role="alert">{loadError}</p>
-      {:else if !preview}
-        <p role="status">Loading layout preview…</p>
-      {:else if preview.layout}
-        <AliceKeyboardVisualizer layout={preview.layout.keys} inertKeys={preview.layout.inertKeys} viewBox={preview.layout.viewBox}
-          layoutSource="preview" testLayoutLabel={selectedEntry.displayName} title={`${selectedEntry.displayName} preview (not yet active)`} />
-        {#if !preview.eligible}
-          <p class="layout-warning" role="alert">
-            This variant cannot be used: missing keys {preview.layout.missingCodes.join(', ') || 'or invalid key shapes'}.
-          </p>
-        {/if}
-      {:else}
-        <p class="layout-warning" role="alert">{preview.error}</p>
-      {/if}
-
-      <div class="panel-actions">
-        <button class="primary-button" type="button" disabled={!preview?.eligible || alreadyConfirmed} onclick={confirm}>
-          {alreadyConfirmed ? 'Layout confirmed' : 'Confirm this layout'}
-        </button>
-      </div>
+      </details>
     </section>
+  {:else}
+    <div class="review-empty"><h3>Preview your layout</h3><p>Choose a suggestion or a catalog layout to see it here.</p></div>
   {/if}
+  </div>
 </fieldset>
 
 <style>
@@ -235,24 +266,43 @@
     padding-left: 0.75rem;
     overflow-wrap: anywhere;
   }
-  .candidate-list { margin: 0; padding: 0; list-style: none; }
+  .finder-grid { display: grid; grid-template-columns: minmax(14rem, 0.8fr) minmax(0, 1.6fr); gap: 1.5rem; align-items: start; }
+  .finder-grid > * { min-width: 0; }
+  .finder-intro { margin-top: 0; }
+  .result-count { color: #b8b8b8; font-weight: 400; }
+  .candidate-list { margin: 0 0 1rem; padding: 0.2rem; list-style: none; max-height: 14rem; overflow-y: auto; }
   .candidate {
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
+  }
+  .candidate-button {
+    display: grid;
+    gap: 0.3rem;
+    width: 100%;
+    text-align: left;
+    color: var(--color-text);
+    font: inherit;
     border: 1px solid rgb(255 255 255 / 10%);
     border-radius: 0.75rem;
     padding: 0.85rem 1rem;
     background: rgb(0 0 0 / 12%);
   }
-  .candidate p { margin: 0 0 0.4rem; overflow-wrap: anywhere; }
-  .candidate-reasons { margin: 0 0 0.6rem; padding-left: 1.25rem; color: #b8b8b8; font-size: 0.82rem; }
-  .layout-review { margin-top: 1rem; }
+  .candidate-button:hover { border-color: var(--color-accent); }
+  .candidate-button[aria-pressed="true"] { border-color: var(--color-accent); background: rgb(255 93 0 / 8%); }
+  .candidate-button:focus-visible, summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; }
+  .candidate-button strong { overflow-wrap: anywhere; }
+  .candidate-reasons { color: #b8b8b8; font-size: 0.78rem; overflow-wrap: anywhere; }
+  .layout-review h3, .review-empty h3 { margin-top: 0; }
+  .layout-help { margin-top: 1rem; }
+  summary { cursor: pointer; padding: 0.5rem 0; color: #b8b8b8; }
+  .variant-options { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+  .variant-options .variant-group { flex: 1 1 10rem; margin: 0.75rem 0 0; padding: 0.5rem 0.75rem; }
   .catalog-sources { color: #b8b8b8; font-size: 0.78rem; overflow-wrap: anywhere; }
   .catalog-sources a { color: var(--color-accent); }
   .variant-group label { display: flex; align-items: center; gap: 0.5rem; }
   .variant-hint { color: #b8b8b8; font-size: 0.78rem; }
   .ruled-out { color: var(--color-error); }
-  #layout-key-check {
-    width: min(100%, 32rem);
+  #layout-key-check, #layout-board-name {
+    width: 100%;
     border: 1px solid var(--color-muted);
     border-radius: 0.35rem;
     padding: 0.5rem;
@@ -260,6 +310,11 @@
     color: var(--color-text);
     font: inherit;
   }
-  #layout-key-check:focus-visible, #layout-match-heading:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  #layout-key-check:focus-visible, #layout-match-heading:focus-visible, #layout-review-heading:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
   select { width: min(100%, 32rem); }
+  #layout-board-name:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  @media (max-width: 800px) {
+    .finder-grid { grid-template-columns: minmax(0, 1fr); }
+    .candidate-list { max-height: 13rem; }
+  }
 </style>

@@ -130,13 +130,21 @@
 </script>
 
 <section class="practice-panel settings-panel keyboard-details-panel" aria-labelledby="keyboard-details-heading">
-  <p class="eyebrow">Your keyboard reference</p>
+  <p class="eyebrow">Make it yours</p>
   <h2 id="keyboard-details-heading" tabindex="-1">Keyboard Details</h2>
   <p class="panel-copy">
-    Choose a reference profile or add your own details. AliceType cannot detect your connected keyboard's physical layout or full specifications.
-    These details stay in this browser and are not sent to a server.
+    Find a layout that looks like your keyboard. Your choices stay in this browser.
   </p>
 
+  <LayoutMatchPanel {connectedDevice} boardNames={[
+    userDetails.name ?? '', userDetails.model ?? '',
+    [userDetails.brand, userDetails.name].filter(Boolean).join(' '),
+    [userDetails.brand, userDetails.model].filter(Boolean).join(' ')
+  ]}
+    confirmation={layoutConfirmation} {layoutNotice} onconfirm={onlayoutconfirm} onclear={onlayoutclear} />
+
+  <details class="device-disclosure">
+  <summary>Connected keyboard <span>{connectedDevice?.productName || (connectedDevice ? 'Unnamed device' : 'No device selected')}</span></summary>
   <fieldset class="browser-device">
     <legend>Browser-reported device</legend>
     {#if connectedDevice}
@@ -148,21 +156,21 @@
           <div><dt>Product ID</dt><dd><code>{deviceId(connectedDevice.productId)}</code></dd></div>
           <div><dt>VID:PID (VPID)</dt><dd><code>{deviceId(connectedDevice.vendorId).slice(2)}:{deviceId(connectedDevice.productId).slice(2)}</code></dd></div>
         </dl>
-        <p class="device-explanation">These details come from the device you authorized, not from your typing. The IDs are identifiers only; they do not verify a brand, model, or layout.</p>
+        <p class="device-explanation">Device IDs help find suggestions, but do not prove a layout or model.</p>
       </div>
-      <p class="device-limitation"><strong>Reference layout only.</strong> AliceType cannot detect this device's physical layout or specifications. Use Find my layout below to review catalog suggestions, or add your own notes.</p>
+      <p class="device-limitation"><strong>Reference layout only.</strong> Your browser cannot report the physical layout or full specifications.</p>
     {:else}
       <div class="browser-device-card">
         <p class="device-empty-title">No device selected</p>
-        <p class="device-explanation">Choose your keyboard in the connection panel above, or use <strong>Connect keyboard</strong> if available. If your keyboard isn't listed, your browser may not allow device access.</p>
-        <p class="device-explanation">You can still practice, test keys, and add a reference profile or personal notes below.</p>
+        <p class="device-explanation">Use <strong>Connect keyboard</strong> above if available. You can find a layout, practice, and test keys without connecting.</p>
       </div>
     {/if}
   </fieldset>
+  </details>
 
-  <LayoutMatchPanel {connectedDevice} confirmation={layoutConfirmation} {layoutNotice}
-    onconfirm={onlayoutconfirm} onclear={onlayoutclear} />
-
+  <details class="details-disclosure">
+  <summary>Device details &amp; reference profile <span>Optional</span></summary>
+  <p class="details-intro">Add notes or choose a catalog reference. AliceType cannot detect your connected keyboard's full specifications.</p>
   <fieldset>
     <legend>Keyboard profile</legend>
     <label for="keyboard-profile">Reference profile</label>
@@ -180,10 +188,11 @@
     {/if}
     {#if selectedProfile}
       <p class="profile-summary">
-        Selected reference: <strong>{selectedProfile.displayName}</strong>
-        ({selectedProfile.kind === 'generic-layout' ? 'generic layout' : 'catalog device profile'}).
-        Catalog revision {KEYBOARD_PROFILE_CATALOG_REVISION}, reviewed {KEYBOARD_PROFILE_CATALOG_UPDATED_AT}.
+        <strong>{selectedProfile.displayName}</strong>
+        - Catalog revision {KEYBOARD_PROFILE_CATALOG_REVISION}, reviewed {KEYBOARD_PROFILE_CATALOG_UPDATED_AT}.
       </p>
+      <details class="profile-provenance">
+        <summary>Reference sources</summary>
         {#if selectedProfile.testLayout}
           <p class="profile-summary">
             Test map: <strong>{selectedProfile.testLayout.label}</strong>
@@ -196,15 +205,15 @@
               </a>
             {/if}
           </p>
-          <p class="catalog-sources">
-            This source supports: {selectedProfile.testLayout.source.fields.join(', ')}.
-          </p>
         {/if}
+      </details>
     {:else}
-      <p class="profile-summary">No catalog profile is selected. Device identity and features not entered below are unknown.</p>
+      <p class="profile-summary">No catalog profile is selected. Add your own details below if needed.</p>
     {/if}
   </fieldset>
 
+  {#if !editing}
+  <div class="specification-grid">
   <fieldset>
     <legend>Device information</legend>
     {#each identityFields as field (field)}
@@ -238,22 +247,30 @@
       </div>
     {/each}
   </fieldset>
+  </div>
+  {/if}
 
   <fieldset>
     <legend>Your device details</legend>
-    <p>Personal details take display precedence over catalog values and are always labeled as user-provided.</p>
+    <p>Your notes appear instead of catalog values and are labeled "You provided this".</p>
     {#if editing}
+      <div class="edit-grid">
       {#each KEYBOARD_DETAIL_TEXT_FIELDS as field (field)}
+        <div>
         <label for={`keyboard-detail-${field}`}>{fieldLabels[field]}</label>
         <input
           id={`keyboard-detail-${field}`}
+          name={field}
           type="text"
+          autocomplete="off"
           maxlength={KEYBOARD_DETAIL_MAX_LENGTH}
           value={textValue(field)}
           oninput={(event) => updateText(field, event.currentTarget.value)}
         />
+        </div>
       {/each}
       {#each KEYBOARD_DETAIL_BOOLEAN_FIELDS as field (field)}
+        <div>
         <label for={`keyboard-detail-${field}`}>{fieldLabels[field]}</label>
         <select id={`keyboard-detail-${field}`} value={draft[field] === undefined ? '' : draft[field] ? 'yes' : 'no'}
           onchange={(event) => updateBoolean(field, event.currentTarget.value)}>
@@ -261,7 +278,9 @@
           <option value="yes">Yes</option>
           <option value="no">No</option>
         </select>
+        </div>
       {/each}
+      </div>
       <div class="panel-actions">
         <button class="primary-button" type="button" onclick={saveDetails}>Save details</button>
         <button class="secondary-button" type="button" onclick={cancelEditing}>Cancel</button>
@@ -274,6 +293,7 @@
       </div>
     {/if}
   </fieldset>
+  </details>
 </section>
 
 {#if confirmingClear}
@@ -287,6 +307,14 @@
 {/if}
 
 <style>
+  summary { cursor: pointer; padding: 1rem 0; color: var(--color-text); font-weight: 550; overflow-wrap: anywhere; }
+  summary span { color: #b8b8b8; font-size: 0.82rem; font-weight: 400; margin-left: 0.5rem; }
+  summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .device-disclosure, .details-disclosure { border-top: 1px solid rgb(255 255 255 / 12%); }
+  .profile-provenance summary { padding: 0.5rem 0; font-size: 0.82rem; }
+  .specification-grid, .edit-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
+  .edit-grid > div { min-width: 0; }
+  .specification-grid fieldset { min-width: 0; }
   .browser-device-card {
     border: 1px solid rgb(255 255 255 / 10%);
     border-radius: 0.75rem;
@@ -326,10 +354,9 @@
   }
   .keyboard-details-panel input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
   .profile-summary { overflow-wrap: anywhere; }
-  .catalog-sources { padding-left: 1.25rem; color: #b8b8b8; font-size: 0.78rem; overflow-wrap: anywhere; }
   .detail-row {
     display: grid;
-    grid-template-columns: minmax(8rem, 0.7fr) minmax(8rem, 1fr) minmax(8rem, 0.8fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
     align-items: start;
     gap: 0.45rem 1rem;
     padding-block: 0.8rem;
@@ -338,10 +365,13 @@
   .detail-name { color: #b8b8b8; }
   .detail-value { overflow-wrap: anywhere; }
   .source-label { color: var(--color-accent); font-size: 0.82rem; }
+  .detail-row > .source-label { grid-column: 2; }
   .source-reference { grid-column: 2 / -1; color: #b8b8b8; font-size: 0.78rem; overflow-wrap: anywhere; }
   .detail-row a { grid-column: 2 / -1; color: var(--color-accent); font-size: 0.82rem; overflow-wrap: anywhere; }
   @media (max-width: 600px) {
+    .specification-grid, .edit-grid { grid-template-columns: minmax(0, 1fr); }
+    .specification-grid { gap: 0; }
     .detail-row { grid-template-columns: minmax(0, 1fr); }
-    .source-reference, .detail-row a { grid-column: auto; }
+    .source-reference, .detail-row a, .detail-row > .source-label { grid-column: auto; }
   }
 </style>

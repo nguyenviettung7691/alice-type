@@ -183,7 +183,7 @@ Implements [detail design section 14](./phase-7-detail-design.md#14-user-request
 - [x] License decision recorded; NOTICE, GPL-3.0 text, and footer links ship with the imported data.
 - [x] Allowlist reviewed; every profile has complete pinned source references and no unsourced feature claims.
 - [x] KLE, keycode, variant, and rotation tests pass, and generic Alice output is unchanged.
-- [x] Ranking explains suggestions, discloses shared IDs, and never matches on product name alone.
+- [x] Ranking explains suggestions and discloses shared IDs. The 2026-10-28 UX revision below extends this to explicitly labeled name-only suggestions.
 - [x] No device layout is active without explicit confirmation, and no "detected" wording appears.
 - [x] Confirmed layouts drive Practice and Keyboard Test with unchanged Phase 2–6 semantics.
 - [x] Preferences v1/v2/v3 → v4 migration preserves all values; stale confirmations are recoverable.
@@ -203,3 +203,14 @@ Implemented on 2026-10-26. Catalog revision `via-9e3e9f4.qmk-180f394` contains 2
 | `npm run test:e2e -- --workers=4` | 114 Chromium tests passed, including 7 new layout-profile tests (suggest/confirm/reload/use, no-match browse with key elimination, mismatch, profile change clearing, stale variant, v3 → v4 migration, footer license links). |
 | Visual review | Rotated ProjectKB Alice and Keychron Q8 ISO previews were rendered and inspected, including the ISO Enter secondary rectangle and dashed uncoded keys. |
 | `git diff --check` | Passed. |
+
+### Keyboard Details UX revision (2026-10-28)
+
+- Lead with layout discovery; collapse device identifiers and optional specifications/reference editing.
+- Place a bounded suggestion list alongside one preview on desktop, with a stacked mobile layout.
+- Shorten copy and preview legends; keep optional key checks and source citations behind a disclosure.
+- Suggest from device product name, an explicit board-name search, or saved personal name/model/brand notes. Use catalog and QMK board-name tokens, not arbitrary substrings or generic brand/layout-family names.
+- Preserve explicit confirmation, stale/mismatch notices, source labels, persistence, offline operation, and existing Practice/Keyboard Test behavior. Search text and key-check observations remain in memory.
+- Add unit coverage for name-only matching, model boundaries, alias matching, and variant ordering; browser coverage for disconnected discovery, mismatched IDs, saved notes, desktop height, mobile overflow, keyboard navigation, and unchanged activation until confirmation.
+
+Verification: `npm test` passed 475 tests; `npm run check` reported no errors or warnings; `npm run build` passed. The focused Keyboard Details, layout discovery, device access, visualizer, and Keyboard Test Chromium suites passed 64 tests. Browser checks cover a finder under 650 px tall at 1440 px width and no page overflow at 320 px; desktop/mobile previews were also visually reviewed.

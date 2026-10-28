@@ -72,6 +72,7 @@ test('automatically prompts, opens the chooser on activation, and shares browser
   await page.getByRole('button', { name: 'Keyboard Test', exact: true }).click();
   await expect(legend(page)).toHaveText('a');
   await page.getByRole('button', { name: 'Keyboard Details', exact: true }).click();
+  await page.locator('.device-disclosure > summary').click();
   await expect(page.getByRole('group', { name: 'Browser-reported device' })).toContainText('0x1234');
   await expect(page.getByRole('group', { name: 'Browser-reported device' })).toContainText('0xABCD');
   await expect(page.getByRole('group', { name: 'Browser-reported device' })).toContainText('Example Alice HID');
@@ -186,6 +187,7 @@ test('restores previously granted access without prompting and clears stale devi
   await expect(connection(page)).not.toContainText('Selected device:');
   await expect(legend(page)).toHaveText('Q');
   await page.getByRole('button', { name: 'Keyboard Details', exact: true }).click();
+  await page.locator('.device-disclosure > summary').click();
   await expect(page.getByRole('group', { name: 'Browser-reported device' })).toContainText('No device selected');
   await page.evaluate(() => Reflect.get(window, 'reconnectKeyboard')());
   await expect(connection(page)).toContainText('Example Alice HID');
@@ -278,6 +280,7 @@ for (const width of [320, 1440]) {
     await expect(connection(page)).toContainText('does not upload them to a server');
     await expect(connection(page).getByRole('button', { name: 'Connect a device', exact: true })).toBeVisible();
     await page.getByRole('button', { name: 'Keyboard Details', exact: true }).click();
+    await page.locator('.device-disclosure > summary').click();
     const device = page.getByRole('group', { name: 'Browser-reported device' });
     await expect(device).toContainText('Shared by your browser');
     await expect(device.locator('dt')).toHaveText(['Product name', 'Vendor ID', 'Product ID', 'VID:PID (VPID)']);

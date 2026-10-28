@@ -135,6 +135,8 @@ The view contains:
 6. A clearly labeled **Your device details** editor with save, edit, and clear actions.
 7. An accessible status message for save errors and successful user actions where needed.
 
+**UX revision (2026-10-28):** Lead with Find my layout (section 14.6). Keep browser device identifiers in a collapsed **Connected keyboard** disclosure, with the product name visible in its summary. Group the reference selector, field-level specifications, and personal editor in a separate collapsed **Device details & reference profile** disclosure. Specifications use two columns on desktop; editing replaces read-only specifications with a compact form. Keep citations available without showing all source metadata by default.
+
 Show a source label for each displayed value, not only once for the whole view:
 
 - **Catalog verified** for an immutable catalog value, with access to the relevant source citation.
@@ -311,7 +313,7 @@ Known limits that the design must handle, not hide:
 | 1 | [VIA keyboard definitions](https://github.com/the-via/keyboards) (`v3/<vendor>/<keyboard>.json`) | Geometry (KLE layout with real per-key rotation `r`/`rx`/`ry`), matrix `row,col` per key, `vendorId`/`productId`, display name, and `layouts.labels` variant groups | QMK `info.json` layouts flatten Alice rotation, so VIA geometry is the realistic source. GPL-3.0. |
 | 2 | [QMK keyboard API](https://keyboards.qmk.fm/v1/usb.json) and [`qmk/qmk_firmware`](https://github.com/qmk/qmk_firmware) | Manufacturer (brand), the `LAYOUT_*` matrix order from merged `info.json`, the default keymap's base layer (physical keycodes by matrix position), and the full `usb.json` VID/PID index for shared-ID counts | QMK layouts contain matrix positions, not keycodes. GPL-2.0-or-later. |
 | 3 | AliceType-curated entries | Boards absent from QMK/VIA, authored from a manufacturer-published KLE/layout file or a reviewed physical measurement | Same provenance and review bar as other entries. None ship in the first import. |
-| — | Product-name similarity | Ranking signal only | Never sufficient to suggest a match on its own. |
+| — | Product or user-provided board name | Ranking signal only | May suggest a model by name; never confirms a match. See the 2026-10-28 revision in section 14.5. |
 
 **Deferred (out of scope for this extension):** reading a Vial-encoded layout definition from firmware over raw HID, VIA protocol queries, ZMK Studio, runtime fetching of any source, user-imported KLE files, and automatic selection without confirmation. These may be proposed in a later phase. Device queries would require opening HID devices, which section 13 still prohibits.
 
@@ -359,19 +361,23 @@ Add a pure module, for example `src/lib/keyboard/layout-matching.ts`, with no br
 | Evidence | Effect |
 | --- | --- |
 | Browser-reported VID:PID (section 13) | Exact index match produces candidates. Lower the weight as `sharedIdCount` rises; when the ID is shared, state that it is shared by several keyboards. |
-| Browser-reported product name | Tie-breaker only; never creates a candidate. |
+| Browser-reported product name | A model-name match may produce a candidate even if IDs differ; explicitly label it as name-only evidence. |
+| User-entered board name, or saved personal name/model with optional brand | May produce candidates without a device connection; explicitly label user-provided evidence. A typed query replaces saved-note hints for this search. |
 | Observed physical codes (only from the focused **Check with key presses** input in this page) | Eliminate variant options when an observed code appears in the profile only under other options of the same group. Never confirm a variant by itself. |
 
 Layout-map legends are not ranking evidence: they reflect the OS input language, not the physical board, and the catalog keeps ANSI and ISO boards as separate profiles with distinct product IDs.
 
-Output: an ordered candidate list with a human-readable reason for each (for example *"Vendor/product ID 0x3434:0x0381 matches; this ID is used by 1 catalog keyboard"*), and the variant groups that remain unresolved. No candidate means the generic Alice layout stays active and the view says no catalog match was found. Do not offer the closest-looking board as a guess.
+**Name matching revision (2026-10-28, user-requested scope):** Normalize case and punctuation and compare complete tokens against catalog names and QMK board paths. Require all distinctive model tokens, or the complete catalog name (for names such as ProjectKB Alice). Brand-only, generic Alice, and partial model tokens such as Q8 inside Q80 do not qualify. Prefer more complete variant names (such as Q8 ISO) within model matches. Score exact USB IDs at `3 + 1 / sharedIdCount`, device names at `0.5 * nameScore`, and the best personal hint at `nameScore`, where nameScore is 2 for a full name/variant match and 1 for a model-only match. Signals can reinforce each other but remain suggestions.
+
+Output: an ordered candidate list with concise evidence for each, disclosing shared IDs and name-only matches. No candidate leaves the active layout unchanged and offers another board name or manual catalog browsing. Do not guess from geometry or OS legends.
 
 Ranking runs locally on bundled data. Observed codes are kept in memory only and are not written to history or preferences.
 
 ### 14.6 Confirmation flow and UI
 
-- Keyboard Details gains a **Find my layout** section, also reachable from the keyboard-connection panel when a device is selected. It lists ranked candidates as small accessible previews with name, source, reason, and a **Suggested — not confirmed** text label. Status is not conveyed by color alone.
-- The user picks a candidate, then resolves the profile's variant groups with native radio groups. A single preview shows the currently selected variant. Groups that physical codes cannot distinguish, such as spacebar splits, are always resolved visually.
+- Keyboard Details leads with **Find my layout**, also reachable from the keyboard-connection panel when a device is selected. A **Board name** search works without device access. It lists ranked candidates as compact selectable cards with name, reason, and a **Suggested — not confirmed** text label. Bound the candidate list height rather than growing the page for every result. Status is not conveyed by color alone.
+- The user picks a candidate, moving focus to its review heading (including on mobile), then resolves the profile's variant groups with native radio groups. A single preview shows the currently selected variant. Groups that physical codes cannot distinguish, such as spacebar splits, are always resolved visually.
+- On desktop, place search/suggestions/catalog browsing beside the preview and confirmation; stack them on narrow screens. Show variant radios together and keep optional key checks and VIA/QMK citations in a collapsed **Key check & layout sources** disclosure. Preview copy omits practice-only feedback legends. New evidence updates suggestions but never replaces the layout already being reviewed. Search text stays in memory; saved personal details remain separate.
 - Optional **Check with key presses**: ask the user to press specific distinguishing keys, such as the key left of Backspace, in a focused input. Use the result only to eliminate variants and say what was checked. Keep Phase 6 focus-scoped input rules, ignore repeats, and suppress no browser shortcuts.
 - **Confirm this layout** saves the match. The UI then labels the arrangement **Confirmed by you**, alongside the per-field labels from section 6.2. A suggestion is never labeled detected or verified as matching.
 - Users can also browse and pick any catalog profile without a connected device, and can clear a confirmation, which returns to the generic Alice layout.

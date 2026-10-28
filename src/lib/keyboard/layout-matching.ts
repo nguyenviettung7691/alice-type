@@ -11,39 +11,50 @@ function normalizedName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
 
-function nameMatches(productName: string, entry: LayoutCatalogEntry): boolean {
-  const product = normalizedName(productName);
-  if (!product) return false;
-  return [entry.name, entry.displayName].some((name) => {
-    const candidate = normalizedName(name);
-    return candidate !== '' && (product.includes(candidate) || candidate.includes(product));
-  });
+function nameMatchScore(productName: string, entry: LayoutCatalogEntry): number {
+  const words = normalizedName(productName).split(' ').filter(Boolean);
+  if (!words.length) return 0;
+  const brandWords = normalizedName(entry.brand).split(' ');
+  const generic = new Set(['alice', 'keyboard', 'board', 'usb', 'hid', 'rgb', 'ansi', 'iso', 'knob', 'encoder', 'rev1', ...brandWords]);
+  return Math.max(...[entry.name, entry.displayName, entry.sources.qmkInfo.keyboard].map((name) => {
+    const candidateWords = normalizedName(name).split(' ');
+    const modelWords = candidateWords.filter((word) => !generic.has(word));
+    if (candidateWords.length > 1 && candidateWords.every((word) => words.includes(word))) return 2;
+    // Require a model token, not just a brand, layout family, or a substring (Q8 != Q80).
+    if (!modelWords.length || !modelWords.every((word) => words.includes(word))) return 0;
+    const withoutBrand = candidateWords.filter((word) => !brandWords.includes(word));
+    return withoutBrand.every((word) => words.includes(word)) ? 2 : 1;
+  }));
 }
 
 /**
- * Ranks catalog layouts for a browser-reported device. Only an exact vendor/product ID match
- * creates a candidate; the product name is a tie-breaker. Results are suggestions, never detections.
+ * Rank local evidence without treating names or shared USB IDs as proof of a physical layout.
+ * Board names are user-provided hints; no evidence here activates a layout.
  */
 export function rankLayoutCandidates(
   device: KeyboardDevice | null,
-  catalog: readonly LayoutCatalogEntry[]
+  catalog: readonly LayoutCatalogEntry[],
+  boardNames: readonly string[] = []
 ): LayoutCandidate[] {
-  if (!device) return [];
-  const id = `${deviceId(device.vendorId)}:${deviceId(device.productId)}`;
   return catalog
-    .filter((entry) => entry.vendorId === device.vendorId && entry.productId === device.productId)
     .map((entry) => {
       const shared = Math.max(1, entry.sharedIdCount);
-      const named = nameMatches(device.productName, entry);
-      const reasons = [
-        `Vendor/product ID ${id} matches this catalog entry.`,
-        shared === 1
-          ? 'QMK lists this ID for 1 keyboard.'
-          : `This ID is shared by ${shared} keyboards in QMK, so it may belong to a different board.`
-      ];
-      if (named) reasons.push(`The browser-reported name "${device.productName}" is similar.`);
-      return { entry, score: 1 / shared + (named ? 0.5 : 0), reasons };
+      const idMatch = !!device && entry.vendorId === device.vendorId && entry.productId === device.productId;
+      const named = device ? nameMatchScore(device.productName, entry) : 0;
+      const board = boardNames.map((name) => ({ name, score: nameMatchScore(name, entry) }))
+        .sort((a, b) => b.score - a.score)[0];
+      const boardName = board?.score ? board.name : '';
+      const reasons: string[] = [];
+      if (idMatch) {
+        reasons.push(`USB ID ${deviceId(device.vendorId)}:${deviceId(device.productId)} matches.`);
+        if (shared > 1) reasons.push(`ID shared by ${shared} keyboards; check the preview.`);
+      }
+      if (named && device) reasons.push(`Device name "${device.productName}" matches the board name.`);
+      if (boardName) reasons.push(`Your board name "${boardName}" matches.`);
+      if (!idMatch && (named || boardName)) reasons.push('Name match only; check the preview.');
+      return { entry, score: (idMatch ? 3 + 1 / shared : 0) + named * 0.5 + (board?.score ?? 0), reasons };
     })
+    .filter((candidate) => candidate.score > 0)
     .sort((a, b) => (b.score - a.score) || a.entry.displayName.localeCompare(b.entry.displayName));
 }
 

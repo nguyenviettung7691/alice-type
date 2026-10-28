@@ -73,22 +73,26 @@
   <figcaption>
     <span class="keyboard-title">{title ?? (testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer')}</span>
     <span class="keyboard-legend">
-      <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
-      {#if freestyle}
-        <span><span class="legend-mark correct" aria-hidden="true">+</span>Pressed</span>
-      {:else}
-        {#if testState}
-          <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>Expected key</span>
+      {#if layoutSource !== 'preview'}
+        <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
+        {#if freestyle}
+          <span><span class="legend-mark correct" aria-hidden="true">+</span>Pressed</span>
+        {:else}
+          {#if testState}
+            <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>Expected key</span>
+          {/if}
+          <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
+          <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
         {/if}
-        <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
-        <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
       {/if}
       {#if inertKeys.length > 0}
         <span><span class="legend-mark inert" aria-hidden="true"></span>No standard key code</span>
       {/if}
     </span>
   </figcaption>
-  {#if imported}
+  {#if layoutSource === 'preview'}
+    <p class="keyboard-note">Preview, not confirmed · Default key labels may differ from yours. Dashed keys are not testable.</p>
+  {:else if imported}
     <p class="keyboard-note">
       {testLayoutLabel} layout · {layoutSource === 'confirmed' ? 'Confirmed by you' : 'Preview, not confirmed'} · VIA/QMK data, not detected hardware ·
       {browserLegends ? 'Browser layout legends (default keymap legends for missing keys)' : 'Default keymap legends'}.
@@ -134,7 +138,7 @@
           An arrow marks the expected key, a plus marks a tested key, and an
           exclamation mark indicates temporary unexpected input. Text key results
           are available below the diagram.
-        {:else}
+        {:else if layoutSource !== 'preview'}
           Recent accepted printable presses briefly show an orange plus for correct
           input or a red exclamation mark for a mismatch. Unmapped physical codes
           do not highlight.

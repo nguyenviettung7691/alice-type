@@ -12,17 +12,19 @@ test.describe('Keyboard Details', () => {
     await skipOnboarding(page);
     await page.goto('/');
     await nav(page, 'Keyboard Details').click();
+    await expect(page.getByRole('heading', { name: 'Keyboard Details', exact: true })).toBeFocused();
+    await panel(page).locator('.details-disclosure > summary').click();
   });
 
   test('starts unselected and distinguishes unknown data from the generic layout reference', async ({ page }) => {
     await expect(nav(page, 'Keyboard Details')).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.getByRole('heading', { name: 'Keyboard Details', exact: true })).toBeFocused();
     await expect(page.getByLabel('Reference profile', { exact: true })).toHaveValue('');
     await expect(panel(page)).toContainText('No catalog profile is selected');
     await expect(row(page, 'Brand')).toContainText('Unknown');
     await expect(panel(page)).toContainText('AliceType cannot detect your connected keyboard');
 
     await page.getByLabel('Reference profile', { exact: true }).selectOption('generic-alice');
+    await panel(page).getByText('Reference sources', { exact: true }).click();
     await expect(panel(page)).toContainText('Generic Alice layout');
     await expect(panel(page)).toContainText('Catalog revision 1.1.0');
     await expect(panel(page)).toContainText('src/lib/keyboard/alice-layout.ts');
@@ -55,6 +57,7 @@ test.describe('Keyboard Details', () => {
 
     await page.reload();
     await nav(page, 'Keyboard Details').click();
+    await panel(page).locator('.details-disclosure > summary').click();
     await expect(row(page, 'Name')).toContainText('My Alice board');
     await expect(page.getByLabel('Reference profile', { exact: true })).toHaveValue('generic-alice');
     await nav(page, 'Clear my details').click();
@@ -74,6 +77,7 @@ test.describe('Keyboard Details', () => {
     await expect(page.locator('.keyboard-test-panel')).toContainText('Generic Alice layout');
     await expect(page.getByRole('progressbar', { name: 'Keyboard test progress' })).toHaveAttribute('max', '60');
     await nav(page, 'Keyboard Details').click();
+    await panel(page).locator('.details-disclosure > summary').click();
     await page.getByLabel('Reference profile', { exact: true }).selectOption('generic-alice');
     await nav(page, 'Keyboard Test').click();
     await expect(page.locator('.keyboard-test-panel')).toContainText('Generic Alice layout');

@@ -17,7 +17,7 @@ describe('layout candidate ranking', () => {
     expect(candidate.reasons[1]).toMatch(/shared by \d+ keyboards/);
   });
 
-  it('uses the product name only as a tie-breaker between ID matches', () => {
+  it('uses product names to rank ID matches and suggest boards with different IDs', () => {
     const base = findCatalogEntry('chalice')!;
     const entries: LayoutCatalogEntry[] = [
       { ...base, id: 'a', displayName: 'Alpha Board', name: 'Alpha Board', sharedIdCount: 2 },
@@ -25,9 +25,31 @@ describe('layout candidate ranking', () => {
       { ...base, id: 'c', displayName: 'Gamma', name: 'Gamma', vendorId: base.vendorId + 1 }
     ];
     const ranked = rankLayoutCandidates(device(base.vendorId, base.productId, 'Gamma Beta Board'), entries);
-    expect(ranked.map((candidate) => candidate.entry.id)).toEqual(['b', 'a']);
-    expect(ranked[0].reasons.at(-1)).toContain('similar');
+    expect(ranked.map((candidate) => candidate.entry.id)).toEqual(['b', 'a', 'c']);
+    expect(ranked[0].reasons.at(-1)).toContain('Device name');
+    expect(ranked[2].reasons.at(-1)).toContain('Name match only');
     expect(rankLayoutCandidates(device(base.vendorId, base.productId), entries).map((c) => c.entry.id)).toEqual(['a', 'b']);
+  });
+
+  it('suggests from a board name without a device and prioritizes named variants', () => {
+    const ranked = rankLayoutCandidates(null, LAYOUT_CATALOG.profiles, ['keychron Q8 ISO']);
+    expect(ranked[0].entry.id).toBe('keychron-q8-iso');
+    expect(ranked[0].reasons).toEqual([
+      'Your board name "keychron Q8 ISO" matches.', 'Name match only; check the preview.'
+    ]);
+    expect(ranked.every((candidate) => candidate.entry.id.startsWith('keychron-q8-'))).toBe(true);
+    expect(rankLayoutCandidates(null, LAYOUT_CATALOG.profiles, ['ProjectKB Alice'])[0].entry.id).toBe('projectkb-alice');
+  });
+
+  it('uses saved name/model hints and QMK board aliases, with token boundaries', () => {
+    const base = findCatalogEntry('chalice')!;
+    const entry = { ...base, name: 'Display Model', displayName: 'Display Model',
+      sources: { ...base.sources, qmkInfo: { ...base.sources.qmkInfo, keyboard: 'maker/secret42/rev2' } } };
+    expect(rankLayoutCandidates(null, [entry], ['My board', 'maker/secret42/rev2'])).toHaveLength(1);
+    expect(rankLayoutCandidates(device(1, 2, 'KEYCHRON Q8'), LAYOUT_CATALOG.profiles)).toHaveLength(4);
+    for (const name of ['', 'keyboard', 'Alice', 'Keychron', 'Q80', 'notchalice', 'ANSI USB HID']) {
+      expect(rankLayoutCandidates(null, LAYOUT_CATALOG.profiles, [name]), name).toEqual([]);
+    }
   });
 });
 
