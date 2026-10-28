@@ -36,15 +36,15 @@
     const current = next.find((device) => device === selected);
     selectDevice(current ?? (next.length === 1 ? next[0] : null));
     warning = next.length === 0
-      ? 'No accessible keyboard detected. It may be disconnected, awaiting permission, or protected by your browser. You can still practice and test keys.'
+      ? 'No device is available right now. It may be disconnected, hidden by browser permissions, or protected by the browser. You can still practice and test keys without connecting one.'
       : next.length > 1 && !selected
-        ? 'Multiple authorized devices are available. Choose your keyboard below; typing alone cannot tell us which device you use.'
+        ? 'Several devices are available. Choose the one you use; your browser cannot tell which connected device you type on.'
         : '';
   }
 
   async function restoreDevices(initial = false) {
     if (!hid) {
-      warning = 'Keyboard device detection is not supported here. Try a compatible browser on HTTPS or localhost, or keep practicing without device access.';
+      warning = 'Device access is not available in this browser. You can still practice and test keys without connecting a device.';
       return;
     }
     const revision = ++deviceRevision;
@@ -69,21 +69,20 @@
     const revision = ++layoutRevision;
     try {
       if (!keyboard?.getLayoutMap) {
-        layoutMessage = 'Optional layout access is not supported here. Both diagrams will use reference key labels.';
+        layoutMessage = 'Browser key labels are not available here. The diagrams will keep their reference labels.';
         onlayoutchange(null);
         return;
       }
       const map = await keyboard.getLayoutMap();
       if (!alive || revision !== layoutRevision) return;
       onlayoutchange(map.size > 0 ? new Map(map) : null);
-      const labels = ['KeyQ', 'KeyA', 'KeyY', 'KeyZ'].map((code) => `${code}: ${map.get(code) ?? 'unknown'}`);
-      layoutMessage = `Browser layout sample (${labels.join(', ')}). Both diagrams use these key labels where available, with reference labels for the rest. This does not identify your keyboard model or shape.`;
-      if (map.size === 0) layoutMessage = 'No keyboard layout detected. Both diagrams will use reference key labels. You can still practice and test keys.';
+      layoutMessage = 'Key labels are updated from your browser. The diagrams use them where available and keep reference labels for the rest. This does not identify your keyboard\'s physical layout.';
+      if (map.size === 0) layoutMessage = 'Your browser did not provide any key labels. The diagrams will keep their reference labels, and you can still practice and test keys.';
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (alive && revision === layoutRevision) {
         onlayoutchange(null);
-        layoutMessage = `Optional layout access was unavailable: ${error.message}. Both diagrams will use reference key labels. You can try refreshing them again.`;
+        layoutMessage = `Could not refresh key labels: ${error.message}. The diagrams will use their reference labels. You can try again anytime.`;
       }
     }
   }
@@ -99,12 +98,12 @@
       if (next.length > 0) {
         updateDevices(next);
       } else {
-        warning = 'Keyboard access was not granted. No device was selected, or your keyboard was not listed. Try connecting again, or continue practicing.';
+        warning = 'No device was selected. Try again, or continue practicing without connecting one.';
       }
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (alive && revision === deviceRevision) {
-        warning = `Keyboard access was denied or unavailable: ${error.message}. You can try again or keep practicing without it.`;
+        warning = `The browser could not connect to a device: ${error.message}. Try again, or continue practicing without one.`;
       }
     } finally {
       if (alive) busy = false;
@@ -121,7 +120,7 @@
     } else if (choice === 'layout') {
       void requestLayout();
     } else {
-      warning = 'Keyboard access was skipped. You can still practice and test keys with the reference layout. Connect whenever you are ready.';
+      warning = 'No problem. You can practice and test keys without connecting a device. Connect one whenever you are ready.';
     }
     onfinish(choice !== 'skip');
   }
@@ -155,9 +154,9 @@
     <summary>
       <span class="connection-title">Keyboard connection</span>
       <span class="connection-badge" data-tone={busy ? 'pending' : !hid ? 'neutral' : selected ? (warning ? 'warning' : 'success') : 'warning'}>
-        {busy ? 'Awaiting permission' : !hid ? 'Unavailable' : selected ? (warning ? 'Attention needed' : 'Device selected') : devices.length > 1 ? 'Selection needed' : 'No device selected'}
+        {busy ? 'Connecting...' : !hid ? 'Unavailable' : selected ? (warning ? 'Attention needed' : 'Device selected') : devices.length > 1 ? 'Choose a device' : 'No device selected'}
       </span>
-      <span class="summary-device" aria-live="polite">{selected?.productName || (selected ? 'Unnamed HID device' : 'No keyboard selected')}</span>
+      <span class="summary-device" aria-live="polite">{selected?.productName || (selected ? 'Unnamed device' : 'No device selected')}</span>
       <svg class="disclosure-icon" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
         <path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -165,12 +164,14 @@
     <div class="connection-content">
       <div class="connection-overview">
         <div class="connection-copy">
+          <p class="connection-intro"><strong>Device access is optional.</strong> You can practice and test keys without connecting anything.</p>
+          <p class="connection-description">Connect a device to see the details your browser provides. Refresh key labels to update both diagrams where supported.</p>
           {#if selected}
-            <p class="selected-device" role="status">Selected device: <strong>{selected.productName || 'Unnamed HID device'}</strong></p>
+            <p class="selected-device" role="status">Selected device: <strong>{selected.productName || 'Unnamed device'}</strong></p>
             {#if confirmedLayoutLabel}
-              <p class="connection-description">Both diagrams use the <strong>{confirmedLayoutLabel}</strong> layout you confirmed. AliceType does not detect your keyboard's shape.</p>
+              <p class="connection-description">Both diagrams use the <strong>{confirmedLayoutLabel}</strong> layout you confirmed. Device access cannot detect your keyboard&apos;s physical layout.</p>
             {:else}
-              <p class="connection-description">No layout is confirmed for this device. Both diagrams use a reference Alice layout, not your keyboard's detected shape. Use Find my layout to look for a catalog match.</p>
+              <p class="connection-description">No layout is confirmed yet. The diagrams show the reference Alice layout, not your keyboard&apos;s physical layout. Use Find my layout to choose a possible match.</p>
             {/if}
           {/if}
           {#if warning}<p class="keyboard-warning" aria-live="polite">{warning}</p>{/if}
@@ -178,7 +179,7 @@
         <div class="panel-actions connection-actions">
           {#if hid}
             <button class="secondary-button" type="button" disabled={disabled || busy} onclick={() => { void connect(); }}>
-              {busy ? 'Waiting for permission...' : 'Connect keyboard'}
+              {busy ? 'Connecting...' : 'Connect a device'}
             </button>
           {/if}
           <button class="secondary-button" type="button" disabled={disabled} onclick={() => { void requestLayout(); }}>Refresh key labels</button>
@@ -188,20 +189,20 @@
         </div>
       </div>
       {#if devices.length > 1}
-        <label for="connected-keyboard">Choose your keyboard</label>
+        <label for="connected-keyboard">Choose a device</label>
         <select id="connected-keyboard" disabled={disabled || busy} value={selected ? devices.indexOf(selected) : ''} onchange={(event) => {
           const value = event.currentTarget.value;
           selectDevice(value === '' ? null : devices[Number(value)]);
-          warning = selected ? '' : 'Choose your keyboard below. Typing alone cannot tell us which device you use.';
+          warning = selected ? '' : 'Choose the device you use. Your browser cannot tell which connected device you type on.';
         }}>
-          <option value="">Select your keyboard</option>
+          <option value="">Choose a device</option>
           {#each devices as device, index}
-            <option value={index}>{device.productName || 'Unnamed HID device'} ({index + 1})</option>
+            <option value={index}>{device.productName || 'Unnamed device'} (device {index + 1})</option>
           {/each}
         </select>
       {/if}
       {#if layoutMessage}<p class="layout-message" role="status">{layoutMessage}</p>{/if}
-      <p class="connection-privacy"><strong>Private by design.</strong> Your settings, scores, and device details stay in this browser. Nothing is uploaded to a server.</p>
+      <p class="connection-privacy"><strong>Your information stays private.</strong> Settings and scores stay in this browser, and device details stay in this tab. AliceType does not upload them to a server.</p>
     </div>
   </details>
 </section>
@@ -252,6 +253,9 @@
   }
 
   .connection-copy { flex: 1 1 25rem; min-width: 0; }
+  .connection-intro, .connection-description { margin: 0.55rem 0 0; }
+  .connection-intro { color: var(--color-text); }
+  .connection-intro strong { font-weight: 600; }
   .connection-badge {
     border: 1px solid rgb(255 255 255 / 15%);
     border-radius: 999px;
@@ -273,7 +277,7 @@
     border-color: rgb(169 206 255 / 35%);
     background: rgb(169 206 255 / 8%);
   }
-  .selected-device, .keyboard-warning, .connection-description { margin: 0.55rem 0 0; }
+  .selected-device, .keyboard-warning { margin: 0.55rem 0 0; }
   .selected-device strong { color: var(--color-text); }
   .connection-actions { margin: 0; gap: 0.5rem; }
   .connection-actions button + button { margin-left: 0; }

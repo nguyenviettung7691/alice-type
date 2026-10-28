@@ -50,7 +50,7 @@ test.describe('Keyboard layout profiles', () => {
     const external = await setup(page, { device: Q8 });
     await expect(practiceVisualizer(page)).toHaveAttribute('data-layout-source', 'generic');
     await page.locator('.keyboard-connection summary').click();
-    await expect(page.locator('.keyboard-connection')).toContainText('No layout is confirmed for this device');
+    await expect(page.locator('.keyboard-connection')).toContainText('No layout is confirmed yet');
     await nav(page, 'Find my layout').click();
     await expect(page.locator('#layout-match-heading')).toBeFocused();
 
