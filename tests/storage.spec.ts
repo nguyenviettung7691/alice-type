@@ -362,7 +362,7 @@ test.describe('onboarding and preference recovery', () => {
     test(`welcome dialog is centered and usable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
       await page.setViewportSize(viewport);
       await page.goto('/');
-      const dialog = page.getByRole('dialog', { name: 'Make room for your rhythm.' });
+      const dialog = page.getByRole('dialog', { name: 'Welcome to AliceType' });
       await expect(dialog).toBeVisible();
       const bounds = await dialog.boundingBox();
       if (!bounds) throw new Error('Missing welcome dialog bounds');
@@ -372,17 +372,21 @@ test.describe('onboarding and preference recovery', () => {
       expect(bounds.y).toBeGreaterThanOrEqual(16);
       expect(bounds.x + bounds.width).toBeLessThanOrEqual(viewport.width - 16);
       expect(bounds.y + bounds.height).toBeLessThanOrEqual(viewport.height - 16);
-      await dialog.getByRole('button', { name: 'Continue without layout access' }).click();
+      await dialog.getByRole('button', { name: 'Explore first' }).click();
       await expect(dialog).toHaveCount(0);
     });
   }
 
   test('first use is a keyboard-accessible dialog, skip/Escape work, and no typing starts', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('dialog')).toHaveAccessibleName('Make room for your rhythm.');
+    await expect(page.getByRole('dialog')).toHaveAccessibleName('Welcome to AliceType');
     await expect(nav(page, 'Start practicing')).toBeFocused();
     await page.keyboard.press('Tab');
-    await expect(nav(page, 'Continue without layout access')).toBeFocused();
+    await expect(page.getByRole('dialog').locator('summary')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(nav(page, 'Explore first')).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByRole('dialog').locator('summary')).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(nav(page, 'Start practicing')).toBeFocused();
     await page.keyboard.press('Escape');
@@ -406,7 +410,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(input(page)).toBeFocused();
     await expect(panel(page)).toHaveAttribute('data-status', 'ready');
     await page.evaluate(() => Reflect.get(window, 'finishLayoutMap')());
-    await page.locator('.keyboard-connection summary').click();
+    await expect(page.locator('.keyboard-connection details')).toHaveAttribute('open', '');
     await expect(page.getByRole('status')).toContainText(['Browser layout sample', 'Select the text']);
     await expect(page.getByText(/Browser layout sample/)).toContainText('KeyQ: a');
     await expect(page.getByRole('img', { name: 'Generic Alice keyboard', exact: true })).toHaveAccessibleDescription(/not a detected device/);
@@ -447,7 +451,7 @@ test.describe('onboarding and preference recovery', () => {
   test('retrying preference reads from Stats reopens onboarding and Start returns to practice', async ({ page }) => {
     await page.addInitScript((key) => localStorage.setItem(key, '{broken'), PREFERENCES_KEY);
     await page.goto('/');
-    await nav(page, 'Continue without layout access').click();
+    await nav(page, 'Explore first').click();
     await nav(page, 'Stats').click();
     await page.evaluate(({ key, defaults }) => localStorage.setItem(key, JSON.stringify({
       version: 1, settings: defaults
@@ -463,7 +467,7 @@ test.describe('onboarding and preference recovery', () => {
     test(`does not overwrite invalid/future data during onboarding: ${raw.slice(0, 14)}`, async ({ page }) => {
       await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: PREFERENCES_KEY, value: raw });
       await page.goto('/');
-      await nav(page, 'Continue without layout access').click();
+      await nav(page, 'Explore first').click();
       await expect(page.getByRole('alert')).toContainText(/could not be loaded|unsupported schema/);
       expect(await page.evaluate((key) => localStorage.getItem(key), PREFERENCES_KEY)).toBe(raw);
       await nav(page, 'Dismiss preference warning').click();
@@ -477,7 +481,7 @@ test.describe('onboarding and preference recovery', () => {
       Object.defineProperty(window, 'localStorage', { get: () => { throw new DOMException('Storage denied', 'SecurityError'); } });
     });
     await page.goto('/');
-    await nav(page, 'Continue without layout access').click();
+    await nav(page, 'Explore first').click();
     await expect(page.getByRole('alert')).toContainText('Storage denied');
     await expect(page.getByLabel('Duration', { exact: true })).toHaveValue('30');
     await nav(page, 'Start typing').click();

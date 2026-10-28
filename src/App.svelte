@@ -217,16 +217,16 @@
     if (enabling) audioError = '';
   }
 
-  async function finishOnboarding(useLayout: boolean) {
+  async function finishOnboarding(focusPractice: boolean) {
     onboarding = false;
     preferences = { ...preferences, onboardingComplete: true };
     if (!preserveStored) persist();
-    if (useLayout) {
+    if (focusPractice) {
       view = 'practice';
     }
     await tick();
     if (!alive) return;
-    if (useLayout) (document.getElementById('practice-input') ?? document.getElementById('custom-draft') ?? document.getElementById('practice-panel-heading'))?.focus();
+    if (focusPractice) (document.getElementById('practice-input') ?? document.getElementById('custom-draft') ?? document.getElementById('practice-panel-heading'))?.focus();
     else document.querySelector<HTMLButtonElement>('.view-navigation button')?.focus();
   }
 </script>

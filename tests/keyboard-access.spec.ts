@@ -17,6 +17,7 @@ async function mockAccess(page: Page, scenario: Scenario, returning = false) {
         return granted;
       },
       requestDevice: async () => {
+        Reflect.set(window, 'deviceRequestCount', (Reflect.get(window, 'deviceRequestCount') ?? 0) + 1);
         Reflect.set(window, 'chooserHadActivation', navigator.userActivation.isActive);
         if (scenario === 'denied') throw new DOMException('Permission denied', 'NotAllowedError');
         if (scenario === 'empty') return [];
@@ -35,7 +36,10 @@ async function mockAccess(page: Page, scenario: Scenario, returning = false) {
       hid.dispatchEvent(new Event('connect'));
     });
     const keyboard = Object.assign(new EventTarget(), {
-      getLayoutMap: async () => new Map([['KeyQ', 'a'], ['KeyA', 'q']])
+      getLayoutMap: async () => {
+        Reflect.set(window, 'layoutRequestCount', (Reflect.get(window, 'layoutRequestCount') ?? 0) + 1);
+        return new Map([['KeyQ', 'a'], ['KeyA', 'q']]);
+      }
     });
     Object.defineProperty(navigator, 'hid', { configurable: true, value: hid });
     Object.defineProperty(navigator, 'keyboard', { configurable: true, value: keyboard });
@@ -47,19 +51,22 @@ async function mockAccess(page: Page, scenario: Scenario, returning = false) {
 }
 
 const connection = (page: Page) => page.getByRole('region', { name: 'Keyboard connection', exact: true });
-const connect = (page: Page) => page.getByRole('button', { name: 'Connect Keyboard & Start', exact: true });
+const connect = (page: Page) => page.getByRole('button', { name: 'Connect keyboard & start', exact: true });
 const legend = (page: Page) => page.locator('.keyboard-key[data-code="KeyQ"] .key-legend').filter({ visible: true });
 
 test('automatically prompts, opens the chooser on activation, and shares browser legends across both views', async ({ page }) => {
   await mockAccess(page, 'grant');
   await page.goto('/');
   await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(connect(page)).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Start practicing', exact: true })).toBeFocused();
+  await page.getByRole('dialog').locator('summary').click();
   await expect(page.getByRole('dialog')).toContainText('never uploaded to a server');
   await connect(page).click();
   expect(await page.evaluate(() => Reflect.get(window, 'chooserHadActivation'))).toBe(true);
   await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeFocused();
   await expect(connection(page)).toContainText('Example Alice HID');
+  await expect(connection(page).locator('details')).toHaveAttribute('open', '');
+  await expect(connection(page).getByRole('status').filter({ hasText: 'Selected device:' })).toBeVisible();
   await expect(connection(page)).toContainText('No layout is confirmed for this device');
   await expect(legend(page)).toHaveText('a');
   await page.getByRole('button', { name: 'Keyboard Test', exact: true }).click();
@@ -71,6 +78,99 @@ test('automatically prompts, opens the chooser on activation, and shares browser
   const saved = await page.evaluate((key) => localStorage.getItem(key), PREFERENCES_KEY);
   expect(saved).not.toContain('Example Alice HID');
   expect(saved).not.toContain('vendorId');
+});
+
+test('default Enter action requests key labels without opening the device picker or starting a session', async ({ page }) => {
+  await mockAccess(page, 'grant');
+  await page.goto('/');
+  await expect(page.getByRole('button', { name: 'Start practicing', exact: true })).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeFocused();
+  await expect(page.getByRole('region', { name: 'Typing practice', exact: true })).toHaveAttribute('data-status', 'ready');
+  await expect(legend(page)).toHaveText('a');
+  expect(await page.evaluate(() => Reflect.get(window, 'deviceRequestCount') ?? 0)).toBe(0);
+  expect(await page.evaluate(() => Reflect.get(window, 'layoutRequestCount'))).toBe(1);
+  const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '').settings, PREFERENCES_KEY);
+  expect(saved.onboardingComplete).toBe(true);
+});
+
+test('Start practicing focuses the Custom editor when no target is ready', async ({ page }) => {
+  await mockAccess(page, 'grant');
+  await page.addInitScript(({ key, defaults }) => {
+    localStorage.setItem(key, JSON.stringify({
+      version: 5, settings: { ...defaults, mode: 'custom' }
+    }));
+  }, { key: PREFERENCES_KEY, defaults: DEFAULT_PREFERENCES });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Start practicing', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Custom text', exact: true })).toBeFocused();
+  await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toHaveCount(0);
+});
+
+for (const viewport of [{ width: 320, height: 740 }, { width: 667, height: 320 }]) {
+  test(`optional setup and privacy remain usable at ${viewport.width}x${viewport.height}`, async ({ page }) => {
+    await page.setViewportSize(viewport);
+    await mockAccess(page, 'grant');
+    await page.goto('/');
+    const dialog = page.getByRole('dialog');
+    await dialog.locator('summary').click();
+    await expect(dialog.getByText(/never uploaded to a server/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Explore first', exact: true }).scrollIntoViewIfNeeded();
+    expect(await dialog.evaluate((element) => element.scrollWidth)).toBe(await dialog.evaluate((element) => element.clientWidth));
+    await dialog.locator('summary').click();
+    await connect(page).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(connection(page).getByRole('status').filter({ hasText: 'Selected device:' })).toBeVisible();
+  });
+}
+
+for (const action of ['Explore first', 'Escape'] as const) {
+  test(`${action} dismisses without requesting access and keeps keyboard focus outside the exercise`, async ({ page }) => {
+    await mockAccess(page, 'grant');
+    await page.goto('/');
+    await expect(page.getByRole('button', { name: 'Start practicing', exact: true })).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(connect(page)).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('dialog').locator('summary')).toBeFocused();
+    await page.keyboard.press('Tab');
+    await expect(page.getByRole('button', { name: 'Explore first', exact: true })).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(page.getByRole('dialog').locator('summary')).toBeFocused();
+    if (action === 'Escape') await page.keyboard.press('Escape');
+    else await page.getByRole('button', { name: action, exact: true }).click();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Practice', exact: true })).toBeFocused();
+    await expect(page.getByRole('region', { name: 'Typing practice', exact: true })).toHaveAttribute('data-status', 'ready');
+    expect(await page.evaluate(() => Reflect.get(window, 'deviceRequestCount') ?? 0)).toBe(0);
+    expect(await page.evaluate(() => Reflect.get(window, 'layoutRequestCount') ?? 0)).toBe(0);
+    const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? '').settings, PREFERENCES_KEY);
+    expect(saved.onboardingComplete).toBe(true);
+  });
+}
+
+test('connecting with Enter retains user activation and focuses practice while the chooser is pending', async ({ page }) => {
+  await mockAccess(page, 'grant');
+  await page.addInitScript(() => {
+    Reflect.set(Reflect.get(navigator, 'hid'), 'requestDevice', () => {
+      Reflect.set(window, 'chooserHadActivation', navigator.userActivation.isActive);
+      return new Promise((resolve) => {
+        Reflect.set(window, 'cancelDevicePicker', () => resolve([]));
+      });
+    });
+  });
+  await page.goto('/');
+  await page.keyboard.press('Tab');
+  await expect(connect(page)).toBeFocused();
+  await page.keyboard.press('Enter');
+  expect(await page.evaluate(() => Reflect.get(window, 'chooserHadActivation'))).toBe(true);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeFocused();
+  await expect(connection(page).getByRole('button', { name: 'Waiting for permission...' })).toBeDisabled();
+  await page.evaluate(() => Reflect.get(window, 'cancelDevicePicker')());
+  await expect(connection(page).getByText(/Keyboard access was not granted/)).toBeVisible();
+  await expect(connection(page).getByRole('button', { name: 'Connect keyboard', exact: true })).toBeEnabled();
 });
 
 test('restores previously granted access without prompting and clears stale device details on disconnect', async ({ page }) => {
@@ -101,6 +201,9 @@ for (const scenario of ['denied', 'empty', 'failed'] as const) {
     await expect(connection(page)).toContainText(
       scenario === 'denied' ? 'Permission denied' : scenario === 'empty' ? 'not granted' : 'Example Alice HID'
     );
+    if (scenario !== 'failed') {
+      await expect(connection(page).getByText(/Keyboard access was/)).toBeVisible();
+    }
     await page.getByRole('textbox', { name: 'Typing practice', exact: true }).press('a');
     await expect(page.getByRole('region', { name: 'Typing practice', exact: true })).toHaveAttribute('data-status', 'running');
   });
@@ -128,7 +231,7 @@ test('late startup discovery cannot reopen a skipped dialog, but reload without 
     Object.defineProperty(navigator, 'hid', { value: hid });
   });
   await page.goto('/');
-  await page.getByRole('button', { name: 'Continue without layout access' }).click();
+  await page.getByRole('button', { name: 'Explore first' }).click();
   await page.evaluate(() => Reflect.get(window, 'finishDeviceDiscovery')());
   await expect(connection(page)).toContainText('No accessible keyboard detected');
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -144,7 +247,7 @@ test('unsupported detection, skip, and cancelled access remain recoverable and r
     Object.defineProperty(navigator, 'keyboard', { value: undefined });
   });
   await page.goto('/');
-  await expect(page.getByRole('dialog')).toContainText('Device detection is unavailable');
+  await expect(page.getByRole('dialog')).toContainText("Device connection isn't available");
   await page.keyboard.press('Escape');
   await expect(connection(page)).toContainText('Keyboard access was skipped');
   await connection(page).locator('summary').click();
