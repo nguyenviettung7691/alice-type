@@ -66,11 +66,11 @@ test('Quote completes at its final position even with an error and saves exactly
   await expect(page.getByRole('progressbar')).toHaveAttribute('value', String(text.length));
   await expect.poll(async () => (await records(page)).length).toBe(1);
   const [record] = await records(page);
-  expect(record).toMatchObject({ version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1', mode: 'quote', targetCharacters: text.length, totalAttempts: text.length });
+  expect(record).toMatchObject({ version: 4, language: 'en', scoringVersion: 'committed-grapheme-v1', mode: 'quote', targetCharacters: text.length, totalAttempts: text.length });
   await page.keyboard.type('extra');
   expect(await records(page)).toEqual([record]);
   await button(page, 'Stats').click();
-  await expect(page.getByRole('table')).toContainText(`Quote / ${text.length} characters`);
+  await expect(page.getByRole('table').first()).toContainText(`Quote / ${text.length} characters`);
 });
 
 test('Custom native editor normalizes a reviewed target without starting or capturing editor keys', async ({ page }) => {
@@ -187,8 +187,8 @@ test('Zen only updates writing, installs no practice interval or audio, and stop
   await expect.poll(async () => (await records(page)).length).toBe(1);
   expect((await records(page))[0]).toMatchObject({ mode: 'zen', retainedCharacters: 250, accuracy: null, correctAttempts: null, missedKeys: {}, wpm: 50 });
   await button(page, 'Stats').click();
-  await expect(page.getByRole('table')).toContainText('Zen');
-  await expect(page.getByRole('table')).toContainText('Not applicable');
+  await expect(page.getByRole('table').first()).toContainText('Zen');
+  await expect(page.getByRole('table').first()).toContainText('Not applicable');
   await button(page, 'Practice').click();
   await expect(page.getByLabel('Typing sound', { exact: true })).toBeChecked();
   await expect(page.getByLabel('Show live WPM and accuracy')).toBeChecked();

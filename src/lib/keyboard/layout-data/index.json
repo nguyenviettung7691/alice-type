@@ -14,6 +14,10 @@
       "vendorId": 21084,
       "productId": 40862,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -48,6 +52,10 @@
       "vendorId": 21084,
       "productId": 40863,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 16
+      },
       "groups": [
         {
           "label": "Split Backspace",
@@ -97,6 +105,10 @@
       "vendorId": 27242,
       "productId": 12,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 10,
+        "cols": 7
+      },
       "groups": [
         {
           "label": "Split Backspace",
@@ -139,6 +151,10 @@
       "vendorId": 60653,
       "productId": 13923,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 16
+      },
       "groups": [
         {
           "label": "Knob",
@@ -181,6 +197,10 @@
       "vendorId": 64126,
       "productId": 0,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -215,6 +235,10 @@
       "vendorId": 13364,
       "productId": 417,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 6,
+        "cols": 16
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -249,6 +273,10 @@
       "vendorId": 13364,
       "productId": 419,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 6,
+        "cols": 16
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -283,6 +311,10 @@
       "vendorId": 13364,
       "productId": 384,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -317,6 +349,10 @@
       "vendorId": 13364,
       "productId": 385,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -351,6 +387,10 @@
       "vendorId": 13364,
       "productId": 386,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -385,6 +425,10 @@
       "vendorId": 13364,
       "productId": 387,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -419,6 +463,10 @@
       "vendorId": 13364,
       "productId": 929,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 6,
+        "cols": 16
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -453,6 +501,10 @@
       "vendorId": 13364,
       "productId": 931,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 6,
+        "cols": 16
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -487,6 +539,10 @@
       "vendorId": 13364,
       "productId": 896,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -521,6 +577,10 @@
       "vendorId": 13364,
       "productId": 897,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -555,6 +615,10 @@
       "vendorId": 43524,
       "productId": 47876,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 16
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -589,6 +653,10 @@
       "vendorId": 31649,
       "productId": 12801,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 5,
+        "cols": 15
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -623,6 +691,10 @@
       "vendorId": 24946,
       "productId": 24672,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 10,
+        "cols": 8
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -657,6 +729,10 @@
       "vendorId": 345,
       "productId": 42780,
       "sharedIdCount": 2,
+      "matrix": {
+        "rows": 5,
+        "cols": 16
+      },
       "groups": [
         {
           "label": "Long Backspace",
@@ -706,6 +782,10 @@
       "vendorId": 29035,
       "productId": 1,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 12,
+        "cols": 8
+      },
       "groups": [
         {
           "label": "Split Backspace",
@@ -748,6 +828,10 @@
       "vendorId": 21314,
       "productId": 1,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 10,
+        "cols": 8
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -782,6 +866,10 @@
       "vendorId": 21314,
       "productId": 6,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 10,
+        "cols": 8
+      },
       "groups": [],
       "sources": {
         "via": {
@@ -816,6 +904,10 @@
       "vendorId": 21314,
       "productId": 4,
       "sharedIdCount": 1,
+      "matrix": {
+        "rows": 9,
+        "cols": 8
+      },
       "groups": [
         {
           "label": "Split Backspace",

@@ -91,12 +91,13 @@ export function createSession(
 
   let metadata: Pick<SessionData, 'configuration' | 'wordEnds'> = {};
   if (configuration) {
-    if (!['timed', 'words', 'quote', 'custom'].includes(configuration.mode)) {
+    if (!['timed', 'words', 'quote', 'custom', 'drills', 'code'].includes(configuration.mode)) {
       throw new Error('Only target-copying modes can create a finite exercise.');
     }
     validateConfiguration(configuration);
-    if ((configuration.mode === 'timed' || configuration.mode === 'words') && (!wordEnds || wordEnds.length === 0
-      || (configuration.mode === 'words' && wordEnds.length !== configuration.wordLimit)
+    const generated = configuration.mode === 'timed' || configuration.mode === 'words' || configuration.mode === 'drills';
+    if (generated && (!wordEnds || wordEnds.length === 0
+      || (configuration.mode !== 'timed' && wordEnds.length !== configuration.wordLimit)
       || wordEnds[wordEnds.length - 1] !== target.length
       || wordEnds.some((end, index) => !Number.isInteger(end) || end <= (wordEnds[index - 1] ?? 0)
         || end > target.length || (index < wordEnds.length - 1 && target[end - 1] !== ' ')))) {
@@ -232,9 +233,10 @@ export function applyAction(
 }
 
 export function requiresFinish(session: TypingSession): boolean {
-  return session.configuration?.mode !== 'timed'
+  const mode = session.configuration?.mode;
+  return mode !== 'timed' && mode !== 'code'
     && (getLanguage(session.configuration?.language ?? DEFAULT_LANGUAGE).explicitFinish
-      || (session.configuration?.mode === 'custom' && /[^\x20-\x7e]/.test(session.target)));
+      || (mode === 'custom' && /[^\x20-\x7e]/.test(session.target)));
 }
 
 export function finishSession(session: TypingSession, now: number): TypingSession {
@@ -335,10 +337,10 @@ export function getProgress(session: PracticeSession, now: number) {
   const configuration = session.configuration;
   if (!configuration) return { value: 0, maximum: 1, percent: 0 };
   const maximum = configuration.mode === 'timed' ? configuration.durationSeconds
-    : configuration.mode === 'words' ? configuration.wordLimit : session.target.length;
+    : configuration.mode === 'words' || configuration.mode === 'drills' ? configuration.wordLimit : session.target.length;
   const value = configuration.mode === 'timed'
     ? getMetrics(session, now).elapsedMs / 1000
-    : configuration.mode === 'words'
+    : configuration.mode === 'words' || configuration.mode === 'drills'
       ? (session.wordEnds ?? []).filter((end) => session.input.length >= end).length
       : session.input.length;
   return { value, maximum, percent: Math.min(100, Math.max(0, value / maximum * 100)) };

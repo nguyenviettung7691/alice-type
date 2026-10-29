@@ -6,7 +6,7 @@ export const ACCURACY_FLOOR = 50;
 export const ACCURACY_CEILING = 100;
 const MIN_WPM_AXIS = 20;
 
-export type TimelineMode = 'timed' | 'words' | 'quote' | 'custom';
+export type TimelineMode = 'timed' | 'words' | 'quote' | 'custom' | 'drills' | 'code';
 
 export interface TimelinePoint {
   readonly id: string;

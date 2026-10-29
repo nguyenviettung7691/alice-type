@@ -5,7 +5,7 @@ import {
 } from './typing-engine';
 import { generateExercise, getWordBank, validateWordBank, type GeneratedConfiguration } from './exercise-generator';
 import { getQuoteCatalog, selectQuote, validateQuoteCatalog } from './quote-catalog';
-import { completedRecord, summarizeSessions, validateSessionRecord } from '../storage/session-history';
+import { EMPTY_ATTRIBUTION, completedRecord, summarizeSessions, validateSessionRecord } from '../storage/session-history';
 import { isSupportedResourceText } from './text';
 
 describe('Vietnamese content resources', () => {
@@ -112,9 +112,9 @@ describe('committed native input lifecycle', () => {
 
   it('writes private v3 metadata without reclassifying or mixing historical accuracy', () => {
     const completed = finishSession(applyCommittedInput(createSession('á', { mode: 'custom', language: 'vi' }), 'á', 100), 1100);
-    const record = completedRecord(completed, 'a'.repeat(32), 1_800_000_000_000, {});
+    const record = completedRecord(completed, 'a'.repeat(32), 1_800_000_000_000, {}, EMPTY_ATTRIBUTION('left'));
     expect(validateSessionRecord(record)).toEqual(record);
-    expect(record).toMatchObject({ version: 3, language: 'vi', scoringVersion: 'committed-grapheme-v1' });
+    expect(record).toMatchObject({ version: 4, language: 'vi', scoringVersion: 'committed-grapheme-v1' });
     expect(record).not.toHaveProperty('input');
     expect(record).not.toHaveProperty('target');
     const { language, scoringVersion, ...body } = record;

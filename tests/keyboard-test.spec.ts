@@ -396,7 +396,7 @@ test.describe('Freestyle keyboard test', () => {
     await expect(soundToggle(page)).toBeChecked();
     await expect(modeButton(page, 'One key at a time')).toHaveAttribute('aria-pressed', 'true');
     const stored = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? 'null'), PREFERENCES_KEY);
-    expect(stored.version).toBe(6);
+    expect(stored.version).toBe(7);
     expect(JSON.stringify(stored)).not.toMatch(/freestyle|pressCounts/i);
   });
 
@@ -469,7 +469,7 @@ test.describe('test sound and local preferences', () => {
     await expect(soundToggle(page)).toBeChecked();
     await expect(effectSelect(page)).toHaveValue('dog-bark');
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? ''), PREFERENCES_KEY);
-    expect(saved).toEqual({ version: 6, settings: {
+    expect(saved).toEqual({ version: 7, settings: {
       ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardTestSoundEnabled: true, keyboardTestSoundEffect: 'dog-bark'
     } });
     await page.reload();
@@ -546,7 +546,7 @@ test('migration write failure retains existing values and retry saves v6 without
   await nav(page, 'Retry preferences').click();
   await expect(page.getByRole('alert')).toHaveCount(0);
   const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? ''), PREFERENCES_KEY);
-  expect(saved.version).toBe(6);
+  expect(saved.version).toBe(7);
   expect(saved.settings).toMatchObject({
     durationSeconds: 120, soundEnabled: true, caretStyle: 'underline', onboardingComplete: true,
     keyboardTestSoundEnabled: false, keyboardTestSoundEffect: 'default', keyboardLayoutConfirmation: null

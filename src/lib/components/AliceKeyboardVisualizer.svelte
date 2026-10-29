@@ -23,7 +23,7 @@
   let {
     layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false,
     testSequence = layout, inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutSource = 'generic', title,
-    missedCounts
+    missedCounts, expected
   }: {
     layout: readonly AliceKey[];
     feedback?: KeyFeedback;
@@ -40,6 +40,8 @@
     layoutSource?: 'generic' | 'confirmed' | 'preview';
     title?: string;
     missedCounts?: Readonly<Record<string, number>>;
+    /** Practice finger guide: keycap indices to mark as the next expected key, by code. */
+    expected?: Readonly<Record<string, readonly number[]>>;
   } = $props();
   const expectedCode = $derived(testState ? expectedTestKey(testState, testSequence)?.code : undefined);
   const imported = $derived(layoutSource !== 'generic');
@@ -47,6 +49,8 @@
   const freestyle = $derived(testState?.mode === 'freestyle');
   const activeError = $derived(freestyle ? undefined : errorCode);
   const heatmap = $derived(missedCounts !== undefined);
+  const guiding = $derived(!testState && !heatmap && expected !== undefined && Object.keys(expected).length > 0);
+  const guided = (code: string, index: number) => guiding && (expected?.[code]?.includes(index) ?? false);
   const maxMisses = $derived(Math.max(0, ...Object.values(missedCounts ?? {})));
 
   function misses(code: string): number {
@@ -101,6 +105,8 @@
         {:else}
           {#if testState}
             <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>{text("alice-keyboard-visualizer.expected-key")}</span>
+          {:else if guiding}
+            <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>{text("alice-practice.guide-next-key")}</span>
           {/if}
           <span><span class="legend-mark correct" aria-hidden="true">+</span>{text("alice-keyboard-visualizer.correct-press")}</span>
           <span><span class="legend-mark incorrect" aria-hidden="true">!</span>{text("alice-keyboard-visualizer.mismatch")}</span>
@@ -185,13 +191,14 @@
               ? (activeError === key.code ? 'incorrect' : count(key.code) ? 'correct' : 'neutral')
               : feedback[key.code] ?? 'neutral'}
             data-test-state={testState ? testStatus(key.code) : undefined}
+            data-guide={guiding && expected?.[key.code] ? 'expected' : undefined}
             data-count={heatmap ? misses(key.code) : testState ? count(key.code) : undefined}
             data-heat={heatmap ? heat(key.code) : undefined}
             style:--key-heat={heatmap ? `${heat(key.code) * 100}%` : undefined}
           >
             {#if heatmap}<title>{key.legend} ({key.code}): {misses(key.code)} {misses(key.code) === 1 ? 'miss' : 'misses'}</title>{/if}
-            {#each key.keycaps as cap}
-              <g transform={keycapTransform(cap)}>
+            {#each key.keycaps as cap, capIndex}
+              <g transform={keycapTransform(cap)} class:guide-cap={guided(key.code, capIndex)}>
                 <rect
                   x={cap.x}
                   y={cap.y}
@@ -207,6 +214,9 @@
                     dominant-baseline="central"
                     text-anchor="middle"
                   >{key.legend}</text>
+                  {#if guided(key.code, capIndex)}
+                    <text class="guide-marker" x={cap.x + 8} y={cap.y + 9} text-anchor="middle" dominant-baseline="central">&gt;</text>
+                  {/if}
                   {#if heatmap || (freestyle && sequenceCodes.has(key.code))}
                     <text class="key-count" x={cap.x + cap.width / 2} y={cap.y + cap.height - 6} text-anchor="middle">
                       {heatmap ? misses(key.code) : count(key.code) > 999 ? '999+' : count(key.code)}
@@ -322,6 +332,17 @@
   .keyboard-key[data-test-state='expected'] rect {
     stroke: var(--color-accent);
     stroke-width: 3;
+  }
+
+  .guide-cap rect {
+    stroke: var(--color-accent);
+    stroke-width: 3;
+  }
+
+  .guide-marker {
+    fill: var(--color-accent);
+    font-size: 14px;
+    font-weight: 800;
   }
 
   .keyboard-key[data-test-state='expected'] .feedback-marker {

@@ -128,11 +128,17 @@ function buildGroups(labels: unknown, keys: readonly KleKey[]) {
 async function importEntry(entry: SourceEntry, pins: SourceFile['pins'], usbIndex: Map<string, Set<string>>) {
   const viaUrl = raw(VIA_REPO, pins.via, entry.via);
   const via = JSON.parse(await fetchRequired(viaUrl)) as {
-    name?: unknown; vendorId?: unknown; productId?: unknown; layouts?: { keymap?: unknown; labels?: unknown };
+    name?: unknown; vendorId?: unknown; productId?: unknown; matrix?: { rows?: unknown; cols?: unknown };
+    layouts?: { keymap?: unknown; labels?: unknown };
   };
   if (typeof via.name !== 'string' || !via.name.trim()) throw new Error('VIA definition has no name.');
   const vendorId = parseUsbId(via.vendorId, 'VIA vendorId');
   const productId = parseUsbId(via.productId, 'VIA productId');
+  const rows = via.matrix?.rows;
+  const cols = via.matrix?.cols;
+  if (!Number.isSafeInteger(rows) || !Number.isSafeInteger(cols) || (rows as number) < 1 || (cols as number) < 1) {
+    throw new Error('VIA definition has no valid matrix dimensions.');
+  }
   const layout = parseViaKeymap(via.layouts?.keymap);
   const groups = buildGroups(via.layouts?.labels, layout.keys);
 
@@ -205,6 +211,7 @@ async function importEntry(entry: SourceEntry, pins: SourceFile['pins'], usbInde
       vendorId,
       productId,
       sharedIdCount,
+      matrix: { rows: rows as number, cols: cols as number },
       groups,
       sources: {
         via: { repository: VIA_REPO, path: entry.via, commit: pins.via, url: blob(VIA_REPO, pins.via, entry.via), license: 'GPL-3.0' },

@@ -5,9 +5,10 @@
   } from '../keyboard/keyboard-profiles';
   import {
     KEYBOARD_DETAIL_BOOLEAN_FIELDS, KEYBOARD_DETAIL_MAX_LENGTH, KEYBOARD_DETAIL_TEXT_FIELDS,
-    type KeyboardLayoutConfirmation, type KeyboardUserDetails
+    type KeyboardKeymapImport, type KeyboardLayoutConfirmation, type KeyboardUserDetails
   } from '../storage/preferences';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
+  import KeymapImportPanel from './KeymapImportPanel.svelte';
   import LayoutMatchPanel from './LayoutMatchPanel.svelte';
   import { deviceId, type KeyboardDevice } from '../keyboard/keyboard-access';
   import { useLocalization } from '../i18n/context';
@@ -20,7 +21,8 @@
 
   let {
     profileId, userDetails, onprofilechange, onuserdetailschange, connectedDevice = null,
-    layoutConfirmation, layoutNotice = '', onlayoutconfirm, onlayoutclear
+    layoutConfirmation, layoutNotice = '', onlayoutconfirm, onlayoutclear,
+    keymapImport = null, onkeymapapply, onkeymapclear
   }: {
     profileId: string | null;
     userDetails: KeyboardUserDetails;
@@ -31,6 +33,9 @@
     layoutNotice?: string;
     onlayoutconfirm: (confirmation: KeyboardLayoutConfirmation) => void;
     onlayoutclear: () => void;
+    keymapImport?: KeyboardKeymapImport | null;
+    onkeymapapply: (keymap: KeyboardKeymapImport) => void;
+    onkeymapclear: () => void;
   } = $props();
 
   const fieldLabels: Record<DetailField, string> = $derived({
@@ -145,6 +150,8 @@
     [userDetails.brand, userDetails.model].filter(Boolean).join(' ')
   ]}
     confirmation={layoutConfirmation} {layoutNotice} onconfirm={onlayoutconfirm} onclear={onlayoutclear} />
+
+  <KeymapImportPanel confirmation={layoutConfirmation} {keymapImport} onapply={onkeymapapply} onclear={onkeymapclear} />
 
   <details class="device-disclosure">
   <summary>{text("keyboard-details-panel.connected-keyboard")} <span>{connectedDevice?.productName || (connectedDevice ? text("keyboard-connection.unnamed-device") : text("keyboard-connection.no-device-selected"))}</span></summary>

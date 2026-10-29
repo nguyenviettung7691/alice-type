@@ -1,16 +1,36 @@
-import { DURATIONS, WORD_LIMITS, WORD_BANK_TIERS } from '../typing/exercise-generator';
+import { B_KEY_HANDS, CODE_LANGUAGES, DRILL_TYPES, DURATIONS, WORD_LIMITS, WORD_BANK_TIERS, type BKeyHand, type CodeLanguage, type DrillType } from '../typing/exercise-generator';
 import { getMetrics, isZenSession, type PracticeSession } from '../typing/typing-engine';
 import { isRecord, StorageError, storageFailure } from './errors';
 import { isLanguageId, type LanguageId } from '../i18n/languages';
 
+export interface HandAttempts {
+  readonly left: number;
+  readonly right: number;
+  readonly thumb: number;
+  readonly unattributed: number;
+}
+
+/** Direct-keystroke attribution stored from history record version 4. */
+export interface SessionAttribution {
+  readonly keyAttempts: Readonly<Record<string, number>>;
+  readonly handAttempts: HandAttempts;
+  readonly bKeyHand: BKeyHand;
+}
+
+export const HAND_BUCKETS = ['left', 'right', 'thumb', 'unattributed'] as const;
+const SAFE_CODE = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
+
 interface RecordBase {
-  readonly version: 2 | 3;
+  readonly version: 2 | 3 | 4;
   readonly language?: LanguageId;
   readonly scoringVersion?: 'committed-grapheme-v1';
   readonly id: string;
   readonly completedAt: number;
   readonly wpm: number;
   readonly totalAttempts: number;
+  readonly keyAttempts?: Readonly<Record<string, number>>;
+  readonly handAttempts?: HandAttempts;
+  readonly bKeyHand?: BKeyHand;
 }
 
 interface CopyRecord extends RecordBase {
@@ -30,7 +50,9 @@ type GeneratedRecord = CopyRecord & {
 type FiniteRecord = CopyRecord & {
   readonly targetCharacters: number;
   readonly elapsedMs: number;
-} & ({ readonly mode: 'quote'; readonly quoteId: string } | { readonly mode: 'custom' });
+} & ({ readonly mode: 'quote'; readonly quoteId: string } | { readonly mode: 'custom' }
+  | { readonly mode: 'drills'; readonly drillType: DrillType; readonly limit: number }
+  | { readonly mode: 'code'; readonly codeLanguage: CodeLanguage; readonly snippetId: string });
 
 type ZenRecord = RecordBase & {
   readonly mode: 'zen';
@@ -101,13 +123,47 @@ function safeCount(value: unknown, minimum = 0): value is number {
 }
 
 export function validateSessionRecord(value: unknown): SessionRecord {
+  if (isRecord(value) && value.version === 4) {
+    if (!isLanguageId(value.language) || value.scoringVersion !== 'committed-grapheme-v1') {
+      throw new StorageError('A saved session contains invalid language or scoring metadata.');
+    }
+    const validated = validateRecordBody({ ...value, version: 2 }, true);
+    const attribution = validateAttribution(value, validated);
+    return { ...validated, version: 4, language: value.language, scoringVersion: value.scoringVersion, ...attribution };
+  }
   if (isRecord(value) && value.version === 3) {
     if (!isLanguageId(value.language) || value.scoringVersion !== 'committed-grapheme-v1') {
       throw new StorageError('A saved session contains invalid language or scoring metadata.');
     }
-    const validated = validateSessionRecord({ ...value, version: 2 });
+    const validated = validateRecordBody({ ...value, version: 2 }, false);
     return { ...validated, version: 3, language: value.language, scoringVersion: value.scoringVersion };
   }
+  return validateRecordBody(value, false);
+}
+
+function validateAttribution(value: Record<string, unknown>, record: SessionRecord): SessionAttribution {
+  const invalid = () => new StorageError('A saved session contains invalid physical-key attribution.');
+  if (!isRecord(value.keyAttempts) || !isRecord(value.handAttempts) || !B_KEY_HANDS.some((hand) => hand === value.bKeyHand)) {
+    throw invalid();
+  }
+  const keyAttempts: Record<string, number> = {};
+  for (const [code, count] of Object.entries(value.keyAttempts)) {
+    if (!SAFE_CODE.test(code) || code === 'Unidentified' || !safeCount(count, 1)) throw invalid();
+    Object.defineProperty(keyAttempts, code, { value: count, enumerable: true });
+  }
+  const hands = value.handAttempts;
+  if (Object.keys(hands).length !== HAND_BUCKETS.length || HAND_BUCKETS.some((bucket) => !safeCount(hands[bucket]))) throw invalid();
+  const handAttempts = Object.fromEntries(HAND_BUCKETS.map((bucket) => [bucket, hands[bucket] as number])) as unknown as HandAttempts;
+  const handTotal = HAND_BUCKETS.reduce((sum, bucket) => sum + handAttempts[bucket], 0);
+  if (handTotal > record.totalAttempts) throw invalid();
+  for (const [code, misses] of Object.entries(record.missedKeys)) {
+    if (misses > (Object.hasOwn(keyAttempts, code) ? keyAttempts[code] : 0)) throw invalid();
+  }
+  if (record.mode === 'zen' && (Object.keys(keyAttempts).length || handTotal)) throw invalid();
+  return { keyAttempts, handAttempts, bKeyHand: value.bKeyHand as BKeyHand };
+}
+
+function validateRecordBody(value: unknown, alice: boolean): SessionRecord {
   const invalid = () => new StorageError('A saved session contains invalid data.');
   if (!isRecord(value) || value.version !== 2
     || typeof value.id !== 'string' || !value.id.trim()
@@ -119,14 +175,18 @@ export function validateSessionRecord(value: unknown): SessionRecord {
     wpm: value.wpm, totalAttempts: value.totalAttempts
   };
   const generated = value.mode === 'timed' || value.mode === 'words';
-  const finiteCopy = value.mode === 'quote' || value.mode === 'custom';
+  const aliceMode = alice && (value.mode === 'drills' || value.mode === 'code');
+  const finiteCopy = value.mode === 'quote' || value.mode === 'custom' || aliceMode;
   if (!generated && !finiteCopy && value.mode !== 'zen') throw invalid();
   const branchFields = ['limit', 'wordBankTier', 'punctuation', 'numbers', 'quoteId',
-    'targetCharacters', 'retainedCharacters', 'elapsedMs'];
+    'targetCharacters', 'retainedCharacters', 'elapsedMs', 'drillType', 'codeLanguage', 'snippetId'];
   const allowedFields = generated
     ? ['limit', 'wordBankTier', 'punctuation', 'numbers']
     : value.mode === 'zen' ? ['retainedCharacters', 'elapsedMs']
-      : value.mode === 'quote' ? ['quoteId', 'targetCharacters', 'elapsedMs'] : ['targetCharacters', 'elapsedMs'];
+      : value.mode === 'quote' ? ['quoteId', 'targetCharacters', 'elapsedMs']
+        : value.mode === 'drills' ? ['drillType', 'limit', 'targetCharacters', 'elapsedMs']
+          : value.mode === 'code' ? ['codeLanguage', 'snippetId', 'targetCharacters', 'elapsedMs']
+            : ['targetCharacters', 'elapsedMs'];
   if (branchFields.some((field) => field in value && !allowedFields.includes(field))) throw invalid();
 
   if (generated) return validateLegacyRecord(value);
@@ -139,6 +199,22 @@ export function validateSessionRecord(value: unknown): SessionRecord {
       ...base, mode: 'zen', retainedCharacters: value.retainedCharacters, elapsedMs: value.elapsedMs,
       accuracy: null, correctAttempts: null, missedKeys: {}
     };
+  }
+  if (value.mode === 'drills' || value.mode === 'code') {
+    const code = value.mode === 'code';
+    if (!safeCount(value.targetCharacters, code ? 30 : 1) || value.targetCharacters > (code ? 160 : 10_000)
+      || value.totalAttempts < value.targetCharacters) throw invalid();
+    if (code ? !CODE_LANGUAGES.some((language) => language === value.codeLanguage)
+        || typeof value.snippetId !== 'string' || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.snippetId)
+      : !DRILL_TYPES.some((type) => type === value.drillType) || !WORD_LIMITS.some((limit) => limit === value.limit)) throw invalid();
+    const scoring = validateScoring(value);
+    const copy = {
+      ...base, targetCharacters: value.targetCharacters, elapsedMs: value.elapsedMs,
+      accuracy: scoring.accuracy, correctAttempts: scoring.correctAttempts, missedKeys: scoring.missedKeys
+    };
+    return code
+      ? { ...copy, mode: 'code', codeLanguage: value.codeLanguage as CodeLanguage, snippetId: value.snippetId as string }
+      : { ...copy, mode: 'drills', drillType: value.drillType as DrillType, limit: value.limit as number };
   }
   if (!safeCount(value.targetCharacters, value.mode === 'quote' ? 40 : 1)
     || value.targetCharacters > (value.mode === 'quote' ? 1000 : 10_000)
@@ -161,25 +237,33 @@ export function validateStoredSessionRecord(value: unknown): SessionRecord {
     : validateSessionRecord(value);
 }
 
+export const EMPTY_ATTRIBUTION = (bKeyHand: BKeyHand): SessionAttribution => ({
+  keyAttempts: {}, handAttempts: { left: 0, right: 0, thumb: 0, unattributed: 0 }, bKeyHand
+});
+
 export function completedRecord(
-  session: PracticeSession, id: string, startedWallTime: number, missedKeys: Readonly<Record<string, number>>
+  session: PracticeSession, id: string, startedWallTime: number, missedKeys: Readonly<Record<string, number>>,
+  attribution: SessionAttribution
 ): SessionRecord {
   if (session.status !== 'completed' || !session.configuration) {
     throw new StorageError('Only completed configured sessions can be saved.');
   }
   const metrics = getMetrics(session, session.endedAt);
   const base = {
-    version: 3, language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
+    version: 4, language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
     id, completedAt: startedWallTime + metrics.elapsedMs,
     wpm: metrics.wpm, totalAttempts: session.totalAttempts
   };
   if (isZenSession(session)) {
     return validateSessionRecord({
       ...base, mode: 'zen', retainedCharacters: session.retainedCharacters, elapsedMs: metrics.elapsedMs,
-      accuracy: null, correctAttempts: null, missedKeys: {}
+      accuracy: null, correctAttempts: null, missedKeys: {}, ...EMPTY_ATTRIBUTION(attribution.bKeyHand)
     });
   }
-  const copy = { ...base, accuracy: metrics.accuracy, correctAttempts: session.correctAttempts, missedKeys };
+  const copy = {
+    ...base, accuracy: metrics.accuracy, correctAttempts: session.correctAttempts, missedKeys,
+    keyAttempts: attribution.keyAttempts, handAttempts: attribution.handAttempts, bKeyHand: attribution.bKeyHand
+  };
   const configuration = session.configuration!;
   switch (configuration.mode) {
     case 'timed':
@@ -198,9 +282,74 @@ export function completedRecord(
       return validateSessionRecord({
         ...copy, mode: 'custom', targetCharacters: session.target.length, elapsedMs: metrics.elapsedMs
       });
+    case 'drills':
+      return validateSessionRecord({
+        ...copy, mode: 'drills', drillType: configuration.drillType, limit: configuration.wordLimit,
+        targetCharacters: session.target.length, elapsedMs: metrics.elapsedMs
+      });
+    case 'code':
+      return validateSessionRecord({
+        ...copy, mode: 'code', codeLanguage: configuration.codeLanguage, snippetId: configuration.snippetId,
+        targetCharacters: session.target.length, elapsedMs: metrics.elapsedMs
+      });
     default:
       throw new StorageError('Only supported configured sessions can be saved.');
   }
+}
+
+export const MINIMUM_KEY_ATTEMPTS = 20;
+/** Layout-convention reach keys: number row and outer punctuation, not a measured strain. */
+export const REACH_KEYS: readonly string[] = [
+  'Backquote', ...'1234567890'.split('').map((digit) => `Digit${digit}`), 'Minus', 'Equal',
+  'BracketLeft', 'BracketRight', 'Backslash', 'Quote', 'Slash'
+];
+export const HOME_ROW_KEYS: readonly string[] = ['KeyA', 'KeyS', 'KeyD', 'KeyF', 'KeyJ', 'KeyK', 'KeyL', 'Semicolon'];
+
+export interface KeyAccuracy {
+  readonly code: string;
+  readonly attempts: number;
+  readonly misses: number;
+  /** Percentage, 0-100. */
+  readonly accuracy: number;
+}
+
+export function summarizeAttribution(records: readonly SessionRecord[]) {
+  const hands = { left: 0, right: 0, thumb: 0, unattributed: 0 };
+  const attempts = new Map<string, number>();
+  const misses = new Map<string, number>();
+  let included = 0;
+  let excluded = 0;
+  for (const record of records) {
+    if (record.mode === 'zen') continue;
+    if (!record.keyAttempts || !record.handAttempts) {
+      excluded += 1;
+      continue;
+    }
+    included += 1;
+    for (const bucket of HAND_BUCKETS) hands[bucket] += record.handAttempts[bucket];
+    for (const [code, count] of Object.entries(record.keyAttempts)) attempts.set(code, (attempts.get(code) ?? 0) + count);
+    for (const [code, count] of Object.entries(record.missedKeys)) misses.set(code, (misses.get(code) ?? 0) + count);
+  }
+  const keys: KeyAccuracy[] = [...attempts]
+    .filter(([, count]) => count >= MINIMUM_KEY_ATTEMPTS)
+    .map(([code, count]) => {
+      const missed = misses.get(code) ?? 0;
+      return { code, attempts: count, misses: missed, accuracy: Math.round((1 - missed / count) * 1000) / 10 };
+    })
+    .sort((a, b) => a.accuracy - b.accuracy || b.attempts - a.attempts || a.code.localeCompare(b.code));
+  const pooled = (codes: readonly string[]) => {
+    let total = 0;
+    let missed = 0;
+    for (const key of keys) if (codes.includes(key.code)) { total += key.attempts; missed += key.misses; }
+    return total ? Math.round((1 - missed / total) * 1000) / 10 : null;
+  };
+  return {
+    included, excluded, hands,
+    keys,
+    reachKeys: keys.filter((key) => REACH_KEYS.includes(key.code)),
+    reachAccuracy: pooled(REACH_KEYS),
+    homeRowAccuracy: pooled(HOME_ROW_KEYS)
+  };
 }
 
 export function summarizeSessions(records: readonly SessionRecord[]) {

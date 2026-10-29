@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, tick } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
   import AppFooter from './lib/components/AppFooter.svelte';
   import AppHeader from './lib/components/AppHeader.svelte';
   import PracticePanel from './lib/components/PracticePanel.svelte';
@@ -12,12 +12,13 @@
     findKeyboardProfile, GENERIC_ALICE_TEST_LAYOUT, isTestLayoutEligible
   } from './lib/keyboard/keyboard-profiles';
   import {
-    LayoutProfileLoadError, findCatalogEntry, isResolvedLayoutEligible, isValidVariant, loadLayoutProfile,
+    LAYOUT_CATALOG, LayoutProfileLoadError, findCatalogEntry, isResolvedLayoutEligible, isValidVariant, loadLayoutProfile,
     resolveImportedLayout, type ResolvedKeyboardLayout
   } from './lib/keyboard/layout-catalog';
+  import { applyKeymapLayer, keymapVariantKey, layersFitMatrix, physicalCodeMap } from './lib/keyboard/keymap-import';
   import { type PracticeSettings } from './lib/typing/exercise-generator';
   import {
-    DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type Preferences
+    DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type KeyboardKeymapImport, type Preferences
   } from './lib/storage/preferences';
   import { StorageError } from './lib/storage/errors';
   import { SessionHistory, type SessionRecord } from './lib/storage/session-history';
@@ -41,7 +42,7 @@
     return {
       mode: value.mode, durationSeconds: value.durationSeconds, wordLimit: value.wordLimit,
       wordBankTier: value.wordBankTier, punctuation: value.punctuation, numbers: value.numbers,
-      language: value.language ?? 'en'
+      language: value.language ?? 'en', drillType: value.drillType, codeLanguage: value.codeLanguage, bKeyHand: value.bKeyHand
     };
   }
 
@@ -74,31 +75,54 @@
   });
   const activeLayout = $derived(applyLayoutLegends(activeTestLayout.layout, layoutLegends));
   const confirmationKey = $derived(JSON.stringify(preferences.keyboardLayoutConfirmation));
+  const keymapKey = $derived(JSON.stringify(preferences.keyboardKeymapImport));
   let resolvedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
+  let resolvedPhysical: Readonly<Record<string, string>> = {};
   let layoutNotice = $state('');
+  let keymapNotice = $state('');
   // The layout shared by Practice, Keyboard Test, and Stats; a running session is never changed in place.
   let appliedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
+  let appliedPhysical = $state.raw<Readonly<Record<string, string>>>({});
   const confirmedKeys = $derived(appliedLayout ? applyLayoutLegends(appliedLayout.keys, layoutLegends) : null);
   const confirmedSequence = $derived(appliedLayout ? applyLayoutLegends(appliedLayout.testSequence, layoutLegends) : null);
   const genericLabel = $derived(activeTestLayout.label.replace(/ test layout$/, ''));
 
   $effect(() => {
     const confirmation = JSON.parse(confirmationKey) as Preferences['keyboardLayoutConfirmation'];
+    const keymap = JSON.parse(keymapKey) as KeyboardKeymapImport | null;
     layoutNotice = '';
+    resolvedPhysical = {};
     if (!confirmation) {
       resolvedLayout = null;
+      if (keymap) untrack(dropKeymap);
       return;
     }
     const entry = findCatalogEntry(confirmation.profileId);
     if (!entry || !isValidVariant(entry, confirmation.variant)) {
       resolvedLayout = null;
       layoutNotice = 'Your confirmed layout is no longer available in this catalog version. The generic Alice layout is active; your saved confirmation is kept. Find and confirm your layout again in Keyboard Details.';
+      if (keymap) untrack(dropKeymap);
+      return;
+    }
+    if (keymap && (keymap.profileId !== entry.id || keymap.catalogRevision !== LAYOUT_CATALOG.revision
+      || keymap.variantKey !== keymapVariantKey(confirmation.variant) || !layersFitMatrix(keymap.layers, entry))) {
+      untrack(dropKeymap);
       return;
     }
     let cancelled = false;
     loadLayoutProfile(entry.id).then((profile) => {
       if (cancelled) return;
-      const layout = resolveImportedLayout(entry, profile, confirmation.variant);
+      let layout = resolveImportedLayout(entry, profile, confirmation.variant);
+      if (keymap) {
+        const remapped = applyKeymapLayer(profile, entry, keymap.layers[0]);
+        const mapped = resolveImportedLayout(entry, remapped, confirmation.variant);
+        if (isResolvedLayoutEligible(mapped)) {
+          layout = mapped;
+          resolvedPhysical = physicalCodeMap(profile, remapped, confirmation.variant);
+        } else {
+          keymapNotice = text('app.keymap-ineligible', { p0: mapped.missingCodes.join(', ') });
+        }
+      }
       if (isResolvedLayoutEligible(layout)) {
         resolvedLayout = layout;
       } else {
@@ -116,8 +140,18 @@
 
   $effect(() => {
     const next = resolvedLayout;
-    if (!running) appliedLayout = next;
+    if (!running) {
+      appliedLayout = next;
+      appliedPhysical = next ? resolvedPhysical : {};
+    }
   });
+
+  /** Removes a saved keymap that no longer matches the confirmed board, variant, or catalog revision. */
+  function dropKeymap() {
+    keymapNotice = text('app.keymap-cleared');
+    preferences = { ...preferences, keyboardKeymapImport: null };
+    persist();
+  }
   const history = new SessionHistory();
   const sound = new TypingSound();
   let alive = true;
@@ -268,6 +302,12 @@
         {/if}
       </div>
     {/if}
+    {#if keymapNotice}
+      <div class="notice" role="status">
+        <p>{keymapNotice}</p>
+        <button class="secondary-button" type="button" onclick={() => { keymapNotice = ''; }}>{text("app.dismiss-keymap-notice")}</button>
+      </div>
+    {/if}
     {#if preferenceError}
       <div class="notice" role="alert">
         <p>{preferenceOperation === 'load'
@@ -301,7 +341,10 @@
         oncaretchange={(caretStyle) => changePreferences({ ...preferences, caretStyle })}
         onlivestatschange={(showLiveStats) => changePreferences({ ...preferences, showLiveStats })}
         onsoundchange={updateSound} onreset={restoreDefaults}
-        oncharacter={playClick} oncomplete={completed} />
+        oncharacter={playClick} oncomplete={completed}
+        fingerGuide={preferences.fingerGuide}
+        onfingerguidechange={(fingerGuide) => changePreferences({ ...preferences, fingerGuide })}
+        layoutMap={layoutLegends} physicalCodes={appliedPhysical} />
     </div>
     {#if view === 'stats'}
       <StatsPanel {history} {revision} pending={pending.length > 0}
@@ -343,6 +386,9 @@
           ...preferences, keyboardProfileId: keyboardLayoutConfirmation.profileId, keyboardLayoutConfirmation
         })}
         onlayoutclear={() => changePreferences({ ...preferences, keyboardLayoutConfirmation: null })}
+        keymapImport={preferences.keyboardKeymapImport}
+        onkeymapapply={(keyboardKeymapImport) => { keymapNotice = ''; changePreferences({ ...preferences, keyboardKeymapImport }); }}
+        onkeymapclear={() => changePreferences({ ...preferences, keyboardKeymapImport: null })}
       />
     {/if}
   </main>

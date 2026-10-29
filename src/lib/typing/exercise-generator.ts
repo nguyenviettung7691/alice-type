@@ -7,9 +7,17 @@ export const DURATIONS = [15, 30, 60, 120] as const;
 export const WORD_LIMITS = [10, 25, 50, 100] as const;
 export const WORD_BANK_TIERS = [200, 1000, 5000] as const;
 
-export const PRACTICE_MODES = ['timed', 'words', 'quote', 'custom', 'zen'] as const;
+export const PRACTICE_MODES = ['timed', 'words', 'quote', 'custom', 'zen', 'drills', 'code'] as const;
 export type PracticeMode = typeof PRACTICE_MODES[number];
 export type RandomSource = () => number;
+export const DRILL_TYPES = ['split-boundary', 'hand-alternation', 'cross-boundary'] as const;
+export type DrillType = typeof DRILL_TYPES[number];
+export const CODE_LANGUAGES = ['python', 'javascript', 'rust'] as const;
+export type CodeLanguage = typeof CODE_LANGUAGES[number];
+/** Programming-language names are proper nouns and are not translated. */
+export const CODE_LANGUAGE_NAMES: Readonly<Record<CodeLanguage, string>> = { python: 'Python', javascript: 'JavaScript', rust: 'Rust' };
+export const B_KEY_HANDS = ['left', 'right'] as const;
+export type BKeyHand = typeof B_KEY_HANDS[number];
 
 export class ExerciseGenerationError extends Error {}
 
@@ -24,7 +32,21 @@ export type GeneratedConfiguration = GeneratorSettings & (
   | { readonly mode: 'timed'; readonly durationSeconds: typeof DURATIONS[number] }
   | { readonly mode: 'words'; readonly wordLimit: typeof WORD_LIMITS[number] }
 );
-export type CopyConfiguration = GeneratedConfiguration
+export interface DrillConfiguration {
+  readonly mode: 'drills';
+  readonly language?: LanguageId;
+  readonly drillType: DrillType;
+  readonly wordLimit: typeof WORD_LIMITS[number];
+  readonly bKeyHand: BKeyHand;
+  readonly numbers: boolean;
+}
+export interface CodeConfiguration {
+  readonly mode: 'code';
+  readonly language?: LanguageId;
+  readonly codeLanguage: CodeLanguage;
+  readonly snippetId: string;
+}
+export type CopyConfiguration = GeneratedConfiguration | DrillConfiguration | CodeConfiguration
   | { readonly mode: 'quote'; readonly quoteId: string; readonly language?: LanguageId }
   | { readonly mode: 'custom'; readonly language?: LanguageId };
 export type SessionConfiguration = CopyConfiguration | { readonly mode: 'zen'; readonly language?: LanguageId };
@@ -33,6 +55,9 @@ export interface PracticeSettings extends GeneratorSettings {
   readonly mode: PracticeMode;
   readonly durationSeconds: typeof DURATIONS[number];
   readonly wordLimit: typeof WORD_LIMITS[number];
+  readonly drillType: DrillType;
+  readonly codeLanguage: CodeLanguage;
+  readonly bKeyHand: BKeyHand;
 }
 
 export const DEFAULT_SETTINGS: PracticeSettings = {
@@ -42,13 +67,16 @@ export const DEFAULT_SETTINGS: PracticeSettings = {
   wordLimit: 25,
   wordBankTier: 200,
   punctuation: false,
-  numbers: false
+  numbers: false,
+  drillType: 'split-boundary',
+  codeLanguage: 'python',
+  bKeyHand: 'left'
 };
 
 export interface Exercise {
   readonly target: string;
   readonly wordEnds: readonly number[];
-  readonly configuration: GeneratedConfiguration;
+  readonly configuration: GeneratedConfiguration | DrillConfiguration;
 }
 
 export function validateWordBank(words: readonly string[], expectedSize: number, language: LanguageId = 'en'): void {
@@ -92,6 +120,18 @@ export function validateConfiguration(configuration: SessionConfiguration): void
   if (configuration.mode === 'quote') {
     if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(configuration.quoteId)) return;
     throw new ExerciseGenerationError('Unsupported quote identifier.');
+  }
+  if (configuration.mode === 'code') {
+    if (!CODE_LANGUAGES.includes(configuration.codeLanguage)) throw new ExerciseGenerationError('Unsupported code language.');
+    if (/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(configuration.snippetId)) return;
+    throw new ExerciseGenerationError('Unsupported code snippet identifier.');
+  }
+  if (configuration.mode === 'drills') {
+    if (!DRILL_TYPES.includes(configuration.drillType)) throw new ExerciseGenerationError('Unsupported drill type.');
+    if (!B_KEY_HANDS.includes(configuration.bKeyHand)) throw new ExerciseGenerationError('Unsupported B-key hand.');
+    if (typeof configuration.numbers !== 'boolean') throw new ExerciseGenerationError('Exercise modifiers must be boolean values.');
+    if (WORD_LIMITS.includes(configuration.wordLimit)) return;
+    throw new ExerciseGenerationError('Unsupported practice mode or limit.');
   }
   getWordBank(configuration.wordBankTier, configuration.language);
   if (typeof configuration.punctuation !== 'boolean' || typeof configuration.numbers !== 'boolean') {

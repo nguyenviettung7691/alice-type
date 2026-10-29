@@ -15,6 +15,8 @@ export interface LayoutCatalogEntry {
   readonly vendorId: number;
   readonly productId: number;
   readonly sharedIdCount: number;
+  /** VIA matrix dimensions; saved VIA layers are flattened row-major `rows × cols`. */
+  readonly matrix: { readonly rows: number; readonly cols: number };
   readonly groups: readonly LayoutVariantGroup[];
   readonly sources: {
     readonly via: { readonly repository: string; readonly path: string; readonly commit: string; readonly url: string; readonly license: string };

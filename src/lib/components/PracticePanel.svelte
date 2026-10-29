@@ -14,13 +14,19 @@
     type PracticeSession
   } from '../typing/typing-engine';
   import {
-    DEFAULT_SETTINGS, DURATIONS, WORD_LIMITS, WORD_BANK_TIERS,
+    DEFAULT_SETTINGS, DURATIONS, WORD_LIMITS, WORD_BANK_TIERS, DRILL_TYPES, CODE_LANGUAGES, CODE_LANGUAGE_NAMES, B_KEY_HANDS,
     ExerciseGenerationError, generateExercise, getConfiguration,
     type PracticeSettings
   } from '../typing/exercise-generator';
   import { CARET_STYLES, type CaretStyle } from '../storage/preferences';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
-  import { completedRecord, type SessionRecord } from '../storage/session-history';
+  import HandBalance from './HandBalance.svelte';
+  import { completedRecord, type HandAttempts, type SessionRecord } from '../storage/session-history';
+  import { DrillPoolError, MINIMUM_DRILL_POOL, generateDrill } from '../typing/alice-drills';
+  import { selectCodeSnippet, type CodeSnippet } from '../typing/code-snippets';
+  import { expectedKeycaps, fingerForCode, layoutCentreX } from '../keyboard/finger-map';
+  import { keyForCharacter } from '../keyboard/key-for-character';
+  import { DRILL_TYPE_HELP_KEYS, DRILL_TYPE_LABEL_KEYS, FINGER_LABEL_KEYS, HAND_LABEL_KEYS } from '../i18n/alice-messages';
   import { prepareCustomText } from '../typing/custom-text';
   import { selectQuote, type Quote } from '../typing/quote-catalog';
   import { hasGraphemeSupport, PracticeTextError, segmentGraphemes } from '../typing/text';
@@ -36,7 +42,8 @@
     onsettingschange, oncaretchange, onlivestatschange, onsoundchange, onreset, oncharacter, oncomplete,
     layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false,
     inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutConfirmed = false,
-    active = true, contentReset = 0
+    active = true, contentReset = 0,
+    fingerGuide = false, onfingerguidechange, layoutMap = null, physicalCodes = {}
   }: {
     settings?: PracticeSettings;
     running?: boolean;
@@ -58,14 +65,26 @@
     layoutConfirmed?: boolean;
     active?: boolean;
     contentReset?: number;
+    fingerGuide?: boolean;
+    onfingerguidechange?: (fingerGuide: boolean) => void;
+    /** Raw browser layout map (code to unshifted character) when the user granted key labels. */
+    layoutMap?: ReadonlyMap<string, string> | null;
+    /** Remapped code to the catalog-default code of the physical slot (imported keymaps). */
+    physicalCodes?: Readonly<Record<string, string>>;
   } = $props();
 
   let sessionId = '';
   let startedWallTime = 0;
   let submitted = false;
   let missedKeys: Record<string, number> = {};
+  let keyAttempts: Record<string, number> = {};
+  const EMPTY_HANDS: HandAttempts = { left: 0, right: 0, thumb: 0, unattributed: 0 };
+  let handAttempts = $state<HandAttempts>({ ...EMPTY_HANDS });
+  let fingerAttempts = $state<Record<string, number>>({});
   let session = $state.raw<PracticeSession | null>(null);
   let quote = $state<Quote | null>(null);
+  let snippet = $state<CodeSnippet | null>(null);
+  let guideAnnouncement = $state('');
   let draft = $state('');
   let customTarget = $state('');
   let editing = $state(true);
@@ -113,14 +132,58 @@
   });
   const modeLabel = $derived(({
     timed: text("mode-navigation.timed"), words: text("practice-panel.word"),
-    quote: text("mode-navigation.quote"), custom: text("practice-panel.custom-text"), zen: 'Zen'
+    quote: text("mode-navigation.quote"), custom: text("practice-panel.custom-text"), zen: 'Zen',
+    drills: text("mode-navigation.drills"), code: text("mode-navigation.code")
   })[settings.mode]);
   const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
   const completionReason = $derived({
     timed: text("practice-panel.time-is-up"), words: text("practice-panel.word-limit-reached"),
     quote: text("practice-panel.quote-complete"), custom: text("practice-panel.custom-text-complete"),
-    zen: text("practice-panel.zen-stopped-2")
+    zen: text("practice-panel.zen-stopped-2"), drills: text("practice-panel.word-limit-reached"),
+    code: text("alice-practice.snippet-complete")
   }[settings.mode]);
+  const wordProgress = $derived(settings.mode === 'words' || settings.mode === 'drills');
+  const bKeyHand = $derived(settings.bKeyHand ?? 'left');
+  const centreX = $derived(layoutCentreX(layout));
+  const guideActive = $derived(fingerGuide && !zen && !exerciseError && finiteSession !== null
+    && finiteSession.status !== 'completed' && !(settings.mode === 'custom' && editing));
+  const guidePosition = $derived(inputCharacters.length);
+  const nextGrapheme = $derived(guideActive ? targetCharacters[guidePosition] : undefined);
+  const guideKey = $derived(nextGrapheme === undefined ? null : keyForCharacter(nextGrapheme, layoutMap));
+  const assignment = (code: string) => fingerForCode(physicalCodes[code] ?? code, bKeyHand);
+  const guideExpected = $derived.by(() => {
+    if (!guideKey) return undefined;
+    const marks: Record<string, readonly number[]> = {};
+    const mark = (code: string) => {
+      const key = layout.find((candidate) => candidate.code === code);
+      if (key) marks[code] = expectedKeycaps(key, bKeyHand, centreX);
+    };
+    mark(guideKey.code);
+    if (guideKey.shift) mark(assignment(guideKey.code)?.hand === 'left' ? 'ShiftRight' : 'ShiftLeft');
+    return marks;
+  });
+  const guideCaption = $derived.by(() => {
+    if (nextGrapheme === undefined) return '';
+    if (!guideKey) return text('alice-practice.guide-no-key', { p0: nextGrapheme });
+    const target = assignment(guideKey.code);
+    const keyName = nextGrapheme === ' ' ? text('alice-practice.space-key') : nextGrapheme;
+    const finger = !target ? text('alice-practice.finger-unknown')
+      : target.hand === null ? text(FINGER_LABEL_KEYS.thumb)
+      : text('alice-practice.hand-finger', { p0: text(HAND_LABEL_KEYS[target.hand]), p1: text(FINGER_LABEL_KEYS[target.finger]) });
+    return text(guideKey.shift ? 'alice-practice.guide-next-shift' : 'alice-practice.guide-next', { p0: keyName, p1: finger });
+  });
+  const showHandBalance = $derived(showLiveStats && !zen && session !== null
+    && handAttempts.left + handAttempts.right + handAttempts.thumb > 0);
+
+  $effect(() => {
+    const caption = guideCaption;
+    const position = guidePosition;
+    const characters = targetCharacters;
+    untrack(() => {
+      if (!caption) guideAnnouncement = '';
+      else if (position === 0 || characters[position - 1] === ' ') guideAnnouncement = caption;
+    });
+  });
   const statusMessage = $derived(
     !session
       ? text("practice-panel.paste-your-text-and-choose-apply-text")
@@ -135,6 +198,7 @@
     const selected = settings;
     untrack(() => {
       if (selected.mode === 'quote') quote = null;
+      if (selected.mode === 'code') snippet = null;
       prepareExercise(selected);
     });
   });
@@ -232,7 +296,12 @@
 
   function generationFailed(error: unknown) {
     if (!(error instanceof ExerciseGenerationError) && !(error instanceof PracticeTextError)) throw error;
-    exerciseError = error.message;
+    exerciseError = error instanceof DrillPoolError
+      ? text('alice-practice.drill-pool-error', {
+        p0: text(DRILL_TYPE_LABEL_KEYS[error.drillType]), p1: formatNumber(i18n.language, error.size),
+        p2: formatNumber(i18n.language, MINIMUM_DRILL_POOL)
+      })
+      : error.message;
     clearFeedback();
   }
 
@@ -241,6 +310,9 @@
     clearFeedback();
     sessionId = '';
     missedKeys = {};
+    keyAttempts = {};
+    handAttempts = { ...EMPTY_HANDS };
+    fingerAttempts = {};
     submitted = false;
     exerciseError = '';
     now = 0;
@@ -261,6 +333,20 @@
           break;
         case 'zen':
           session = createZenSession(selected.language ?? 'en');
+          break;
+        case 'drills': {
+          const exercise = generateDrill({
+            mode: 'drills', language: selected.language ?? 'en', drillType: selected.drillType,
+            wordLimit: selected.wordLimit, bKeyHand: selected.bKeyHand, numbers: selected.numbers
+          });
+          session = createSession(exercise.target, exercise.configuration, exercise.wordEnds);
+          break;
+        }
+        case 'code':
+          snippet ??= selectCodeSnippet(selected.codeLanguage, undefined);
+          session = createSession(snippet.text, {
+            mode: 'code', language: selected.language ?? 'en', codeLanguage: selected.codeLanguage, snippetId: snippet.id
+          });
           break;
         default: throw new ExerciseGenerationError('Unsupported practice mode.');
       }
@@ -283,7 +369,9 @@
     clearFeedback();
     if (!submitted && session?.status === 'completed' && oncomplete) {
       submitted = true;
-      oncomplete(completedRecord(session, sessionId, startedWallTime, missedKeys));
+      oncomplete(completedRecord(session, sessionId, startedWallTime, missedKeys, {
+        keyAttempts: { ...keyAttempts }, handAttempts: { ...handAttempts }, bKeyHand
+      }));
     }
   }
 
@@ -382,6 +470,7 @@
           }
           if (layoutCodes.has(directCode)) highlightKey(directCode, correct);
         }
+        if (!zen && session.totalAttempts > before) attribute(session.totalAttempts - before, direct ? directCode : null);
         if (!zen && session.totalAttempts > before) oncharacter?.();
         inputNotice = '';
         if (session.status === 'completed') complete();
@@ -389,6 +478,25 @@
         if (error instanceof PracticeEditError || error instanceof PracticeTextError) inputNotice = 'rejected';
         else throw error;
       } finally { directCode = null; synchronizeInput(); }
+    }
+
+    function attribute(attempts: number, code: string | null) {
+      const hands = { ...handAttempts };
+      let remaining = attempts;
+      if (code && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(code) && code !== 'Unidentified') {
+        remaining--;
+        keyAttempts[code] = (keyAttempts[code] ?? 0) + 1;
+        const target = assignment(code);
+        if (!target) hands.unattributed++;
+        else {
+          const bucket = target.hand === null || target.finger === 'thumb' ? 'thumb' : target.hand;
+          hands[bucket]++;
+          const finger = bucket === 'thumb' ? 'thumb' : `${target.hand}-${target.finger}`;
+          fingerAttempts = { ...fingerAttempts, [finger]: (fingerAttempts[finger] ?? 0) + 1 };
+        }
+      }
+      hands.unattributed += remaining;
+      handAttempts = hands;
     }
 
     function beforeInput(event: InputEvent) {
@@ -419,6 +527,13 @@
   function nextQuote() {
     try {
       quote = selectQuote(quote?.id, Math.random, settings.language ?? 'en');
+      prepareExercise(settings);
+    } catch (error) { generationFailed(error); }
+  }
+
+  function nextSnippet() {
+    try {
+      snippet = selectCodeSnippet(settings.codeLanguage, snippet?.id);
       prepareExercise(settings);
     } catch (error) { generationFailed(error); }
   }
@@ -493,6 +608,59 @@
     }} />{text("practice-panel.numbers")}</label>
   </fieldset>
   {#if settings.language === 'vi'}<p class="settings-note">{text('practice.vietnameseTokens')}</p>{/if}
+  {/if}
+  {#if settings.mode === 'drills'}
+  <fieldset class="exercise-settings" disabled={running}>
+    <legend>{text("practice-panel.practice-options")}</legend>
+    <label>{text("alice-practice.drill-type")}
+      <select aria-label={text("alice-practice.drill-type")} aria-describedby="drill-help" value={settings.drillType} onchange={(event) => {
+        const drillType = DRILL_TYPES.find((type) => type === event.currentTarget.value);
+        if (drillType === undefined) throw new Error('Unsupported drill selection.');
+        changeSettings({ ...settings, drillType });
+      }}>
+        {#each DRILL_TYPES as type}<option value={type}>{text(DRILL_TYPE_LABEL_KEYS[type])}</option>{/each}
+      </select>
+    </label>
+    <label>{text("practice-panel.word-limit")}
+      <select aria-label={text("practice-panel.word-limit")} value={settings.wordLimit} onchange={(event) => {
+        const wordLimit = WORD_LIMITS.find((limit) => String(limit) === event.currentTarget.value);
+        if (wordLimit === undefined) throw new Error('Unsupported word-limit selection.');
+        changeSettings({ ...settings, wordLimit });
+      }}>
+        {#each WORD_LIMITS as limit}<option value={limit}>{text("practice-panel.words", { p0: String(limit) })}</option>{/each}
+      </select>
+    </label>
+    <label>{text("alice-practice.b-key-hand")}
+      <select aria-label={text("alice-practice.b-key-hand")} value={settings.bKeyHand} onchange={(event) => {
+        const hand = B_KEY_HANDS.find((candidate) => candidate === event.currentTarget.value);
+        if (hand === undefined) throw new Error('Unsupported B-key hand selection.');
+        changeSettings({ ...settings, bKeyHand: hand });
+      }}>
+        {#each B_KEY_HANDS as hand}<option value={hand}>{text(HAND_LABEL_KEYS[hand])}</option>{/each}
+      </select>
+    </label>
+    <label class="modifier"><input type="checkbox" checked={settings.numbers || settings.drillType === 'cross-boundary'} disabled={settings.drillType === 'cross-boundary'} onchange={(event) => {
+      changeSettings({ ...settings, numbers: event.currentTarget.checked });
+    }} />{text("practice-panel.numbers")}</label>
+  </fieldset>
+  <p id="drill-help" class="settings-note">{text(DRILL_TYPE_HELP_KEYS[settings.drillType])}</p>
+  <p class="settings-note">{text("alice-practice.no-enforcement")}</p>
+  {#if settings.language === 'vi'}<p class="settings-note">{text("alice-practice.vi-direct-input")}</p>{/if}
+  {:else if settings.mode === 'code'}
+  <fieldset class="exercise-settings" disabled={running}>
+    <legend>{text("practice-panel.practice-options")}</legend>
+    <label>{text("alice-practice.code-language")}
+      <select aria-label={text("alice-practice.code-language")} value={settings.codeLanguage} onchange={(event) => {
+        const codeLanguage = CODE_LANGUAGES.find((language) => language === event.currentTarget.value);
+        if (codeLanguage === undefined) throw new Error('Unsupported code-language selection.');
+        changeSettings({ ...settings, codeLanguage });
+      }}>
+        {#each CODE_LANGUAGES as language}<option value={language}>{CODE_LANGUAGE_NAMES[language]}</option>{/each}
+      </select>
+    </label>
+  </fieldset>
+  {#if snippet}<p class="quote-attribution" data-snippet-id={snippet.id}>{text("alice-practice.snippet-source", { p0: CODE_LANGUAGE_NAMES[snippet.codeLanguage] })}</p>{/if}
+  <button class="secondary-button" type="button" disabled={running} onclick={nextSnippet}>{text("alice-practice.next-snippet")}</button>
   {/if}
   {#if settings.mode === 'quote' && quote}
     <p class="quote-attribution" data-quote-id={quote.id}>{quote.author} - {quote.workTitle}</p>
@@ -622,8 +790,8 @@
 
   {#if progress}
   <div class="exercise-progress">
-    <label for="session-progress">{timed ? text("practice-panel.elapsed-time") : settings.mode === 'words' ? text("practice-panel.completed-words") : text("practice-panel.consumed-target-characters")}</label>
-    <span id="progress-description">{formatNumber(i18n.language, timed ? Math.floor(progress.value) : progress.value)} / {formatNumber(i18n.language, progress.maximum)} {timed ? text("practice-panel.seconds-2") : settings.mode === 'words' ? text("practice-panel.words-3") : text("practice-panel.characters")}</span>
+    <label for="session-progress">{timed ? text("practice-panel.elapsed-time") : wordProgress ? text("practice-panel.completed-words") : text("practice-panel.consumed-target-characters")}</label>
+    <span id="progress-description">{formatNumber(i18n.language, timed ? Math.floor(progress.value) : progress.value)} / {formatNumber(i18n.language, progress.maximum)} {timed ? text("practice-panel.seconds-2") : wordProgress ? text("practice-panel.words-3") : text("practice-panel.characters")}</span>
     <progress id="session-progress" max={progress.maximum} value={progress.value} aria-describedby="progress-description"></progress>
   </div>
   {/if}
@@ -631,7 +799,11 @@
 
   {#if !zen}
   <AliceKeyboardVisualizer {layout} {feedback} testLayoutLabel={layoutLabel} {browserLegends}
-    {inertKeys} {viewBox} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'} />
+    {inertKeys} {viewBox} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'} expected={guideExpected} />
+  {#if guideActive}
+    <p class="guide-caption" data-guide-key={guideKey?.code ?? ''}>{guideCaption}{#if !layoutMap} <span class="guide-reference">{text("alice-practice.guide-reference")}</span>{/if}</p>
+    <p class="sr-only" aria-live="polite">{guideAnnouncement}</p>
+  {/if}
   {/if}
 
   <div class="practice-bottom">
@@ -652,6 +824,10 @@
     </div>
   </div>
 
+  {#if showHandBalance}
+    <HandBalance hands={handAttempts} fingers={fingerAttempts} heading={text("alice-practice.hand-balance")} live />
+  {/if}
+
   <fieldset class="preferences" disabled={running}>
     <legend>{text("practice-panel.display-and-sound")}</legend>
     <label>{text("practice-panel.caret-style")}
@@ -667,6 +843,11 @@
       onchange={(event) => onlivestatschange?.(event.currentTarget.checked)} />{text("practice-panel.show-live-wpm-and-accuracy")}</label>
     <label class="modifier"><input type="checkbox" checked={soundEnabled}
       onchange={(event) => onsoundchange?.(event.currentTarget.checked)} />{text("practice-panel.typing-sound")}</label>
+    {#if !zen}
+    <label class="modifier"><input type="checkbox" checked={fingerGuide} aria-describedby="finger-guide-note"
+      onchange={(event) => onfingerguidechange?.(event.currentTarget.checked)} />{text("alice-practice.finger-guide")}</label>
+    <p id="finger-guide-note" class="settings-note">{text("alice-practice.finger-guide-note")}</p>
+    {/if}
     <p class="settings-note">{text("practice-panel.results-and-history-are-saved-even-when")}</p>
     <button type="button" class="secondary-button danger-button" onclick={() => { confirmingReset = true; }}>{text("practice-panel.restore-defaults")}</button>
   </fieldset>
@@ -683,6 +864,8 @@
 {/if}
 
 <style>
+  .guide-caption { margin: 0.5rem 0 0; color: var(--color-text); font-weight: 600; }
+  .guide-reference { color: var(--color-muted); font-weight: 400; font-size: 0.85em; }
   .writing-area { position: relative; margin-block: 2rem; }
   .typing-input {
     position: absolute;

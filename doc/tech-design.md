@@ -20,7 +20,7 @@ Since the app needs to be lightweight and runs entirely in the browser (no backe
 * **Header:** Minimalist. Contains the AliceType title and navigation for Practice, Keyboard Test, Keyboard Details, and Stats; practice modes/settings live in Practice. Phase 10 adds a simple language selector at the far right.
 * **Center Stage (Typing Area):** Large, highly legible text. The current word is highlighted, correct letters turn faint gray, incorrect letters turn red, and the active cursor is a blinking orange block.
 * **Progress & Live Stats:** A thin, striking orange progress bar spanning the width of the typing area. Live WPM and accuracy display subtly above or below the text block.
-* **Alice Keyboard Visualizer (Bottom):** An SVG-based visual representation of the Alice split layout. Keys light up in real-time as the user types, helping them build muscle memory for the unique ergonomic angles.
+* **Alice Keyboard Visualizer (Bottom):** An SVG-based visual representation of the Alice split layout. Keys light up in real-time as the user types, helping them build muscle memory for the unique ergonomic angles. Phase 11 adds an optional cue-only finger guide that marks the next expected key on the correct half (section 5.7).
 
 ## 4. Core System Architecture
 
@@ -37,7 +37,7 @@ When the app first loads, an overlay modal will intercept the user.
 
 A custom typing hook/class that manages keystrokes in real-time:
 
-* **Input Handling:** Through Phase 9, Practice accepts discrete printable ASCII `keydown` input and ignores IME. Phase 10 replaces that text-entry boundary with normalized, committed Unicode input and composition handling for Vietnamese, while keeping physical-key identity separate. Tab leaves capture and browser shortcuts remain available; Keyboard Test retains its physical `keydown` behavior.
+* **Input Handling:** Through Phase 9, Practice accepts discrete printable ASCII `keydown` input and ignores IME. Phase 10 replaces that text-entry boundary with normalized, committed Unicode input and composition handling for Vietnamese, while keeping physical-key identity separate. Tab leaves capture and browser shortcuts remain available; Keyboard Test retains its physical `keydown` behavior. Phase 11 records per-code direct attempts alongside misses for hand/finger load. Composed input stays unattributed and is never mapped to a physical key.
 * **Calculations:**
 * *WPM:* Calculated using standard formula: `(Correct Characters / 5) / (Time Elapsed in Minutes)`.
 * *Accuracy:* `(Correct Keystrokes / Total Keystrokes) * 100`.
@@ -52,11 +52,13 @@ A utility module that dynamically generates the text block based on current sett
 * **Word Banks:** Through Phase 9, uses a bundled English vocabulary with 200/1000/5000-entry prefix tiers. Phase 10 selects bundled English or Vietnamese banks from an extensible language registry. Vietnamese entries are whitespace-delimited practice tokens (often syllables), not a claim of linguistic word segmentation or universal frequency ranking.
 * **Randomization:** Randomly selects words to meet the configured limit (e.g., 50 words, or enough words to fill 60 seconds).
 * **Extra Modifiers:** If `@ Punctuation` or `# Numbers` are enabled, the generator randomly injects commas, periods, quotes, or numbers into the generated array before rendering.
+* **Phase 11:** a pure Alice Drills generator filters the full bundled bank (diacritic-free tokens only) into split-boundary, hand-alternation, and cross-boundary word sets. It surfaces an error instead of falling back when a pool is too small. A bundled catalog of original single-line Python/JavaScript/Rust snippets feeds Code mode.
 
 ### 4.4. Local Storage & Stats Manager
 
 * **Settings Save:** Automatically saves changes to modes, difficulties, and themes into `localStorage` so the user's preferences persist across sessions.
 * **Phase 10 language:** Persist one validated language ID with existing preferences (schema v6). Default/migrate to English; no browser-language guessing. The selection drives UI and built-in practice resources, never keyboard geometry or an input-method installation.
+* **Phase 11:** preferences schema v7 adds the finger guide, B-key hand, drill type, code language, and an optional imported keymap. History record v4 adds per-key direct attempts and a left/right/thumb/unattributed hand snapshot; older records stay readable and are excluded from per-key accuracy.
 * **Stat Aggregation:** At the end of a session, the payload `{ wpm, accuracy, mode, date, missedKeys }` is written to IndexedDB. This allows the app to chart progress over time and show which specific keys on the Alice layout the user struggles with most.
 * **Progress chart (Stats addendum):** Stats → Recent sessions shows a dual-axis timeline above the history table: the latest 10 target-copying sessions (Zen excluded), oldest to newest; WPM as a bold accent line on the left axis and accuracy (50–100%) as a dashed line with a faint fill on the right axis. Point color encodes language and point shape encodes mode, with in-memory language filter toggles. See [Phase 5 Detail Design §6.3.1](./phase-5-detail-design.md#631-recent-sessions-progress-chart-stats-addendum).
 
@@ -80,7 +82,10 @@ Provide a device information view that presents a realistic layout profile and c
 * **Supported features:** Show properties such as RGB/backlighting, connectivity, key rollover, or programmable keys only when verified by the selected catalog entry or explicitly provided device information. Distinguish verified, user-provided, and unavailable/unknown values.
 * **Catalog quality:** Device profiles must be based on a maintained, sourced catalog. Record catalog provenance and revision information; do not fabricate a device profile or feature to fill missing data. Include a generic Alice layout profile that does not claim a specific brand or model.
 * **Keyboard layout profiles:** Bundle real Alice-family layouts imported by a maintainer-only script from open-source QMK keyboard data (USB index, physical layouts, default keymaps) and VIA definitions (IDs and layout variant options), plus reviewed AliceType-curated entries. Commit the generated snapshot with attribution; never fetch sources at runtime. Map physical `KeyboardEvent.code` values only from a source default keymap, never by position or legend. License decision (2026-10-26): the imported GPL data ships with preserved upstream notices, a `NOTICE.txt` listing sources and pinned commits, the bundled GPL-3.0 text linked from the footer, a modification statement, and public corresponding source. AliceType-authored code stays MIT.
-* **Layout matching:** Rank catalog candidates locally from browser-reported vendor/product IDs (weighted down when an ID is shared by several keyboards), device product names, and user-entered board names or saved name/model/brand notes. Name-only suggestions require a model token or a full catalog board name, not just a brand or generic "Alice" label, and are explicitly labeled as name-only evidence. Keep discovery compact: suggestions beside one preview on desktop, stacked on mobile, with optional device specifications, source citations, and key checks in expandable sections. Use physical codes observed during the optional key-press check only to rule out variants; legend-based ranking is deferred. Show each suggestion with its reason and a "suggested, not confirmed" label. A device-specific layout and variant (for example split Backspace or spacebar arrangement) become active in Practice and Keyboard Test only after explicit user confirmation, stored locally. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred.
+* **Layout matching:** Rank catalog candidates locally from browser-reported vendor/product IDs (weighted down when an ID is shared by several keyboards), device product names, and user-entered board names or saved name/model/brand notes. Name-only suggestions require a model token or a full catalog board name, not just a brand or generic "Alice" label, and are explicitly labeled as name-only evidence. Keep discovery compact: suggestions beside one preview on desktop, stacked on mobile, with optional device specifications, source citations, and key checks in expandable sections. Use physical codes observed during the optional key-press check only to rule out variants; legend-based ranking is deferred. Show each suggestion with its reason and a "suggested, not confirmed" label. A device-specific layout and variant (for example split Backspace or spacebar arrangement) become active in Practice and Keyboard Test only after explicit user confirmation, stored locally. Reading layouts from firmware (Vial/VIA protocol, ZMK Studio) is deferred. Phase 11 adds local *file* import of a VIA saved layout or Vial `.vil` keymap onto the confirmed catalog profile:
+  * The file is validated against the profile's matrix (and VIA vendor/product ID).
+  * The user sees a preview and explicitly applies the base layer to codes/legends; other layers are shown read-only.
+  * The import is never uploaded or written to a device, and it is cleared when the confirmation changes.
 * **Browser capability limits:** Standard browser keyboard events, `navigator.keyboard.getLayoutMap()`, and WebHID descriptors do not reliably reveal a physical keyboard's layout, brand, model, version, RGB capability, or other hardware features. Never display those as detected facts. Optional WebHID access follows section 4.1 and the Phase 7 addenda; it is never required for the core app. Device-specific geometry comes only from the reviewed imported catalog and is used only after the user confirms it; generic Alice remains the default.
 * **Persistence:** Store user-selected layout profiles, confirmed layout matches, and manually entered details locally. Do not transmit device details to a server.
 
@@ -93,6 +98,8 @@ Provide a device information view that presents a realistic layout profile and c
 * **Quote:** Pulls a random literary or movie quote.
 * **Zen:** No limits, no visible UI updates except the text. WPM is calculated upon manual stop.
 * **Custom:** User pastes their own text to practice.
+* **Drills (Phase 11):** Alice-specific generated word sets: split-boundary, hand-alternation, or cross-boundary. Word limits match Words mode (see 5.7).
+* **Code (Phase 11):** Original single-line Python, JavaScript, or Rust snippets exercising brackets, pipe, backtick, and digits (see 5.7).
 
 ### 5.2. Difficulty Levels (Based on failed keys)
 
@@ -136,6 +143,39 @@ Provide a device information view that presents a realistic layout profile and c
 * Vietnamese finite sessions, including Vietnamese Custom targets under English UI, require **Finish** (or Enter outside composition) after consuming the target so a final syllable can still be corrected by the input method. Other English finite sessions retain automatic completion; Timed retains its deadline and Zen its explicit Stop. The detail design specifies committed-edit accuracy semantics and event/lifecycle handling.
 * Preserve legacy scores and tag new history records with session language and scoring version. Keep Stats' target-copying and Zen summaries separate; identify mixed-language summaries and distinguish historical keystroke accuracy from committed-text accuracy.
 * Follow the [Phase 10 Detail Design](./phase-10-detail-design.md) and [Phase 10 Technical Implementation Plan](./phase-10-implementation-plan.md). Runtime integration now includes complete typed en/vi UI catalogs, selector/preferences v6, both content banks/catalogs, native committed Unicode/composition input, v3 history and localized Stats. Automated checks pass apart from eight reproduced pre-existing Chromium failures. Fluent editorial review, actual OS Telex/VNI and screen-reader verification remain explicit release gates; complete native compatibility is not inferred from synthetic events. Phase 10 supersedes earlier ASCII-only Practice contracts.
+
+### 5.7. Specialized Alice Practices (Phase 11)
+
+Browser limits shape this feature set:
+
+* Duplicate physical keys share one `KeyboardEvent.code`: both B keys send `KeyB`, both spacebars send `Space`, and every Backspace sends `Backspace`.
+* Firmware layer keys emit no browser event.
+
+Phase 11 therefore offers cues and measurements. It never enforces or scores which hand, thumb, or duplicate key was used.
+
+* **Alice Drills mode:**
+  * Drill types: split-boundary (T/G/B/V vs Y/H/N), hand-alternation, and cross-boundary (B/V/G/Y with 6/7 numbers).
+  * Words come from the bundled English or Vietnamese bank. Vietnamese drills use diacritic-free tokens only.
+  * Finish rules are the existing per-language ones.
+* **Finger guide:** an optional, saved, cue-only overlay. It marks the next expected key on the correct half, adds a hand/finger caption, and marks Shift for shifted characters.
+  * A saved **B-key hand** preference (default Left) chooses which B keycap is marked.
+  * Composed graphemes show "No single key".
+* **Hand/finger load and per-key accuracy:**
+  * Practice shows a live left/right balance from direct keystrokes only. Thumb and unattributed input are kept separate.
+  * Stats shows hand balance, per-key accuracy (keys with 20 or more attempts), and high-strain reach keys compared with the home row. These come from history record v4.
+* **Code mode:** original, bundled, single-line Python/JavaScript/Rust snippets. They are UI-language independent and never require Finish.
+* **Keymap import:** VIA saved layout `.json` and Vial `.vil` files, imported onto the confirmed catalog profile (section 4.6).
+* **Excluded (cannot be observed in a browser):**
+  * Dual-B hand enforcement.
+  * Spacebar alternation.
+  * The Space-as-Backspace penalty.
+  * Layer-hold drills and a thumb rhythm arcade.
+  * Fetching articles at runtime is also excluded (no backend or network content).
+* **Deferred:**
+  * Alice-versus-standard board WPM/CPM comparison.
+  * QMK Configurator `keymap.json` import.
+  * Firmware protocol reads.
+* Follow the [Phase 11 Detail Design](./phase-11-detail-design.md) and [Phase 11 Technical Implementation Plan](./phase-11-implementation-plan.md).
 
 ## 6. Implementation Roadmap
 
@@ -206,3 +246,12 @@ Provide a device information view that presents a realistic layout profile and c
 * Translate every app-owned UI surface, bundle reviewed Vietnamese vocabulary/quote content, and provide Unicode/IME-safe practice across all five modes.
 * Preserve physical Keyboard Test behavior, privacy, existing settings, and legacy history; add language/scoring metadata and honest Stats presentation.
 * Runtime implementation and automated verification are integrated. Language/content quality and native OS/input-method/accessibility sign-off remain pending, as recorded in the [Phase 10 Detail Design](./phase-10-detail-design.md) and [Phase 10 Technical Implementation Plan](./phase-10-implementation-plan.md). The 5,000-token Vietnamese snapshot and 12 original passages have automated validation and explicit provenance, not a completed fluent editorial review.
+
+### Phase 11: Specialized Alice Practices
+
+* Add Alice Drills (split-boundary, hand-alternation, cross-boundary) and Code (Python/JavaScript/Rust single-line snippets) practice modes for English and Vietnamese.
+* Add a pure finger map, a cue-only finger guide with a B-key hand preference, live hand/finger load, and per-key and reach-key accuracy in Stats. Preferences move to schema v7; history moves to record v4.
+* Add local VIA/Vial keymap file import onto the confirmed catalog profile, with preview, explicit apply, a read-only layer viewer, and catalog matrix dimensions regenerated at the existing pins.
+* Never claim hand, thumb, or layer enforcement. Excluded and deferred items are listed in section 5.7.
+* Runtime implementation and automated verification are integrated. Real-board keymap import, Vietnamese drills under OS input methods, screen-reader, fluent Vietnamese copy, and snippet originality gates remain pending, as recorded in the implementation plan.
+* Follow the [Phase 11 Detail Design](./phase-11-detail-design.md) and [Phase 11 Technical Implementation Plan](./phase-11-implementation-plan.md).

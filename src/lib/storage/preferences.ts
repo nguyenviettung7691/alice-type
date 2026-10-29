@@ -1,5 +1,5 @@
 import {
-  DEFAULT_SETTINGS, DURATIONS, WORD_LIMITS, WORD_BANK_TIERS,
+  B_KEY_HANDS, CODE_LANGUAGES, DEFAULT_SETTINGS, DRILL_TYPES, DURATIONS, PRACTICE_MODES, WORD_LIMITS, WORD_BANK_TIERS,
   type PracticeSettings
 } from '../typing/exercise-generator';
 import { isRecord, StorageError, storageFailure } from './errors';
@@ -28,6 +28,22 @@ export interface KeyboardLayoutConfirmation {
   readonly catalogRevision: string;
 }
 
+export interface KeyboardKeymapImport {
+  readonly profileId: string;
+  readonly catalogRevision: string;
+  /** Stable JSON of the confirmed variant the import was applied to. */
+  readonly variantKey: string;
+  readonly format: 'via' | 'vial';
+  readonly fileName: string;
+  readonly importedAt: number;
+  /** Keycodes per layer in matrix order (row-major); `null` means no key at that position. */
+  readonly layers: readonly (readonly (string | null)[])[];
+}
+
+export const MAX_KEYMAP_LAYERS = 32;
+export const MAX_KEYMAP_POSITIONS = 4096;
+export const KEYMAP_FILE_NAME_LENGTH = 120;
+
 export interface Preferences extends PracticeSettings {
   readonly language: LanguageId;
   readonly caretStyle: CaretStyle;
@@ -39,6 +55,8 @@ export interface Preferences extends PracticeSettings {
   readonly keyboardProfileId: string | null;
   readonly keyboardUserDetails: KeyboardUserDetails;
   readonly keyboardLayoutConfirmation: KeyboardLayoutConfirmation | null;
+  readonly fingerGuide: boolean;
+  readonly keyboardKeymapImport: KeyboardKeymapImport | null;
 }
 
 export const DEFAULT_PREFERENCES: Preferences = {
@@ -52,18 +70,22 @@ export const DEFAULT_PREFERENCES: Preferences = {
   keyboardTestSoundEffect: 'default',
   keyboardProfileId: null,
   keyboardUserDetails: {},
-  keyboardLayoutConfirmation: null
+  keyboardLayoutConfirmation: null,
+  fingerGuide: false,
+  keyboardKeymapImport: null
 };
 
 function member<T>(values: readonly T[], value: unknown): value is T {
   return values.some((entry) => entry === value);
 }
 
-type Version1Preferences = Omit<Preferences,
+type Version7Fields = 'drillType' | 'codeLanguage' | 'bKeyHand' | 'fingerGuide' | 'keyboardKeymapImport';
+type Version6Preferences = Omit<Preferences, Version7Fields>;
+type Version1Preferences = Omit<Version6Preferences,
   'keyboardTestSoundEnabled' | 'keyboardTestSoundEffect' | 'keyboardProfileId' | 'keyboardUserDetails'
   | 'keyboardLayoutConfirmation' | 'language'>;
-type Version2Preferences = Omit<Preferences, 'keyboardProfileId' | 'keyboardUserDetails' | 'keyboardLayoutConfirmation' | 'language'>;
-type Version3Preferences = Omit<Preferences, 'keyboardLayoutConfirmation' | 'language'>;
+type Version2Preferences = Omit<Version6Preferences, 'keyboardProfileId' | 'keyboardUserDetails' | 'keyboardLayoutConfirmation' | 'language'>;
+type Version3Preferences = Omit<Version6Preferences, 'keyboardLayoutConfirmation' | 'language'>;
 
 function validateVersion1(value: unknown): Version1Preferences {
   if (!isRecord(value)
@@ -170,7 +192,7 @@ function validateLayoutConfirmation(value: unknown, profileId: string | null): K
   };
 }
 
-function validateVersion4(value: unknown): Omit<Preferences, 'language'> {
+function validateVersion4(value: unknown): Omit<Version6Preferences, 'language'> {
   const existing = validateVersion3(value);
   if (!isRecord(value)) throw new StorageError('Saved preferences contain invalid keyboard details.');
   return {
@@ -179,7 +201,7 @@ function validateVersion4(value: unknown): Omit<Preferences, 'language'> {
   };
 }
 
-export function validatePreferences(value: unknown): Preferences {
+function validateVersion6(value: unknown): Version6Preferences {
   if (!isRecord(value) || !isLanguageId(value.language)) {
     throw new StorageError('Saved preferences contain an unsupported or missing language.');
   }
@@ -191,6 +213,59 @@ export function validatePreferences(value: unknown): Preferences {
   // Historical validators retain their original two-mode contract.
   return { language: value.language, ...validateVersion4({ ...value, mode: 'timed' }), mode: value.mode };
 }
+
+function validateKeymapImport(value: unknown): KeyboardKeymapImport | null {
+  if (value === null) return null;
+  const invalid = () => new StorageError('Saved keymap import is invalid.');
+  if (!isRecord(value) || typeof value.profileId !== 'string' || typeof value.catalogRevision !== 'string'
+    || typeof value.variantKey !== 'string' || value.variantKey.length > 2048
+    || (value.format !== 'via' && value.format !== 'vial')
+    || typeof value.fileName !== 'string' || value.fileName.length > KEYMAP_FILE_NAME_LENGTH
+    || typeof value.importedAt !== 'number' || !Number.isFinite(value.importedAt) || value.importedAt < 0
+    || !Array.isArray(value.layers) || value.layers.length < 1 || value.layers.length > MAX_KEYMAP_LAYERS) throw invalid();
+  const width = Array.isArray(value.layers[0]) ? value.layers[0].length : -1;
+  if (width < 1 || width > MAX_KEYMAP_POSITIONS) throw invalid();
+  const layers = value.layers.map((layer) => {
+    if (!Array.isArray(layer) || layer.length !== width) throw invalid();
+    return Object.freeze(layer.map((keycode) => {
+      if (keycode !== null && (typeof keycode !== 'string' || !/^[\x21-\x7e]{1,64}$/.test(keycode))) throw invalid();
+      return keycode as string | null;
+    }));
+  });
+  return {
+    profileId: value.profileId, catalogRevision: value.catalogRevision, variantKey: value.variantKey,
+    format: value.format, fileName: value.fileName, importedAt: value.importedAt, layers: Object.freeze(layers)
+  };
+}
+
+export function validatePreferences(value: unknown): Preferences {
+  if (!isRecord(value)) throw new StorageError('Saved preferences contain invalid settings.');
+  if (!member(PRACTICE_MODES, value.mode)) throw new StorageError('Saved preferences contain an invalid practice mode.');
+  if (!member(DRILL_TYPES, value.drillType) || !member(CODE_LANGUAGES, value.codeLanguage)
+    || !member(B_KEY_HANDS, value.bKeyHand) || typeof value.fingerGuide !== 'boolean') {
+    throw new StorageError('Saved preferences contain invalid Alice practice settings.');
+  }
+  const { language, mode: historicalMode, durationSeconds, wordLimit, wordBankTier, punctuation, numbers, ...rest } =
+    validateVersion6({ ...value, mode: 'timed' });
+  void historicalMode;
+  return {
+    language, mode: value.mode, durationSeconds, wordLimit, wordBankTier, punctuation, numbers,
+    drillType: value.drillType,
+    codeLanguage: value.codeLanguage,
+    bKeyHand: value.bKeyHand,
+    ...rest,
+    fingerGuide: value.fingerGuide,
+    keyboardKeymapImport: validateKeymapImport(value.keyboardKeymapImport)
+  };
+}
+
+const VERSION_7_DEFAULTS = {
+  drillType: DEFAULT_PREFERENCES.drillType,
+  codeLanguage: DEFAULT_PREFERENCES.codeLanguage,
+  bKeyHand: DEFAULT_PREFERENCES.bKeyHand,
+  fingerGuide: DEFAULT_PREFERENCES.fingerGuide,
+  keyboardKeymapImport: null
+} as const;
 
 export class PreferenceMigrationError extends StorageError {
   constructor(readonly settings: Preferences, cause: StorageError) {
@@ -206,15 +281,15 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     if (raw === null) return { ...DEFAULT_PREFERENCES };
     const record: unknown = JSON.parse(raw);
     if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3
-      && record.version !== 4 && record.version !== 5 && record.version !== 6)) {
+      && record.version !== 4 && record.version !== 5 && record.version !== 6 && record.version !== 7)) {
       throw new StorageError('Saved preferences use an unsupported schema version.');
     }
-    if (record.version === 6) return validatePreferences(record.settings);
+    if (record.version === 7) return validatePreferences(record.settings);
 
-    let migrated: Preferences;
+    let previous: Version6Preferences;
     if (record.version === 1) {
       const phaseOne = validateVersion1(record.settings);
-      migrated = validatePreferences({
+      previous = validateVersion6({
         ...phaseOne,
         language: 'en',
         keyboardTestSoundEnabled: false,
@@ -225,7 +300,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
       });
     } else if (record.version === 2) {
       const phaseTwo = validateVersion2(record.settings);
-      migrated = validatePreferences({
+      previous = validateVersion6({
         ...phaseTwo,
         language: 'en',
         keyboardProfileId: null,
@@ -233,13 +308,16 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
         keyboardLayoutConfirmation: null
       });
     } else if (record.version === 3) {
-      migrated = validatePreferences({ ...validateVersion3(record.settings), keyboardLayoutConfirmation: null, language: 'en' });
+      previous = validateVersion6({ ...validateVersion3(record.settings), keyboardLayoutConfirmation: null, language: 'en' });
     } else if (record.version === 5) {
       if (!isRecord(record.settings)) throw new StorageError('Saved preferences contain invalid settings.');
-      migrated = validatePreferences({ ...record.settings, language: 'en' });
+      previous = validateVersion6({ ...record.settings, language: 'en' });
+    } else if (record.version === 6) {
+      previous = validateVersion6(record.settings);
     } else {
-      migrated = validatePreferences({ ...validateVersion4(record.settings), language: 'en' });
+      previous = validateVersion6({ ...validateVersion4(record.settings), language: 'en' });
     }
+    const migrated = validatePreferences({ ...previous, ...VERSION_7_DEFAULTS });
     try {
       savePreferences(migrated, storage);
     } catch (error) {
@@ -256,7 +334,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
 }
 
 export function savePreferences(settings: Preferences, storage?: PreferenceStorage): void {
-  const record = { version: 6, settings: validatePreferences(settings) };
+  const record = { version: 7, settings: validatePreferences(settings) };
   try {
     (storage ?? window.localStorage).setItem(PREFERENCES_KEY, JSON.stringify(record));
   } catch (error) {

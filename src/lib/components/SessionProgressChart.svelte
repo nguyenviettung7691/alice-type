@@ -24,10 +24,11 @@
   const BOTTOM = 62;
   const PLOT_WIDTH = WIDTH - LEFT - RIGHT;
   const PLOT_HEIGHT = HEIGHT - TOP - BOTTOM;
-  const MODES: readonly TimelineMode[] = ['timed', 'words', 'quote', 'custom'];
+  const MODES: readonly TimelineMode[] = ['timed', 'words', 'quote', 'custom', 'drills', 'code'];
   const MODE_LABEL_KEYS = {
     timed: 'mode-navigation.timed', words: 'mode-navigation.words',
-    quote: 'mode-navigation.quote', custom: 'mode-navigation.custom'
+    quote: 'mode-navigation.quote', custom: 'mode-navigation.custom',
+    drills: 'mode-navigation.drills', code: 'mode-navigation.code'
   } as const;
 
   let hidden = $state<LanguageId[]>([]);
@@ -68,6 +69,8 @@
       case 'words': return `M ${cx - 5.5} ${cy - 5.5} h 11 v 11 h -11 Z`;
       case 'quote': return `M ${cx} ${cy - 7.5} L ${cx + 7.5} ${cy} L ${cx} ${cy + 7.5} L ${cx - 7.5} ${cy} Z`;
       case 'custom': return `M ${cx} ${cy - 7} L ${cx + 7} ${cy + 5.5} L ${cx - 7} ${cy + 5.5} Z`;
+      case 'drills': return `M ${cx} ${cy + 7} L ${cx + 7} ${cy - 5.5} L ${cx - 7} ${cy - 5.5} Z`;
+      case 'code': return `M ${cx - 7} ${cy - 2.5} h 4.5 v -4.5 h 5 v 4.5 h 4.5 v 5 h -4.5 v 4.5 h -5 v -4.5 h -4.5 Z`;
     }
   }
 

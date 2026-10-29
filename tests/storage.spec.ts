@@ -114,14 +114,14 @@ test.describe('preferences and local history', () => {
     });
     expect(Object.keys(record).sort()).toEqual([
       'version', 'language', 'scoringVersion', 'id', 'completedAt', 'mode', 'limit', 'wordBankTier', 'punctuation', 'numbers',
-      'wpm', 'accuracy', 'totalAttempts', 'correctAttempts', 'missedKeys'
+      'wpm', 'accuracy', 'totalAttempts', 'correctAttempts', 'missedKeys', 'keyAttempts', 'handAttempts', 'bKeyHand'
     ].sort());
     await page.keyboard.type('extra');
     await page.keyboard.press('Backspace');
     expect(await records(page)).toEqual([record]);
     await nav(page, 'Stats').click();
     if (record.mode === 'zen') throw new Error('Expected a Words result.');
-    await expect(page.getByRole('table')).toContainText(record.accuracy.toFixed(1));
+    await expect(page.getByRole('table').first()).toContainText(record.accuracy.toFixed(1));
     await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"]')).toHaveAttribute('data-count', '2');
     await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"] .key-count')).toHaveText('2');
     await page.reload();
@@ -467,7 +467,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(input(page)).toBeFocused();
   });
 
-  for (const raw of ['{broken', JSON.stringify({ version: 7, settings: DEFAULT_PREFERENCES })]) {
+  for (const raw of ['{broken', JSON.stringify({ version: 8, settings: DEFAULT_PREFERENCES })]) {
     test(`does not overwrite invalid/future data during onboarding: ${raw.slice(0, 14)}`, async ({ page }) => {
       await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: PREFERENCES_KEY, value: raw });
       await page.goto('/');

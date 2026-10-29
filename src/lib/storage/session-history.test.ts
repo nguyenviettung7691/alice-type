@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { applyAction, createSession, createZenSession, expireSession, stopSession } from '../typing/typing-engine';
 import { generateExercise } from '../typing/exercise-generator';
 import {
-  completedRecord, summarizeSessions, validateSessionRecord, validateStoredSessionRecord, type SessionRecord
+  EMPTY_ATTRIBUTION, completedRecord, summarizeAttribution, summarizeSessions, validateSessionRecord, validateStoredSessionRecord, type SessionRecord
 } from './session-history';
 
 const record: SessionRecord = {
@@ -18,6 +18,8 @@ const quote: SessionRecord = {
   ...custom, id: 'quote', mode: 'quote', quoteId: 'removed-quote-id',
   targetCharacters: 40, totalAttempts: 50, correctAttempts: 40
 };
+const none = EMPTY_ATTRIBUTION('left');
+const oneX = { keyAttempts: { KeyX: 1 }, handAttempts: { left: 1, right: 0, thumb: 0, unattributed: 0 }, bKeyHand: 'left' as const };
 const zen: SessionRecord = {
   version: 2, id: 'zen', completedAt: 1000, mode: 'zen', retainedCharacters: 5,
   elapsedMs: 1000, wpm: 60, accuracy: null, totalAttempts: 10, correctAttempts: null, missedKeys: {}
@@ -130,11 +132,11 @@ describe('completed session contracts', () => {
     const ready = createSession(exercise.target, exercise.configuration, exercise.wordEnds);
     const running = applyAction(ready, { type: 'character', character: 'x' }, 50);
     const completed = expireSession(running, 99_999);
-    expect(completedRecord(completed, 'stable', 1_000_000, { KeyX: 1 })).toMatchObject({
+    expect(completedRecord(completed, 'stable', 1_000_000, { KeyX: 1 }, oneX)).toMatchObject({
       id: 'stable', completedAt: 1_015_000, mode: 'timed', limit: 15,
       wpm: 0, accuracy: 0, missedKeys: { KeyX: 1 }
     });
-    expect(() => completedRecord(ready, 'ready', 1000, {})).toThrow(/Only completed/);
+    expect(() => completedRecord(ready, 'ready', 1000, {}, none)).toThrow(/Only completed/);
   });
 
   it.each([
@@ -145,9 +147,9 @@ describe('completed session contracts', () => {
     for (const [index, character] of [...target].entries()) {
       session = applyAction(session, { type: 'character', character }, 100 + index * 100);
     }
-    const saved = completedRecord(session, mode, 1000, {});
+    const saved = completedRecord(session, mode, 1000, {}, none);
     expect(saved).toMatchObject({
-      version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1',
+      version: 4, language: 'en', scoringVersion: 'committed-grapheme-v1',
       mode, targetCharacters: target.length, elapsedMs: (target.length - 1) * 100,
       completedAt: 1000 + (target.length - 1) * 100, accuracy: 100,
       totalAttempts: target.length, correctAttempts: target.length
@@ -160,18 +162,19 @@ describe('completed session contracts', () => {
   it('saves stopped Zen only, excluding writing and supplied missed keys', () => {
     const ready = createZenSession();
     const running = applyAction(ready, { type: 'character', character: 'x' }, 100);
-    expect(() => completedRecord(ready, 'ready', 1000, {})).toThrow(/Only completed/);
-    expect(() => completedRecord(running, 'running', 1000, {})).toThrow(/Only completed/);
+    expect(() => completedRecord(ready, 'ready', 1000, {}, none)).toThrow(/Only completed/);
+    expect(() => completedRecord(running, 'running', 1000, {}, none)).toThrow(/Only completed/);
     const completed = stopSession(running, 1100);
-    const saved = completedRecord(completed, 'zen-run', 1000, { KeyX: 1 });
+    const saved = completedRecord(completed, 'zen-run', 1000, { KeyX: 1 }, none);
     expect(saved).toEqual({
-      version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1',
+      version: 4, language: 'en', scoringVersion: 'committed-grapheme-v1',
+      keyAttempts: {}, handAttempts: { left: 0, right: 0, thumb: 0, unattributed: 0 }, bKeyHand: 'left',
       id: 'zen-run', completedAt: 2000, mode: 'zen', elapsedMs: 1000,
       retainedCharacters: 1, totalAttempts: 1, wpm: 12, accuracy: null, correctAttempts: null, missedKeys: {}
     });
     expect(saved).not.toHaveProperty('writing');
     const deleted = applyAction(running, { type: 'backspace' }, 200);
-    expect(completedRecord(stopSession(deleted, 1100), 'deleted', 1000, {})).toMatchObject({
+    expect(completedRecord(stopSession(deleted, 1100), 'deleted', 1000, {}, none)).toMatchObject({
       totalAttempts: 1, retainedCharacters: 0, wpm: 0, accuracy: null
     });
   });
@@ -205,5 +208,56 @@ describe('completed session contracts', () => {
       committedAccuracy: null, legacyAccuracy: null,
       zenCount: 1, zenBestWpm: 60, zenAverageWpm: 60, missedKeys: []
     });
+  });
+});
+
+describe('history record version 4', () => {
+  const v4 = {
+    ...custom, version: 4, language: 'en', scoringVersion: 'committed-grapheme-v1',
+    keyAttempts: { KeyX: 4, Space: 2 }, handAttempts: { left: 4, right: 0, thumb: 2, unattributed: 4 }, bKeyHand: 'left'
+  } as const;
+  const drills = { ...v4, id: 'drill', mode: 'drills', drillType: 'split-boundary', limit: 10 } as const;
+  const code = { ...v4, id: 'code', mode: 'code', codeLanguage: 'rust', snippetId: 'rs-vec-macro', targetCharacters: 30, totalAttempts: 30, correctAttempts: 24 } as const;
+
+  it('round trips attribution and the new modes', () => {
+    expect(validateSessionRecord(v4)).toEqual(v4);
+    expect(validateSessionRecord(drills)).toEqual(drills);
+    expect(validateSessionRecord(code)).toEqual(code);
+  });
+
+  it.each([
+    ['keyAttempts', undefined], ['keyAttempts', { KeyX: 0 }], ['keyAttempts', { Unidentified: 3 }], ['keyAttempts', {}],
+    ['handAttempts', { left: 1, right: 0, thumb: 0 }], ['handAttempts', { left: 11, right: 0, thumb: 0, unattributed: 0 }],
+    ['handAttempts', { left: -1, right: 0, thumb: 0, unattributed: 0 }], ['bKeyHand', 'both'], ['language', undefined]
+  ])('rejects invalid v4 %s = %j', (field, value) => {
+    expect(() => validateSessionRecord({ ...v4, [field]: value })).toThrow();
+  });
+
+  it.each([
+    ['drillType', 'diagonal'], ['limit', 12], ['codeLanguage', 'go'], ['quoteId', 'x']
+  ])('rejects inconsistent Alice-mode %s', (field, value) => {
+    expect(() => validateSessionRecord({ ...drills, [field]: value })).toThrow();
+  });
+
+  it('keeps drills and code out of historical record versions', () => {
+    expect(() => validateSessionRecord({ ...drills, version: 3 })).toThrow();
+    expect(() => validateSessionRecord({ ...code, version: 2 })).toThrow();
+    expect(() => validateSessionRecord({ ...code, targetCharacters: 29 })).toThrow();
+  });
+
+  it('aggregates hands, per-key accuracy, and reach keys from v4 only', () => {
+    const keyAttempts = { KeyA: 40, KeyJ: 20, Digit6: 20, Slash: 20, KeyQ: 5 };
+    const missedKeys = { KeyA: 2, Digit6: 5, Slash: 1, KeyQ: 5 };
+    const rich = { ...v4, id: 'rich', totalAttempts: 200, correctAttempts: 187, accuracy: 93.5, targetCharacters: 10,
+      keyAttempts, missedKeys, handAttempts: { left: 65, right: 40, thumb: 30, unattributed: 0 } };
+    const summary = summarizeAttribution([validateSessionRecord(rich), record, custom, zen]);
+    expect(summary.included).toBe(1);
+    expect(summary.excluded).toBe(2);
+    expect(summary.hands).toEqual({ left: 65, right: 40, thumb: 30, unattributed: 0 });
+    expect(summary.keys.map((key) => key.code)).toEqual(['Digit6', 'KeyA', 'Slash', 'KeyJ']);
+    expect(summary.keys[0]).toEqual({ code: 'Digit6', attempts: 20, misses: 5, accuracy: 75 });
+    expect(summary.reachKeys.map((key) => key.code)).toEqual(['Digit6', 'Slash']);
+    expect(summary.reachAccuracy).toBe(85);
+    expect(summary.homeRowAccuracy).toBe(96.7);
   });
 });

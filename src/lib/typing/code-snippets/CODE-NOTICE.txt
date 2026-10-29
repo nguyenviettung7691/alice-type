@@ -1,0 +1,7 @@
+AliceType code practice snippets
+
+The snippets in this directory (python.ts, javascript.ts, rust.ts) are original
+one-line examples written for AliceType. They are not copied from third-party
+projects and are distributed under the AliceType project MIT license.
+
+They are typing exercises only; they are not meant to compile or run in isolation.

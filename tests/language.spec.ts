@@ -5,7 +5,7 @@ async function setup(page: Page, language: 'en' | 'vi' = 'vi') {
   await disableDeviceAccess(page);
   await page.addInitScript(({ defaults, language }) => {
     localStorage.setItem('alicetype.preferences', JSON.stringify({
-      version: 6, settings: { ...defaults, language, onboardingComplete: true }
+      version: 7, settings: { ...defaults, language, onboardingComplete: true }
     }));
     Math.random = () => 0;
   }, { defaults: DEFAULT_PREFERENCES, language });
@@ -33,7 +33,7 @@ test('switches language, persists on reload and keeps the selector at the right 
   await expect(page.locator('#practice-target')).toHaveAttribute('lang', 'vi');
   await expect(page.locator('#practice-target')).toContainText(/[^\x00-\x7f]/);
   const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('alicetype.preferences')!));
-  expect(saved).toMatchObject({ version: 6, settings: { language: 'vi', durationSeconds: 30 } });
+  expect(saved).toMatchObject({ version: 7, settings: { language: 'vi', durationSeconds: 30 } });
   await page.reload();
   await expect(page.getByLabel('Ngôn ngữ', { exact: true })).toHaveValue('vi');
   for (const width of [1280, 360]) {
@@ -92,7 +92,7 @@ test('Vietnamese Custom commits NFC composition once, permits final tone correct
   });
   expect(records).toHaveLength(1);
   expect(records[0]).toMatchObject({
-    version: 3, language: 'vi', scoringVersion: 'committed-grapheme-v1',
+    version: 4, language: 'vi', scoringVersion: 'committed-grapheme-v1',
     totalAttempts: 2, correctAttempts: 1, accuracy: 50, targetCharacters: 1, missedKeys: {}
   });
   expect(records[0]).not.toHaveProperty('input');

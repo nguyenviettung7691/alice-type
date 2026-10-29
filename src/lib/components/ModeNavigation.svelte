@@ -10,7 +10,8 @@
   } = $props();
   const modes = [
     { id: 'timed', label: 'Timed' }, { id: 'words', label: 'Words' },
-    { id: 'quote', label: 'Quote' }, { id: 'custom', label: 'Custom' }, { id: 'zen', label: 'Zen' }
+    { id: 'quote', label: 'Quote' }, { id: 'custom', label: 'Custom' }, { id: 'zen', label: 'Zen' },
+    { id: 'drills', label: 'Drills' }, { id: 'code', label: 'Code' }
   ] as const;
 </script>
 
@@ -25,7 +26,7 @@
           class:selected={option.id === mode}
           {disabled}
           onclick={() => onmodechange(option.id)}
-        >{{timed: i18n.text("mode-navigation.timed"), words: i18n.text("mode-navigation.words"), quote: i18n.text("mode-navigation.quote"), custom: i18n.text("mode-navigation.custom"), zen: 'Zen'}[option.id]}</button>
+        >{{timed: i18n.text("mode-navigation.timed"), words: i18n.text("mode-navigation.words"), quote: i18n.text("mode-navigation.quote"), custom: i18n.text("mode-navigation.custom"), zen: 'Zen', drills: i18n.text("mode-navigation.drills"), code: i18n.text("mode-navigation.code")}[option.id]}</button>
       </li>
     {/each}
   </ul>

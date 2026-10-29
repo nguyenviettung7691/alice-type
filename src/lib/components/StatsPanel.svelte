@@ -1,13 +1,16 @@
 <script lang="ts">
   import { StorageError } from '../storage/errors';
-  import { MAX_SESSION_HISTORY, SessionHistory, summarizeSessions, type SessionRecord } from '../storage/session-history';
+  import { MAX_SESSION_HISTORY, MINIMUM_KEY_ATTEMPTS, SessionHistory, summarizeAttribution, summarizeSessions, type SessionRecord } from '../storage/session-history';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
+  import HandBalance from './HandBalance.svelte';
   import SessionProgressChart from './SessionProgressChart.svelte';
   import { type AliceKey, type InertKey } from '../keyboard/alice-layout';
   import { useLocalization } from '../i18n/context';
   import { compareLabels, formatAccuracy, formatDate, formatNumber } from '../i18n/format';
-  import { getLanguage } from '../i18n/languages';
+  import { LANGUAGES, getLanguage, type LanguageId } from '../i18n/languages';
+  import { DRILL_TYPE_LABEL_KEYS } from '../i18n/alice-messages';
+  import { CODE_LANGUAGE_NAMES } from '../typing/exercise-generator';
   const i18n = useLocalization();
   const { text } = i18n;
   const number = (value: number | null) => value === null ? text("practice-panel.not-available") : formatNumber(i18n.language, value);
@@ -34,6 +37,9 @@
   const missedCounts = $derived(Object.fromEntries(summary.missedKeys));
   const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
   const unmappedMisses = $derived(summary.missedKeys.filter(([code]) => !layoutCodes.has(code)));
+  let attributionLanguage = $state<LanguageId | 'all'>('all');
+  const attribution = $derived(summarizeAttribution(attributionLanguage === 'all'
+    ? records : records.filter((record) => (record.language ?? 'en') === attributionLanguage)));
 
   type SortKey = 'completedAt' | 'mode' | 'wpm' | 'accuracy';
   let sortKey = $state<SortKey>('completedAt');
@@ -78,6 +84,8 @@
       case 'words': return text("stats-panel.words-words", { p0: number(record.limit) });
       case 'quote': return text("stats-panel.quote-characters", { p0: number(record.targetCharacters) });
       case 'custom': return text("stats-panel.custom-characters", { p0: number(record.targetCharacters) });
+      case 'drills': return text("stats-panel.drills-words", { p0: text(DRILL_TYPE_LABEL_KEYS[record.drillType]), p1: number(record.limit) });
+      case 'code': return text("stats-panel.code-snippet", { p0: CODE_LANGUAGE_NAMES[record.codeLanguage] });
       case 'zen': return text("stats-panel.zen-manual-stop-seconds", { p0: formatNumber(i18n.language, record.elapsedMs / 1000, 1) });
     }
   }
@@ -162,7 +170,6 @@
           </div>
           <span class="stats-badge">{text("stats-panel.saved", { p0: number(summary.count) })}</span>
         </div>
-        <SessionProgressChart {records} {modeLabel} />
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
         <div class="history-scroll" role="region" aria-label={text("stats-panel.session-history-table")} tabindex="0">
           <table>
@@ -191,6 +198,7 @@
             </tbody>
           </table>
         </div>
+        <SessionProgressChart {records} {modeLabel} />
       </section>
       <section class="stats-section" aria-labelledby="missed-keys-heading">
         <div class="stats-section-heading">
@@ -210,6 +218,57 @@
               {#each unmappedMisses as [code, count]}<li><code>{code}</code>: {count === 1 ? text("stats-panel.1-miss") : text("stats-panel.misses", { p0: String(number(count)) })}</li>{/each}
             </ul>
           </div>
+        {/if}
+      </section>
+      <section class="stats-section" aria-labelledby="hand-load-heading">
+        <div class="stats-section-heading">
+          <h3 id="hand-load-heading">{text("stats-panel.hand-load-heading")}</h3>
+          <label class="stats-language">{text("stats-panel.attribution-language")}
+            <select value={attributionLanguage} onchange={(event) => { attributionLanguage = event.currentTarget.value as typeof attributionLanguage; }}>
+              <option value="all">{text("stats.allLanguages")}</option>
+              {#each Object.keys(LANGUAGES) as LanguageId[] as language (language)}<option value={language}>{text(getLanguage(language).labelKey)}</option>{/each}
+            </select>
+          </label>
+        </div>
+        <p class="panel-copy">{text("stats-panel.hand-load-copy")}</p>
+        {#if attribution.excluded}<p class="panel-copy" data-excluded={attribution.excluded}>{text("stats-panel.older-sessions-excluded", { p0: number(attribution.excluded) })}</p>{/if}
+        {#if !attribution.included}
+          <p class="empty-state">{text("stats-panel.no-attributed-sessions")}</p>
+        {:else}
+          <HandBalance hands={attribution.hands} heading={text("stats-panel.hand-balance-all")} />
+          <h4>{text("stats-panel.per-key-accuracy")}</h4>
+          <p class="panel-copy">{text("stats-panel.per-key-accuracy-copy", { p0: number(MINIMUM_KEY_ATTEMPTS) })}</p>
+          {#if attribution.keys.length}
+            <!-- svelte-ignore a11y_no_noninteractive_tabindex (The per-key table needs native keyboard scrolling on narrow screens.) -->
+            <div class="history-scroll" role="region" aria-label={text("stats-panel.per-key-accuracy")} tabindex="0">
+              <table class="key-accuracy">
+                <thead><tr>
+                  <th scope="col">{text("stats-panel.key")}</th>
+                  <th scope="col">{text("stats-panel.attempts")}</th>
+                  <th scope="col">{text("stats-panel.misses-column")}</th>
+                  <th scope="col">{text("practice-panel.accuracy")}</th>
+                </tr></thead>
+                <tbody>
+                  {#each attribution.keys as key (key.code)}
+                    <tr data-key-code={key.code}><th scope="row"><code>{key.code}</code></th><td>{number(key.attempts)}</td><td>{number(key.misses)}</td><td>{formatAccuracy(i18n.language, key.accuracy)}</td></tr>
+                  {/each}
+                </tbody>
+              </table>
+            </div>
+          {:else}
+            <p class="empty-state">{text("stats-panel.no-keys-with-enough-attempts", { p0: number(MINIMUM_KEY_ATTEMPTS) })}</p>
+          {/if}
+          <h4>{text("stats-panel.reach-keys")}</h4>
+          <p class="panel-copy">{text("stats-panel.reach-keys-copy")}</p>
+          <dl class="reach-summary">
+            <div><dt>{text("stats-panel.reach-accuracy")}</dt><dd>{attribution.reachAccuracy === null ? text("practice-panel.not-available") : formatAccuracy(i18n.language, attribution.reachAccuracy)}</dd></div>
+            <div><dt>{text("stats-panel.home-row-accuracy")}</dt><dd>{attribution.homeRowAccuracy === null ? text("practice-panel.not-available") : formatAccuracy(i18n.language, attribution.homeRowAccuracy)}</dd></div>
+          </dl>
+          {#if attribution.reachKeys.length}
+            <ul class="reach-keys">
+              {#each attribution.reachKeys.slice(0, 5) as key (key.code)}<li><code>{key.code}</code>: {formatAccuracy(i18n.language, key.accuracy)}</li>{/each}
+            </ul>
+          {/if}
         {/if}
       </section>
     {/if}

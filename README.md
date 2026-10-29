@@ -16,11 +16,12 @@ accent, and real-time feedback. Everything runs in your browser.
 
 ## At a glance
 
-- **Five practice modes** with live feedback, WPM, accuracy, and progress.
-- **Alice keyboard visualizer** with physical-key highlights and confirmed layout variants.
+- **Seven practice modes** with live feedback, WPM, accuracy, and progress, including Alice-specific Drills and Code.
+- **Alice keyboard visualizer** with physical-key highlights, confirmed layout variants, and an optional finger guide.
 - **Keyboard Test** with guided and Freestyle modes, plus 13 optional synthesized sound effects.
 - **Keyboard Details** with a generic Alice profile and 23 real Alice-family layouts sourced from QMK/VIA.
-- **Local preferences and history** with missed-key summaries and separate Zen scores.
+- **Local preferences and history** with missed-key summaries, hand load and per-key accuracy, and separate Zen scores.
+- **VIA/Vial keymap file import** onto a confirmed layout, processed locally and never uploaded.
 - **English and Vietnamese** UI and practice resources, with a saved header language selector.
 - **No accounts, backend, telemetry, or runtime data downloads.**
 
@@ -30,6 +31,10 @@ saved language selection, and committed Unicode/composition input. Fluent
 Vietnamese editorial review and real Windows/macOS Telex/VNI and screen-reader
 sign-off remain required; synthetic composition tests do not establish native
 input-method compatibility on every system.
+Phase 11 (specialized Alice practices) is implemented with automated verification;
+real-board keymap import, Vietnamese drills under OS input methods, screen-reader,
+fluent Vietnamese copy, and snippet review gates remain pending. Standard-versus-Alice
+board comparison is deferred.
 Difficulty rules, alternate themes, and reading
 layouts from firmware are deferred. Browser-based automatic hardware
 identification is not supported.
@@ -83,10 +88,16 @@ Select **Practice**, choose a mode, then select the exercise or activate
 | **Quote** | Copy one of 12 English literary passages or 12 original Vietnamese practice passages, with attribution. Restart repeats it; Next quote selects another while idle. |
 | **Custom** | Paste or enter text, apply it, review the normalized preview, then start. Draft and target are limited to 10,000 characters. |
 | **Zen** | Write freely without a target or limit. Stop explicitly to save a free-writing score; accuracy does not apply. |
+| **Drills** | Alice-specific word sets of 10, 25, 50, or 100 words: **Split boundary** (T G B / Y H N), **Hand alternation**, or **Cross-boundary** (heavy B V G Y 6 7). English and Vietnamese draw diacritic-free words from the bundled bank. |
+| **Code** | Copy original single-line Python, JavaScript, or Rust snippets (17 per language) exercising brackets, pipe, backtick, and digits. Next snippet selects another while idle. |
 
 Timed and Words offer **200**, **1000**, or **5000** word vocabularies, with
 optional punctuation and numbers. Inactive choices are preserved across modes
 but do not alter Quote or Custom text.
+
+Drills let you choose which hand owns **B** (left by default) for the finger guide and
+load figures. AliceType cannot see which hand, thumb, or duplicate keycap you use, so
+drills and the guide are cues only; they never block input or change scoring.
 
 ### Input and scoring
 
@@ -127,6 +138,13 @@ Practice highlights accepted physical keys in orange for a match or red for a
 mismatch. Character correctness still depends on what you type, not the legend.
 Both spacebars share the logical `Space` code. Narrow diagrams scroll horizontally.
 
+The optional **Finger guide** (Practice preferences, off by default, hidden in Zen)
+outlines the next expected key and adds a text caption naming its standard finger,
+including Shift on the opposite hand. Without browser legends it uses a US-QWERTY
+reference layout. With live stats shown, target-copying sessions add **Hand balance (this session)**
+shows left, right, thumb, and unattributed direct keystrokes. Composed input-method
+text stays unattributed.
+
 In **Keyboard Test**, focus the test input and choose:
 
 - **One key at a time:** follow the expected-key arrow. Correct keys show `+`;
@@ -159,6 +177,14 @@ product names, and device IDs do not reliably identify physical geometry,
 model, firmware, or hardware features. AliceType never opens HID devices or
 reads/writes HID reports.
 
+After confirming a layout, **Import keymap** in Keyboard Details reads a VIA saved
+layout (`.json`) or Vial `.vil` file in the browser. It previews differences from the
+default keymap, ignored features (such as macros), and unrecognized keycodes, then
+applies layer 0 to Practice and Keyboard Test only after you choose **Apply keymap**.
+A read-only layer viewer shows every imported layer. The file is never uploaded and
+reflects the file, not what the keyboard currently runs. Changing the confirmed
+profile, variant, or catalog revision removes the import with a notice.
+
 ## Preferences, history, and privacy
 
 The **Practice** page includes Block, Line, or Underline carets, live-stat
@@ -166,10 +192,10 @@ visibility, and optional generated typing clicks (off by default). **Restore
 defaults** requires confirmation and does not delete history.
 
 Preferences, selected profiles, confirmed layouts, and personal notes use
-versioned `localStorage` (schema v6). The far-right **Language** selector defaults
+versioned `localStorage` (schema v7). The far-right **Language** selector defaults
 to English and saves your choice locally; **Restore defaults** returns to English.
 Language changes do not change keyboard geometry, user writing, or physical test
-counts. Completed scores use IndexedDB (record v3, database v1). **Stats** separates
+counts. Completed scores use IndexedDB (record v4, database v1). **Stats** separates
 target-copying WPM/accuracy and missed-key summaries from Zen free-writing scores.
 New scores include language/scoring metadata; existing scores are not rewritten.
 Historical keystroke accuracy and committed-text accuracy have separate summaries.
@@ -177,6 +203,9 @@ Historical keystroke accuracy and committed-text accuracy have separate summarie
 target-copying sessions (Zen excluded), oldest to newest, with WPM on the left axis
 and accuracy (50–100%) on the right. Point color shows language and point shape
 shows mode; language toggles hide or show each language's sessions.
+**Hand load and key accuracy** summarizes saved v4 sessions by language: hand balance,
+per-key accuracy for keys with at least 20 direct attempts, and reach-key versus
+home-row accuracy. Older records are excluded and counted in a note.
 Keyboard Test counts and raw input events are not stored.
 
 All app data stays in your browser, with no uploads or remote synchronization.
@@ -231,6 +260,7 @@ Each phase has a detail design and an implementation/verification plan:
 | 8 | Quote, Custom, and Zen | [Design](doc/phase-8-detail-design.md) · [Plan](doc/phase-8-implementation-plan.md) |
 | 9 | Guided and Freestyle Keyboard Test modes | [Design](doc/phase-9-detail-design.md) · [Plan](doc/phase-9-implementation-plan.md) |
 | 10 (review gates pending) | English/Vietnamese resources, Unicode/composition practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
+| 11 (manual gates pending) | Alice Drills and Code modes, cue-only finger guide, hand/finger load and per-key accuracy, VIA/Vial keymap file import | [Design](doc/phase-11-detail-design.md) · [Plan](doc/phase-11-implementation-plan.md) |
 
 Phase 10 separates UI catalogs under `src/lib/i18n/ui/` from practice resources
 under `src/lib/typing/word-banks/` and `src/lib/typing/quotes/`. Vietnamese word
@@ -259,6 +289,7 @@ still need fluent editorial review.
 | Vietnamese vocabulary | Separate pinned FrequencyWords/OpenSubtitles2018 snapshot under CC BY-SA 4.0; exact revision, filtering and review limitations are in the [vocabulary notice](src/lib/typing/word-banks/NOTICE.txt). |
 | Literary passages | 12 passages across three works. See the [quote attribution and rights notice](src/lib/typing/QUOTE-NOTICE.txt) for editions, adaptations, and US public-domain status. Check local copyright law before redistribution outside the United States. |
 | Vietnamese passages | 12 original AI-assisted AliceType practice passages in three collections, under the application MIT license; not literary quotations/translations. See the [quote notice](src/lib/typing/QUOTE-NOTICE.txt). |
+| Code snippets | 51 original single-line snippets written for AliceType under the application MIT license. See the [code snippet notice](src/lib/typing/code-snippets/CODE-NOTICE.txt). |
 | Keyboard layouts | Adapted from [VIA](https://github.com/the-via/keyboards) and [QMK](https://github.com/qmk/qmk_firmware) under [GPL-3.0](src/lib/keyboard/layout-data/LICENSE-GPL-3.0.txt). See the [notice](src/lib/keyboard/layout-data/NOTICE.txt) for pinned sources, modifications, and upstream notices. |
 
 VIA supplies geometry and variants; QMK supplies default-keymap physical codes,
