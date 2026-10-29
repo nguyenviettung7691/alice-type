@@ -551,7 +551,7 @@
     resize: vertical;
   }
   .custom-label { display: block; margin-block: 0.75rem; }
-  .custom-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .custom-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-block: 0.75rem; }
   .zen-caret { background: var(--color-accent); }
   [data-caret="line"] .zen-caret { background: transparent; border-left: 2px solid var(--color-accent); }
   [data-caret="underline"] .zen-caret { background: transparent; border-bottom: 2px solid var(--color-accent); }
