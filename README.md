@@ -23,7 +23,11 @@ accent, and real-time feedback. Everything runs in your browser.
 - **Local preferences and history** with missed-key summaries and separate Zen scores.
 - **No accounts, backend, telemetry, or runtime data downloads.**
 
-Phases 1-9 are implemented. Difficulty rules, alternate themes, and reading
+Phases 1-9 are implemented. Phase 10 implementation has started with localization
+and Unicode input foundations. The current app is still English-only: the saved
+language selector, complete Vietnamese resources, and native IME integration are
+not yet available.
+Difficulty rules, alternate themes, and reading
 layouts from firmware are deferred. Browser-based automatic hardware
 identification is not supported.
 
@@ -206,6 +210,21 @@ Each phase has a detail design and an implementation/verification plan:
 | 7 | Keyboard Details and layout profiles | [Design](doc/phase-7-detail-design.md) · [Plan](doc/phase-7-implementation-plan.md) |
 | 8 | Quote, Custom, and Zen | [Design](doc/phase-8-detail-design.md) · [Plan](doc/phase-8-implementation-plan.md) |
 | 9 | Guided and Freestyle Keyboard Test modes | [Design](doc/phase-9-detail-design.md) · [Plan](doc/phase-9-implementation-plan.md) |
+| 10 (in progress) | Extensible localization, Vietnamese UI/content and Unicode/IME practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
+
+Phase 10 separates UI messages from practice word banks/content for each language.
+Its planned far-right header selector will choose English or Vietnamese and save
+that choice locally. The design includes Vietnamese input-method support and
+history compatibility, rather than translating labels while leaving practice
+ASCII-only. Existing input/scoring descriptions above describe the current
+implemented app until Phase 10 is delivered.
+
+The first implementation milestone adds a typed language/message registry,
+initial English/Vietnamese message resources, locale formatting, shared
+NFC/grapheme validation, and pure committed-edit reconciliation/scoring helpers.
+The header now reads its labels from resources; it remains English in the app.
+Vietnamese header switching is exercised only in a browser test fixture. The
+new text helpers are not yet connected to Practice capture or stored scores.
 
 ## Data attribution and licensing
 

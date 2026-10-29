@@ -1,12 +1,16 @@
 <script lang="ts">
-  let { disabled, view, onviewchange }: {
+  import { DEFAULT_LANGUAGE, type LanguageId } from '../i18n/languages';
+  import { translate } from '../i18n/messages';
+
+  let { disabled, view, onviewchange, language = DEFAULT_LANGUAGE }: {
     disabled: boolean;
     view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details';
     onviewchange: (view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
+    language?: LanguageId;
   } = $props();
   const views = [
-    { id: 'practice', label: 'Practice' }, { id: 'keyboard-test', label: 'Keyboard Test' },
-    { id: 'keyboard-details', label: 'Keyboard Details' }, { id: 'stats', label: 'Stats' }
+    { id: 'practice', label: 'view.practice' }, { id: 'keyboard-test', label: 'view.keyboardTest' },
+    { id: 'keyboard-details', label: 'view.keyboardDetails' }, { id: 'stats', label: 'view.stats' }
   ] as const;
 </script>
 
@@ -18,10 +22,10 @@
     </div>
 
     <div class="flex flex-wrap items-center gap-x-7 gap-y-3 max-[760px]:w-full max-[760px]:justify-between max-[520px]:items-start max-[520px]:flex-col">
-      <nav class="view-navigation" aria-label="App views">
+      <nav class="view-navigation" aria-label={translate(language, 'header.views')}>
         {#each views as destination}
           <button type="button" {disabled} aria-pressed={view === destination.id}
-            onclick={() => onviewchange(destination.id)}>{destination.label}</button>
+            onclick={() => onviewchange(destination.id)}>{translate(language, destination.label)}</button>
         {/each}
       </nav>
     </div>

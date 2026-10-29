@@ -17,7 +17,7 @@ Since the app needs to be lightweight and runs entirely in the browser (no backe
 ## 3. UI/UX Layout (Desktop-Optimized)
 
 * **Color Palette:** Dark gray/charcoal background (e.g., `#1A1A1A`) to reduce eye strain, with high-contrast, striking orange (`#FF5D00`) as the primary accent for active elements, progress bars, and the caret.
-* **Header:** Minimalist. Contains a logo/title, navigation for Modes (Timed, Words, Quote, Custom, Zen), Settings, and Stats.
+* **Header:** Minimalist. Contains the AliceType title and navigation for Practice, Keyboard Test, Keyboard Details, and Stats; practice modes/settings live in Practice. Phase 10 adds a simple language selector at the far right.
 * **Center Stage (Typing Area):** Large, highly legible text. The current word is highlighted, correct letters turn faint gray, incorrect letters turn red, and the active cursor is a blinking orange block.
 * **Progress & Live Stats:** A thin, striking orange progress bar spanning the width of the typing area. Live WPM and accuracy display subtly above or below the text block.
 * **Alice Keyboard Visualizer (Bottom):** An SVG-based visual representation of the Alice split layout. Keys light up in real-time as the user types, helping them build muscle memory for the unique ergonomic angles.
@@ -37,7 +37,7 @@ When the app first loads, an overlay modal will intercept the user.
 
 A custom typing hook/class that manages keystrokes in real-time:
 
-* **Input Handling:** Listens to `keydown`. Prevents default behavior for functional keys (like `Tab` or `Space` scrolling) to keep the user locked into the exercise.
+* **Input Handling:** Through Phase 9, Practice accepts discrete printable ASCII `keydown` input and ignores IME. Phase 10 replaces that text-entry boundary with normalized, committed Unicode input and composition handling for Vietnamese, while keeping physical-key identity separate. Tab leaves capture and browser shortcuts remain available; Keyboard Test retains its physical `keydown` behavior.
 * **Calculations:**
 * *WPM:* Calculated using standard formula: `(Correct Characters / 5) / (Time Elapsed in Minutes)`.
 * *Accuracy:* `(Correct Keystrokes / Total Keystrokes) * 100`.
@@ -49,13 +49,14 @@ A custom typing hook/class that manages keystrokes in real-time:
 
 A utility module that dynamically generates the text block based on current settings:
 
-* **Word Banks:** Pulls from local JSON files containing the top 200, 1000, or 5000 English words.
+* **Word Banks:** Through Phase 9, uses a bundled English vocabulary with 200/1000/5000-entry prefix tiers. Phase 10 selects bundled English or Vietnamese banks from an extensible language registry. Vietnamese entries are whitespace-delimited practice tokens (often syllables), not a claim of linguistic word segmentation or universal frequency ranking.
 * **Randomization:** Randomly selects words to meet the configured limit (e.g., 50 words, or enough words to fill 60 seconds).
 * **Extra Modifiers:** If `@ Punctuation` or `# Numbers` are enabled, the generator randomly injects commas, periods, quotes, or numbers into the generated array before rendering.
 
 ### 4.4. Local Storage & Stats Manager
 
 * **Settings Save:** Automatically saves changes to modes, difficulties, and themes into `localStorage` so the user's preferences persist across sessions.
+* **Phase 10 language:** Persist one validated language ID with existing preferences (schema v6). Default/migrate to English; no browser-language guessing. The selection drives UI and built-in practice resources, never keyboard geometry or an input-method installation.
 * **Stat Aggregation:** At the end of a session, the payload `{ wpm, accuracy, mode, date, missedKeys }` is written to IndexedDB. This allows the app to chart progress over time and show which specific keys on the Alice layout the user struggles with most.
 
 ### 4.5. Keyboard Keys Test Matrix
@@ -124,6 +125,17 @@ Provide a device information view that presents a realistic layout profile and c
 * Do not claim browser-based automatic hardware identification: standard keyboard APIs do not expose reliable brand/model/version or hardware feature data. Unknown details must remain explicitly unknown.
 * Keep profile and user-provided details in local storage; no backend transmission is part of this feature.
 
+### 5.6. Multi-language support (Phase 10 - in progress)
+
+* Ship complete English (`en`) and Vietnamese (`vi`) UI resources, including accessible names, instructions, errors, dialogs, status messages, and locale-aware number/date formatting. Preserve AliceType, hardware identities, physical key codes/legends, user text, and original source/license material.
+* Place a labeled, keyboard-operable selector at the far right of the top bar, with native language names **English** and **Tiếng Việt**. Persist the choice in browser `localStorage`; retain the in-memory choice and show a localized warning/retry action if saving fails. Disable changes during a running practice session, as with other settings.
+* Keep two resource groups per language: **UI labels/messages** and **practice content/word banks**. Quote passages belong to practice content, not UI labels. Bundle resources locally; adding a language requires a registry entry, complete resources, content/rights review, and tests, not copied components or engine branches.
+* Apply the choice to Timed/Words vocabulary and Quote passages. Provide Vietnamese tiers of 200/1000/5000 unique reviewed tokens and at least 12 Vietnamese quote passages with explicit authorship/rights. Do not silently substitute English content for missing resources. Custom/Zen preserve user-authored text and support Vietnamese regardless of the UI language.
+* Support Vietnamese diacritics and OS/browser Telex/VNI composition with NFC normalization and shared grapheme-aware editing, caret, progress, and scoring. Do not count composition updates as physical keystrokes or infer physical missed keys from composed text. WPM remains five accepted text characters per word, where a Phase 10 character is one grapheme, not one UTF-16 code unit.
+* Vietnamese finite sessions, including Vietnamese Custom targets under English UI, require **Finish** (or Enter outside composition) after consuming the target so a final syllable can still be corrected by the input method. Other English finite sessions retain automatic completion; Timed retains its deadline and Zen its explicit Stop. The detail design specifies committed-edit accuracy semantics and event/lifecycle handling.
+* Preserve legacy scores and tag new history records with session language and scoring version. Keep Stats' target-copying and Zen summaries separate; identify mixed-language summaries and distinguish historical keystroke accuracy from committed-text accuracy.
+* Follow the [Phase 10 Detail Design](./phase-10-detail-design.md) and [Phase 10 Technical Implementation Plan](./phase-10-implementation-plan.md). The first milestone implements localization/text foundations and resource-driven header labels only; the public app remains English/ASCII and exposes no language selector yet. The remaining items are implementation contracts, not claims of delivered Vietnamese support. Phase 10 supersedes earlier ASCII-only/IME deferrals only as the relevant integration is delivered.
+
 ## 6. Implementation Roadmap
 
 ### Phase 1: Scaffolding & UI Foundation
@@ -184,3 +196,11 @@ Provide a device information view that presents a realistic layout profile and c
 * Switching modes resets the test matrix. One key at a time no longer shows per-key correct-press count numbers.
 * Mode and counts are not persisted; preferences stay at schema v5.
 * Implemented with automated unit and Chromium verification. Follow the [Phase 9 Detail Design](./phase-9-detail-design.md) and the [Phase 9 Technical Implementation Plan](./phase-9-implementation-plan.md#verification-results).
+
+### Phase 10: Multi-language Support
+
+* Add an extensible, typed language registry and separate complete UI-message and practice-content resource groups; ship English and Vietnamese.
+* Add the far-right top-bar language selector and preferences schema v6 migration/persistence with explicit storage-failure recovery.
+* Translate every app-owned UI surface, bundle reviewed Vietnamese vocabulary/quote content, and provide Unicode/IME-safe practice across all five modes.
+* Preserve physical Keyboard Test behavior, privacy, existing settings, and legacy history; add language/scoring metadata and honest Stats presentation.
+* In progress: the first milestone adds typed language/messages/format helpers, initial en/vi UI messages, resource-driven header labels, shared grapheme validation, and pure committed-edit reconciliation/scoring. Full UI/content, selector/persistence, Practice/IME integration and history changes remain pending. See the [Phase 10 Detail Design](./phase-10-detail-design.md) and [Phase 10 Technical Implementation Plan](./phase-10-implementation-plan.md) for boundaries, dependencies, and acceptance evidence.

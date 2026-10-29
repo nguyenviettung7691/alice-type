@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+  <head><meta charset="UTF-8"><title>Localization foundation test</title></head>
+  <body>
+    <div id="fixture"></div>
+    <script type="module">
+      import { mount } from 'svelte';
+      import LocalizationFixture from './LocalizationFixture.svelte';
+      import '../../src/app.css';
+
+      mount(LocalizationFixture, { target: document.getElementById('fixture') });
+    </script>
+  </body>
+</html>
