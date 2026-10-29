@@ -66,7 +66,7 @@ test('Quote completes at its final position even with an error and saves exactly
   await expect(page.getByRole('progressbar')).toHaveAttribute('value', String(text.length));
   await expect.poll(async () => (await records(page)).length).toBe(1);
   const [record] = await records(page);
-  expect(record).toMatchObject({ version: 2, mode: 'quote', targetCharacters: text.length, totalAttempts: text.length });
+  expect(record).toMatchObject({ version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1', mode: 'quote', targetCharacters: text.length, totalAttempts: text.length });
   await page.keyboard.type('extra');
   expect(await records(page)).toEqual([record]);
   await button(page, 'Stats').click();
@@ -93,7 +93,7 @@ test('Custom native editor normalizes a reviewed target without starting or capt
   await button(page, 'Restart').click();
   expect(await target(page)).toBe('"Hello" world 123...');
   await button(page, 'Edit text').click();
-  await editor.fill('unsupported café');
+  await editor.fill('unsupported 漢');
   await expect(editor).toHaveAttribute('aria-invalid', 'true');
   await expect(button(page, 'Apply text')).toBeDisabled();
   await expect(button(page, 'Start typing')).toHaveCount(0);
@@ -132,7 +132,7 @@ test('Custom preserves draft on mode switches, clears on view exit/reload/defaul
 test('Custom rejects limits/unsupported characters without silently changing the draft; Clear releases targets', async ({ page }) => {
   await button(page, 'Custom').click();
   const editor = page.getByLabel('Custom text', { exact: true });
-  for (const text of ['x'.repeat(10_001), '…'.repeat(3334), 'a\u200bb', 'café']) {
+  for (const text of ['x'.repeat(10_001), '…'.repeat(3334), 'a\u200bb', '漢']) {
     await editor.fill(text);
     await expect(editor).toHaveValue(text);
     await expect(button(page, 'Apply text')).toBeDisabled();
@@ -197,12 +197,14 @@ test('Zen only updates writing, installs no practice interval or audio, and stop
 test('Zen bounds rendered writing, edits across its window, saves full counts on keyboard Stop', async ({ page }) => {
   await button(page, 'Zen').click();
   await button(page, 'Focus writing').click();
-  await capture(page).evaluate((element) => {
-    for (let i = 0; i < 2501; i++) element.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+  await capture(page).evaluate((element: HTMLInputElement) => {
+    element.value = 'a'.repeat(2501);
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: element.value }));
   });
   await expect(page.locator('.zen-writing')).toHaveText('a'.repeat(2000));
-  await capture(page).evaluate((element) => {
-    for (let i = 0; i < 600; i++) element.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+  await capture(page).evaluate((element: HTMLInputElement) => {
+    element.value = element.value.slice(0, -600);
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'deleteContentBackward' }));
   });
   await expect(page.locator('.zen-writing')).toHaveText('a'.repeat(1901));
   await page.clock.runFor(60_000);

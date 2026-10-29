@@ -1,6 +1,10 @@
 import { ExerciseGenerationError } from './exercise-generator';
+import { isLanguageId, type LanguageId } from '../i18n/languages';
+import { isSupportedResourceText } from './text';
+import { VI_QUOTES } from './quotes/vi';
 
 export interface Quote {
+  readonly language?: LanguageId;
   readonly id: string;
   readonly text: string;
   readonly author: string;
@@ -102,7 +106,8 @@ export const QUOTES: readonly Quote[] = Object.freeze([
   }
 ].map((quote) => Object.freeze(quote)));
 
-export function validateQuoteCatalog(quotes: readonly Quote[]): void {
+export function validateQuoteCatalog(quotes: readonly Quote[], language: LanguageId = 'en'): void {
+  if (!isLanguageId(language)) throw new ExerciseGenerationError('Unsupported language identifier.');
   if (!Array.isArray(quotes) || quotes.length < 2) {
     throw new ExerciseGenerationError('The quote catalog must contain at least two entries.');
   }
@@ -115,10 +120,14 @@ export function validateQuoteCatalog(quotes: readonly Quote[]): void {
       || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(quote.id) || ids.has(quote.id)) {
       throw new ExerciseGenerationError('Quote catalog IDs must be unique stable lowercase slugs.');
     }
-    if (typeof quote.text !== 'string' || quote.text.length < 40 || quote.text.length > 1000
-      || !/^[\x20-\x7e]+$/.test(quote.text) || quote.text !== quote.text.trim()
+    if ((quote.language ?? 'en') !== language || (language === 'vi' && !quote.id.startsWith('vi-'))) {
+      throw new ExerciseGenerationError('Quote catalog language or ID prefix does not match.');
+    }
+    if (typeof quote.text !== 'string' || !isSupportedResourceText(quote.text) || quote.text.length < 40 || quote.text.length > 1000
+      || (language === 'en' && !/^[\x20-\x7e]+$/.test(quote.text))
+      || quote.text !== quote.text.normalize('NFC') || quote.text !== quote.text.trim()
       || quote.text.includes('  ') || texts.has(quote.text)) {
-      throw new ExerciseGenerationError('Quote catalog text must be unique printable ASCII, 40-1000 characters, with single interior spaces.');
+      throw new ExerciseGenerationError('Quote catalog text must be unique supported NFC text, 40-1000 graphemes, with single interior spaces.');
     }
     if (provenance.some((field) => typeof quote[field] !== 'string' || !quote[field].trim())) {
       throw new ExerciseGenerationError('Quote catalog entries require complete provenance.');
@@ -143,10 +152,17 @@ export function validateQuoteCatalog(quotes: readonly Quote[]): void {
 }
 
 validateQuoteCatalog(QUOTES);
+validateQuoteCatalog(VI_QUOTES, 'vi');
 
-export function selectQuote(currentId?: string, random: () => number = Math.random): Quote {
-  validateQuoteCatalog(QUOTES);
-  const eligible = QUOTES.filter((quote) => quote.id !== currentId);
+const catalogs: Readonly<Record<LanguageId, readonly Quote[]>> = Object.freeze({ en: QUOTES, vi: VI_QUOTES });
+
+export function getQuoteCatalog(language: LanguageId = 'en'): readonly Quote[] {
+  if (!isLanguageId(language)) throw new ExerciseGenerationError('Unsupported language identifier.');
+  return catalogs[language];
+}
+
+export function selectQuote(currentId?: string, random: () => number = Math.random, language: LanguageId = 'en'): Quote {
+  const eligible = getQuoteCatalog(language).filter((quote) => quote.id !== currentId);
   const value = random();
   if (!Number.isFinite(value) || value < 0 || value >= 1) {
     throw new ExerciseGenerationError('The quote random source must return a finite number in [0, 1).');

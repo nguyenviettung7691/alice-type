@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { useLocalization } from '../i18n/context';
+  const localization = useLocalization();
+  const { text } = localization;
 
   let { onfinish, deviceSupported = false }: {
     onfinish: (choice: 'device' | 'layout' | 'skip') => void;
@@ -18,36 +21,36 @@
 </script>
 
 <dialog bind:this={dialog} aria-labelledby="welcome-heading" aria-describedby="welcome-description" onclose={() => finish('skip')}>
-  <p class="eyebrow">Your pace. Your rhythm.</p>
-  <h2 id="welcome-heading">Welcome to AliceType</h2>
-  <p id="welcome-description">Build confidence on your Alice keyboard, one session at a time. No device connection is needed to practice.</p>
+  <p class="eyebrow">{text("keyboard-onboarding.your-pace-your-rhythm")}</p>
+  <h2 id="welcome-heading">{text("keyboard-onboarding.welcome-to-alicetype")}</h2>
+  <p id="welcome-description">{text("keyboard-onboarding.build-confidence-on-your-alice-keyboard-one")}</p>
 
   <div class="practice-action">
-    <button class="primary-button" type="button" onclick={() => finish('layout')}>Start practicing</button>
-    <p>We'll try to match the diagram's key labels to your browser layout. Your session starts only when you type. Sound is off by default.</p>
+    <button class="primary-button" type="button" onclick={() => finish('layout')}>{text("keyboard-onboarding.start-practicing")}</button>
+    <p>{text("keyboard-onboarding.we-ll-try-to-match-the-diagram")}</p>
   </div>
 
   <section class="optional-setup" aria-labelledby="optional-setup-heading">
-    <h3 id="optional-setup-heading">Want to connect your keyboard? <span>Optional</span></h3>
+    <h3 id="optional-setup-heading">{text("keyboard-onboarding.want-to-connect-your-keyboard")} <span>{text("keyboard-details-panel.optional")}</span></h3>
     {#if deviceSupported}
-      <p>Choose your keyboard in the browser's device picker to help find a matching layout. Some keyboards won't appear, and you'll still need to confirm any suggested layout.</p>
-      <button class="secondary-button" type="button" onclick={() => finish('device')}>Connect keyboard &amp; start</button>
+      <p>{text("keyboard-onboarding.choose-your-keyboard-in-the-browser-s")}</p>
+      <button class="secondary-button" type="button" onclick={() => finish('device')}>{text("keyboard-onboarding.connect-keyboard-start")}</button>
     {:else}
-      <p>Device connection isn't available in this browser. You can still practice, test keys, and choose a layout in Keyboard Details.</p>
+      <p>{text("keyboard-onboarding.device-connection-isn-t-available-in-this")}</p>
     {/if}
   </section>
 
   <details>
-    <summary>Privacy &amp; keyboard access</summary>
-    <p>Your settings, scores, and device details stay in this browser and are never uploaded to a server. Your browser remembers device permission; live device details are kept only for this visit.</p>
-    <p>Starting practice requests browser key labels only, not device access. Labels and device information cannot detect your keyboard's physical shape. Without a confirmed layout, diagrams use a reference Alice arrangement.</p>
-    <p>Connecting also tries browser key labels. Select only your keyboard in the picker. You can manage device permissions in your browser's site settings, or connect later from Keyboard connection.</p>
-    <p>Typing is captured only in the focused exercise. Tab lets you leave, and browser shortcuts stay yours.</p>
+    <summary>{text("keyboard-onboarding.privacy-keyboard-access")}</summary>
+    <p>{text("keyboard-onboarding.your-settings-scores-and-device-details-stay")}</p>
+    <p>{text("keyboard-onboarding.starting-practice-requests-browser-key-labels-only")}</p>
+    <p>{text("keyboard-onboarding.connecting-also-tries-browser-key-labels-select")}</p>
+    <p>{text("keyboard-onboarding.typing-is-captured-only-in-the-focused")}</p>
   </details>
 
   <div class="welcome-footer">
-    <p>Just looking around?</p>
-    <button class="secondary-button" type="button" onclick={() => finish('skip')}>Explore first</button>
+    <p>{text("keyboard-onboarding.just-looking-around")}</p>
+    <button class="secondary-button" type="button" onclick={() => finish('skip')}>{text("keyboard-onboarding.explore-first")}</button>
   </div>
 </dialog>
 

@@ -45,8 +45,32 @@ describe('word banks and configuration', () => {
       expect(() => validateConfiguration(configuration)).toThrow();
     }
     expect(getConfiguration(DEFAULT_SETTINGS)).toEqual({
+      language: 'en',
       mode: 'timed', durationSeconds: 30, wordBankTier: 200, punctuation: false, numbers: false
     });
+  });
+
+    describe('Vietnamese resource banks', () => {
+      it.each(WORD_BANK_TIERS)('has exactly %i unique normalized tokens with prefix tiers', (tier) => {
+        const bank = getWordBank(tier, 'vi');
+        expect(bank).toHaveLength(tier);
+        expect(new Set(bank).size).toBe(tier);
+        expect(bank).toEqual(getWordBank(5000, 'vi').slice(0, tier));
+        expect(() => validateWordBank(bank, tier, 'vi')).not.toThrow();
+        expect(Object.isFrozen(bank)).toBe(true);
+      });
+      it('generates Vietnamese content without an English fallback', () => {
+        const exercise = generateExercise({ ...words, language: 'vi' }, () => 0);
+        expect(exercise.target).toBe(Array(10).fill('tôi').join(' '));
+        expect(exercise.configuration.language).toBe('vi');
+        expect(exercise.wordEnds.at(-1)).toBe(exercise.target.length);
+      });
+      it('rejects unknown languages and invalid Vietnamese tokens', () => {
+        expect(() => validateConfiguration(JSON.parse('{"mode":"custom","language":"fr"}'))).toThrow('language');
+        for (const token of ['a b', '😀', 'ấ'.normalize('NFD'), 'Đất', '漢']) {
+          expect(() => validateWordBank([token], 1, 'vi')).toThrow();
+        }
+      });
   });
 });
 

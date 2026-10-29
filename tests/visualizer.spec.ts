@@ -20,9 +20,14 @@ async function start(page: Page) {
 type KeyOptions = Pick<KeyboardEventInit, 'repeat' | 'ctrlKey' | 'altKey' | 'metaKey' | 'isComposing'>;
 
 async function dispatchKey(page: Page, key: string, code: string, options: KeyOptions = {}) {
-  return input(page).evaluate((element, init) => {
+  return input(page).evaluate((element: HTMLInputElement, init) => {
     const event = new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init });
     element.dispatchEvent(event);
+    if (!event.defaultPrevented && !init.ctrlKey && !init.altKey && !init.metaKey && !init.isComposing
+      && !init.repeat && /^[\x20-\x7e]$/.test(init.key)) {
+      element.value += init.key;
+      element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertText', data: init.key }));
+    }
     return event.defaultPrevented;
   }, { key, code, ...options });
 }
@@ -101,12 +106,12 @@ test('replaces same-code feedback without an old timer clearing the newer state'
 
 test('uses code for position, character for correctness, and accepts unmapped or absent codes', async ({ page }) => {
   await start(page);
-  expect(await dispatchKey(page, 'y', 'KeyQ')).toBe(true);
+  expect(await dispatchKey(page, 'y', 'KeyQ')).toBe(false);
   await expect(key(page, 'KeyQ')).toHaveAttribute('data-feedback', 'correct');
   await expect(key(page, 'KeyY')).toHaveAttribute('data-feedback', 'neutral');
   await page.clock.runFor(300);
-  expect(await dispatchKey(page, 'o', 'Unidentified')).toBe(true);
-  expect(await dispatchKey(page, 'u', '')).toBe(true);
+  expect(await dispatchKey(page, 'o', 'Unidentified')).toBe(false);
+  expect(await dispatchKey(page, 'u', '')).toBe(false);
   await expect(highlighted(page)).toHaveCount(0);
   await expect(page.locator('.typing-character.correct')).toHaveCount(3);
   await expect(page.locator('.metric-value').nth(1)).toHaveText('100.0%');
@@ -131,13 +136,13 @@ test('ignores repeat, shortcuts, non-printable keys, and composition without ext
   for (const options of [
     { repeat: true }, { ctrlKey: true }, { altKey: true }, { metaKey: true }, { isComposing: true }
   ]) {
-    expect(await dispatchKey(page, 'y', 'KeyY', options)).toBe(false);
+    expect(await dispatchKey(page, 'y', 'KeyY', options)).toBe(Boolean(options.repeat));
   }
   for (const code of ['ShiftLeft', 'Enter', 'Escape', 'ArrowLeft', 'Tab']) {
     expect(await dispatchKey(page, code, code)).toBe(false);
   }
   await input(page).dispatchEvent('compositionstart');
-  expect(await dispatchKey(page, 'y', 'KeyY')).toBe(false);
+  expect(await dispatchKey(page, 'y', 'KeyY', { isComposing: true })).toBe(false);
   await input(page).dispatchEvent('compositionend', { data: 'y' });
   await page.clock.runFor(100);
   await expect(highlighted(page)).toHaveCount(0);

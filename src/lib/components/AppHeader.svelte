@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { DEFAULT_LANGUAGE, type LanguageId } from '../i18n/languages';
+  import { DEFAULT_LANGUAGE, isLanguageId, LANGUAGES, type LanguageId } from '../i18n/languages';
   import { translate } from '../i18n/messages';
 
-  let { disabled, view, onviewchange, language = DEFAULT_LANGUAGE }: {
+  let { disabled, view, onviewchange, language = DEFAULT_LANGUAGE, onlanguagechange }: {
     disabled: boolean;
     view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details';
     onviewchange: (view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
     language?: LanguageId;
+    onlanguagechange?: (language: LanguageId) => void;
   } = $props();
   const views = [
     { id: 'practice', label: 'view.practice' }, { id: 'keyboard-test', label: 'view.keyboardTest' },
@@ -28,6 +29,29 @@
             onclick={() => onviewchange(destination.id)}>{translate(language, destination.label)}</button>
         {/each}
       </nav>
+      {#if onlanguagechange}
+        <label class="language-selector">
+          <span>{translate(language, 'header.language')}</span>
+          <select id="app-language" value={language} {disabled} aria-label={translate(language, 'header.language')} aria-describedby={disabled ? 'language-locked' : undefined}
+            onchange={(event) => {
+              const next = event.currentTarget.value;
+              if (!isLanguageId(next)) throw new Error('Unsupported language selection.');
+              onlanguagechange?.(next);
+            }}>
+            {#each Object.entries(LANGUAGES) as [id, entry]}
+              <option value={id} lang={entry.documentLanguage}>{entry.nativeName}</option>
+            {/each}
+          </select>
+        </label>
+        {#if disabled}<span id="language-locked" class="sr-only">{translate(language, 'header.languageLocked')}</span>{/if}
+      {/if}
     </div>
   </div>
 </header>
+
+<style>
+  .language-selector { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; color: var(--color-text); font-size: 0.8rem; }
+  select { color: var(--color-text); background: var(--color-background); border: 1px solid var(--color-muted); border-radius: 0.4rem; padding: 0.5rem; }
+  select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+  select:disabled { opacity: 0.6; }
+</style>

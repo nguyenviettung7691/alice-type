@@ -87,3 +87,32 @@ holmes-the-process-of-deduction
 Adaptation: complete narrative sentences excerpted; source line wrapping
 collapsed to single spaces. Wording and punctuation unchanged.
 Reviewed text, author, edition, rights, and adaptations: 2026-10-27.
+
+4. Original Vietnamese AliceType practice passages (2026)
+--------------------------------------------------------
+Source and complete text:
+https://github.com/nguyenviettung7691/alice-type/blob/main/src/lib/typing/quotes/vi.ts
+Authorship: original AI-assisted AliceType practice prose, not quotations,
+translations, or adaptations of the English works above.
+Collections: AliceType: Buoi sang quanh nha; AliceType: Nhung buoc chan
+trong pho; AliceType: Nhung dieu nho moi ngay. The source preserves their
+Vietnamese titles and full diacritics.
+IDs:
+vi-morning-window
+vi-morning-breakfast
+vi-morning-garden
+vi-morning-notebook
+vi-city-market
+vi-city-bus
+vi-city-library
+vi-city-rain
+vi-everyday-letter
+vi-everyday-learning
+vi-everyday-repair
+vi-everyday-evening
+Rights: distributed under the AliceType application MIT license.
+Transformation: original single-paragraph prose, NFC Vietnamese letters
+and ASCII punctuation; no third-party literary text is translated.
+Automated repertoire, uniqueness, length and metadata checks: 2026-10-29.
+Fluent Vietnamese editorial review: pending. The metadata reviewedAt
+date denotes automated validation, not a completed human language review.

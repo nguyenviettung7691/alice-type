@@ -21,12 +21,15 @@ accent, and real-time feedback. Everything runs in your browser.
 - **Keyboard Test** with guided and Freestyle modes, plus 13 optional synthesized sound effects.
 - **Keyboard Details** with a generic Alice profile and 23 real Alice-family layouts sourced from QMK/VIA.
 - **Local preferences and history** with missed-key summaries and separate Zen scores.
+- **English and Vietnamese** UI and practice resources, with a saved header language selector.
 - **No accounts, backend, telemetry, or runtime data downloads.**
 
-Phases 1-9 are implemented. Phase 10 implementation has started with localization
-and Unicode input foundations. The current app is still English-only: the saved
-language selector, complete Vietnamese resources, and native IME integration are
-not yet available.
+Phases 1-9 are implemented. Phase 10 runtime integration is implemented with
+automated verification: English/Vietnamese UI, language-specific practice content,
+saved language selection, and committed Unicode/composition input. Fluent
+Vietnamese editorial review and real Windows/macOS Telex/VNI and screen-reader
+sign-off remain required; synthetic composition tests do not establish native
+input-method compatibility on every system.
 Difficulty rules, alternate themes, and reading
 layouts from firmware are deferred. Browser-based automatic hardware
 identification is not supported.
@@ -71,13 +74,13 @@ and migrations, onboarding, audio, and desktop/narrow layouts.
 ## Practice
 
 Select **Practice**, choose a mode, then select the exercise or activate
-**Start typing**. Focusing does not start the timer; the first printable key does.
+**Start typing**. Focusing does not start the timer; the first committed text does.
 
 | Mode | How it works |
 | --- | --- |
 | **Timed** | Practice for 15, 30, 60, or 120 seconds. The target extends as needed; the default is 30 seconds. |
 | **Words** | Complete 10, 25, 50, or 100 base words. |
-| **Quote** | Copy one of 12 bundled literary passages, with author/work attribution. Restart repeats it; Next quote selects another while idle. |
+| **Quote** | Copy one of 12 English literary passages or 12 original Vietnamese practice passages, with attribution. Restart repeats it; Next quote selects another while idle. |
 | **Custom** | Paste or enter text, apply it, review the normalized preview, then start. Draft and target are limited to 10,000 characters. |
 | **Zen** | Write freely without a target or limit. Stop explicitly to save a free-writing score; accuracy does not apply. |
 
@@ -88,17 +91,22 @@ but do not alter Quote or Custom text.
 ### Input and scoring
 
 - Target-copying WPM uses currently correct characters, five characters per word.
-  Accuracy counts all character attempts, including mistakes later corrected.
-- Backspace removes the last character. Finite targets finish at their final
-  position even if errors remain.
+  Accuracy counts committed insertions/replacements, including mistakes later
+  corrected, not provisional input-method keystrokes.
+- Backspace removes the last character. English finite targets finish at their
+  final position even if errors remain. Vietnamese finite targets, and Vietnamese
+  Custom text under English UI, require **Finish** or Enter outside composition,
+  allowing final-syllable tone corrections before completing.
 - Tab leaves practice capture; time continues while focus is elsewhere.
   **Resume typing** returns focus. Browser shortcuts are not captured.
 - **Restart** discards an unfinished run and resets metrics. Navigation and
   settings stay locked while running; use Restart, or Stop in Zen, first.
-- Practice accepts discrete printable ASCII key presses, not held-key repeat,
-  composition/IME input, or pasted answers. Paste is available in the Custom
-  editor only. Custom text normalizes whitespace and common typographic
-  punctuation, and explicitly rejects unsupported characters.
+- Practice retains a native input buffer for English/Vietnamese input methods.
+  Committed text is normalized to NFC; provisional composition is not scored.
+  Edits may rewrite the active trailing token, not arbitrary earlier text.
+  Held-key repeat, pasted/dropped answers and undo/redo are blocked. Paste is
+  available in the Custom editor only. Unsupported text/edits show a warning.
+  Grapheme segmentation requires a modern browser with `Intl.Segmenter`.
 - Zen suppresses live metrics, progress, keyboard visualization, and practice
   sounds without changing preferences. Its WPM uses retained characters;
   deleting text reduces the score. Only the trailing 2,000 characters are
@@ -155,8 +163,13 @@ visibility, and optional generated typing clicks (off by default). **Restore
 defaults** requires confirmation and does not delete history.
 
 Preferences, selected profiles, confirmed layouts, and personal notes use
-versioned `localStorage`. Completed scores use IndexedDB. **Stats** separates
+versioned `localStorage` (schema v6). The far-right **Language** selector defaults
+to English and saves your choice locally; **Restore defaults** returns to English.
+Language changes do not change keyboard geometry, user writing, or physical test
+counts. Completed scores use IndexedDB (record v3, database v1). **Stats** separates
 target-copying WPM/accuracy and missed-key summaries from Zen free-writing scores.
+New scores include language/scoring metadata; existing scores are not rewritten.
+Historical keystroke accuracy and committed-text accuracy have separate summaries.
 Keyboard Test counts and raw input events are not stored.
 
 All app data stays in your browser, with no uploads or remote synchronization.
@@ -210,21 +223,25 @@ Each phase has a detail design and an implementation/verification plan:
 | 7 | Keyboard Details and layout profiles | [Design](doc/phase-7-detail-design.md) · [Plan](doc/phase-7-implementation-plan.md) |
 | 8 | Quote, Custom, and Zen | [Design](doc/phase-8-detail-design.md) · [Plan](doc/phase-8-implementation-plan.md) |
 | 9 | Guided and Freestyle Keyboard Test modes | [Design](doc/phase-9-detail-design.md) · [Plan](doc/phase-9-implementation-plan.md) |
-| 10 (in progress) | Extensible localization, Vietnamese UI/content and Unicode/IME practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
+| 10 (review gates pending) | English/Vietnamese resources, Unicode/composition practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
 
-Phase 10 separates UI messages from practice word banks/content for each language.
-Its planned far-right header selector will choose English or Vietnamese and save
-that choice locally. The design includes Vietnamese input-method support and
-history compatibility, rather than translating labels while leaving practice
-ASCII-only. Existing input/scoring descriptions above describe the current
-implemented app until Phase 10 is delivered.
+Phase 10 separates UI catalogs under `src/lib/i18n/ui/` from practice resources
+under `src/lib/typing/word-banks/` and `src/lib/typing/quotes/`. Vietnamese word
+counts mean whitespace-separated tokens (often syllables), not dictionary words.
 
-The first implementation milestone adds a typed language/message registry,
-initial English/Vietnamese message resources, locale formatting, shared
-NFC/grapheme validation, and pure committed-edit reconciliation/scoring helpers.
-The header now reads its labels from resources; it remains English in the app.
-Vietnamese header switching is exercised only in a browser test fixture. The
-new text helpers are not yet connected to Practice capture or stored scores.
+To add a language, extend the typed registry (native name, document tag, formatting
+locale, display-label key and explicit-finish policy), supply a full UI catalog
+matching the message/placeholder contract, and wire validated vocabulary/Quote
+resources into the exact language-keyed maps. Extend the supported text profile
+and input tests if the new script needs it. No component copy or runtime
+translation service is needed. Review language quality, content rights and actual
+native input methods before sign-off. See the Phase 10 extension checklist.
+
+Vietnamese vocabulary is a pinned, reproducible subtitle-derived snapshot with
+automated repertoire, syllable-shape and exclusion checks, **not a fluently
+reviewed dictionary**. Regenerate with `node scripts\import-vietnamese-vocabulary.ts`;
+review the result before updating it. Original Vietnamese passages likewise
+still need fluent editorial review.
 
 ## Data attribution and licensing
 
@@ -232,7 +249,9 @@ new text helpers are not yet connected to Practice capture or stored scores.
 | --- | --- |
 | AliceType-authored source | Provisional [MIT license](LICENSE); confirm the copyright holder and licensing choice before publishing or distributing. |
 | English vocabulary | Adapted from [FrequencyWords](https://github.com/hermitdave/FrequencyWords), derived from OpenSubtitles2018. [CC BY-SA 4.0](src/lib/typing/word-banks/LICENSE-CC-BY-SA-4.0.txt); see the [attribution and transformation notice](src/lib/typing/word-banks/NOTICE.txt). Tiers are source-frequency prefixes, not a universal ranking. |
+| Vietnamese vocabulary | Separate pinned FrequencyWords/OpenSubtitles2018 snapshot under CC BY-SA 4.0; exact revision, filtering and review limitations are in the [vocabulary notice](src/lib/typing/word-banks/NOTICE.txt). |
 | Literary passages | 12 passages across three works. See the [quote attribution and rights notice](src/lib/typing/QUOTE-NOTICE.txt) for editions, adaptations, and US public-domain status. Check local copyright law before redistribution outside the United States. |
+| Vietnamese passages | 12 original AI-assisted AliceType practice passages in three collections, under the application MIT license; not literary quotations/translations. See the [quote notice](src/lib/typing/QUOTE-NOTICE.txt). |
 | Keyboard layouts | Adapted from [VIA](https://github.com/the-via/keyboards) and [QMK](https://github.com/qmk/qmk_firmware) under [GPL-3.0](src/lib/keyboard/layout-data/LICENSE-GPL-3.0.txt). See the [notice](src/lib/keyboard/layout-data/NOTICE.txt) for pinned sources, modifications, and upstream notices. |
 
 VIA supplies geometry and variants; QMK supplies default-keymap physical codes,

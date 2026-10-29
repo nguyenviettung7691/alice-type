@@ -1,5 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { useLocalization } from '../i18n/context';
+  const localization = useLocalization();
+  const { text } = localization;
 
   let { title, message, confirmText, onconfirm, oncancel }: {
     title: string;
@@ -22,7 +25,7 @@
   <h2 id={`${id}-title`}>{title}</h2>
   <p id={`${id}-description`}>{message}</p>
   <div class="panel-actions">
-    <button type="button" class="secondary-button" onclick={oncancel}>Cancel</button>
+    <button type="button" class="secondary-button" onclick={oncancel}>{text("confirmation-dialog.cancel")}</button>
     <button type="button" class="primary-button danger-button" onclick={onconfirm}>{confirmText}</button>
   </div>
 </dialog>

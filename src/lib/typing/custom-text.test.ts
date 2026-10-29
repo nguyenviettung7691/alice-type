@@ -11,7 +11,7 @@ describe('Custom preparation', () => {
     });
   });
 
-  it.each(['', ' \r\n\t\u00a0', '\x00', '\v', '\f', '\u200b', '\ufeff', 'café', 'emoji😀'])(
+  it.each(['', ' \r\n\t\u00a0', '\x00', '\v', '\f', '\u200b', '\ufeff', 'emoji😀'])(
     'rejects unsupported/empty draft without echoing content: %j', (draft) => {
       expect(() => prepareCustomText(draft)).toThrow();
     }

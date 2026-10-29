@@ -28,6 +28,12 @@ export function segmentGraphemes(text: string): readonly string[] {
 
 const supportedGrapheme = /^[\x20-\x7eÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚÝàáâãèéêìíòóôõùúýĂăĐđĨĩŨũƠơƯư\u1ea0-\u1ef9]$/u;
 
+// All supported NFC graphemes are single BMP code points. Resource validation
+// must also work before the UI can report a missing Intl.Segmenter capability.
+export function isSupportedResourceText(text: string): boolean {
+  return text === text.normalize('NFC') && Array.from(text).every((point) => supportedGrapheme.test(point));
+}
+
 export interface PracticeText {
   readonly text: string;
   readonly graphemes: readonly string[];

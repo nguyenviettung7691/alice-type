@@ -147,7 +147,8 @@ describe('completed session contracts', () => {
     }
     const saved = completedRecord(session, mode, 1000, {});
     expect(saved).toMatchObject({
-      version: 2, mode, targetCharacters: target.length, elapsedMs: (target.length - 1) * 100,
+      version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1',
+      mode, targetCharacters: target.length, elapsedMs: (target.length - 1) * 100,
       completedAt: 1000 + (target.length - 1) * 100, accuracy: 100,
       totalAttempts: target.length, correctAttempts: target.length
     });
@@ -164,7 +165,8 @@ describe('completed session contracts', () => {
     const completed = stopSession(running, 1100);
     const saved = completedRecord(completed, 'zen-run', 1000, { KeyX: 1 });
     expect(saved).toEqual({
-      version: 2, id: 'zen-run', completedAt: 2000, mode: 'zen', elapsedMs: 1000,
+      version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1',
+      id: 'zen-run', completedAt: 2000, mode: 'zen', elapsedMs: 1000,
       retainedCharacters: 1, totalAttempts: 1, wpm: 12, accuracy: null, correctAttempts: null, missedKeys: {}
     });
     expect(saved).not.toHaveProperty('writing');
@@ -178,11 +180,13 @@ describe('completed session contracts', () => {
     const second = { ...record, id: 'two', wpm: 60, missedKeys: { KeyX: 1, KeyA: 1 } };
     expect(summarizeSessions([record, second])).toEqual({
       count: 2, targetCount: 2, bestWpm: 60, averageWpm: 45, averageAccuracy: '80.0',
+      committedAccuracy: null, legacyAccuracy: 80,
       zenCount: 0, zenBestWpm: null, zenAverageWpm: null,
       missedKeys: [['KeyX', 2], ['KeyA', 1]]
     });
     expect(summarizeSessions([])).toEqual({
       count: 0, targetCount: 0, bestWpm: null, averageWpm: null, averageAccuracy: null,
+      committedAccuracy: null, legacyAccuracy: null,
       zenCount: 0, zenBestWpm: null, zenAverageWpm: null, missedKeys: []
     });
   });
@@ -190,6 +194,7 @@ describe('completed session contracts', () => {
   it('separates mixed target-copying and Zen WPM populations and excludes null accuracy', () => {
     expect(summarizeSessions([record, custom, quote, zen, { ...zen, id: 'zen-two', wpm: 120 }])).toEqual({
       count: 5, targetCount: 3, bestWpm: 30, averageWpm: 30, averageAccuracy: '80.0',
+      committedAccuracy: null, legacyAccuracy: 80,
       zenCount: 2, zenBestWpm: 120, zenAverageWpm: 90, missedKeys: [['KeyX', 3]]
     });
   });
@@ -197,6 +202,7 @@ describe('completed session contracts', () => {
   it('returns unavailable target scores and no missed keys for only-Zen history', () => {
     expect(summarizeSessions([zen])).toEqual({
       count: 1, targetCount: 0, bestWpm: null, averageWpm: null, averageAccuracy: null,
+      committedAccuracy: null, legacyAccuracy: null,
       zenCount: 1, zenBestWpm: 60, zenAverageWpm: 60, missedKeys: []
     });
   });

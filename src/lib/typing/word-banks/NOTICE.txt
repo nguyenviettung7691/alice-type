@@ -28,3 +28,30 @@ https://creativecommons.org/licenses/by-sa/4.0/
 No endorsement by the source authors is implied. This data license is
 separate from the application's MIT license. No upstream program code
 is included.
+
+AliceType Vietnamese vocabulary data
+===================================
+
+vietnamese.json is adapted from FrequencyWords:
+https://github.com/hermitdave/FrequencyWords
+Source: content/2018/vi/vi_50k.txt
+Revision: 525f9b560de45753a5ea01069454e72e9aa541c6
+https://github.com/hermitdave/FrequencyWords/blob/525f9b560de45753a5ea01069454e72e9aa541c6/content/2018/vi/vi_50k.txt
+Retrieved: 2026-10-29
+Content license: CC BY-SA 4.0, confirmed in the pinned upstream README:
+https://github.com/hermitdave/FrequencyWords/blob/525f9b560de45753a5ea01069454e72e9aa541c6/README.md
+Underlying corpus: OpenSubtitles2018, http://opus.nlpl.eu/OpenSubtitles2018.php
+
+Transformation: scripts/import-vietnamese-vocabulary.ts strips counts, NFC
+normalizes, filters the supported lowercase Vietnamese/ASCII letter repertoire
+and single-syllable spelling shape, allows at most one tone mark, excludes a
+small explicit profanity list, deduplicates preserving source frequency order,
+and retains the first 5000 entries. Smaller tiers are exact 200/1000 prefixes.
+This is subtitle-derived whitespace-token practice data, not a dictionary or
+universal frequency ranking. The automated shape filter is not a guarantee of
+correct spelling or suitability; fluent Vietnamese editorial review is pending.
+No manual/fluent review or exhaustive inappropriate-content filtering is claimed.
+
+The Vietnamese data adaptation is CC BY-SA 4.0; the bundled license applies.
+No endorsement is implied. Source data is fetched only by the maintainer import
+script, never at application runtime.

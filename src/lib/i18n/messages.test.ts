@@ -5,8 +5,8 @@ import { MESSAGE_PARAMETERS } from './message-contract';
 import { en } from './ui/en';
 import { vi } from './ui/vi';
 
-describe('foundation message catalogs', () => {
-  it.each([en, vi])('has exact key/placeholder coverage for the initial message contract', (catalog) => {
+describe('complete UI message catalogs', () => {
+  it.each([en, vi])('has exact key/placeholder coverage for the UI message contract', (catalog) => {
     expect(Object.keys(catalog).sort()).toEqual(Object.keys(MESSAGE_PARAMETERS).sort());
     expect(() => validateMessageCatalog(catalog)).not.toThrow();
     for (const value of Object.values(catalog)) expect(value).toBe(value.normalize('NFC'));

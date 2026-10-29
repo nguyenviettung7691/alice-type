@@ -43,7 +43,7 @@ test('starts without autofocus and supports keyboard-only entry, correction, and
   await expect(characters(page).nth(1)).not.toHaveClass(/incorrect/);
   await page.keyboard.type('o');
   await expect(values(page).nth(1)).toHaveText('66.7%');
-  await expect(input(page)).toHaveValue('');
+  await expect(input(page)).toHaveValue('yo');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('button', { name: 'Resume typing' })).toBeFocused();
   await page.keyboard.type('u ');
@@ -82,7 +82,7 @@ test('preserves existing input focus when restart is invoked without moving focu
   await expect(values(page).nth(1)).toHaveText('100.0%');
 });
 
-test('ignores shortcuts, repeat, composition, and native edits without corrupting the buffer', async ({ page }) => {
+test('preserves shortcuts and composition while rejecting repeat and pasted answers', async ({ page }) => {
   await start(page);
   const result = await input(page).evaluate((element) => {
     const dispatchKey = (key: string, options: KeyboardEventInit = {}) => {
@@ -111,12 +111,14 @@ test('ignores shortcuts, repeat, composition, and native edits without corruptin
     });
     return { ignored, edits };
   });
-  expect(result.ignored).toEqual(Array(10).fill(false));
-  expect(result.edits).toEqual(Array(4).fill(true));
+  expect(result.ignored).toEqual([false, false, false, true, false, false, false, false, false, false]);
+  expect(result.edits).toEqual([true, true, false, false]);
   await expect(panel(page)).toHaveAttribute('data-status', 'ready');
-  await input(page).fill('unsupported native edit');
-  await expect(input(page)).toHaveValue('');
-  await expect(panel(page)).toHaveAttribute('data-status', 'ready');
+  await input(page).fill('you');
+  await expect(input(page)).toHaveValue('you');
+  await expect(panel(page)).toHaveAttribute('data-status', 'running');
+  await page.getByRole('button', { name: 'Restart', exact: true }).click();
+  await start(page);
   await page.keyboard.type('y');
   await expect(characters(page).first()).toHaveClass(/correct/);
   await expect(values(page).nth(1)).toHaveText('100.0%');
@@ -157,7 +159,7 @@ test('completes with an error, freezes metrics, ignores further editing, and res
   await page.keyboard.press('Backspace');
   await page.clock.fastForward(120_000);
   await expect(values(page)).toHaveText(finalValues);
-  await expect(input(page)).toHaveValue('');
+  await expect(input(page)).toHaveValue(exercise.slice(0, -1) + 'x');
   await page.getByRole('button', { name: 'Restart' }).click();
   await expect(page.getByRole('button', { name: 'Restart' })).toBeFocused();
   await expect(panel(page)).toHaveAttribute('data-status', 'ready');
@@ -220,7 +222,7 @@ for (const width of [1440, 768, 320]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     expect(await panel(page).evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await expect(input(page)).toHaveAccessibleName('Typing practice');
-    await expect(input(page)).toHaveAccessibleDescription(/clock keeps running/);
+    await expect(input(page)).toHaveAccessibleDescription(/clock continues/);
   });
 }
 

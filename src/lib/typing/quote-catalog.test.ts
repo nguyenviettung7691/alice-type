@@ -3,6 +3,7 @@ import notice from './QUOTE-NOTICE.txt?raw';
 import footer from '../components/AppFooter.svelte?raw';
 import { ExerciseGenerationError } from './exercise-generator';
 import { QUOTES, selectQuote, validateQuoteCatalog, type Quote } from './quote-catalog';
+import { translate } from '../i18n/messages';
 
 function catalogWith(changes: Partial<Quote>): readonly Quote[] {
   return [{ ...QUOTES[0], ...changes }, QUOTES[1]];
@@ -50,7 +51,10 @@ describe('bundled literary quote catalog', () => {
     expect(notice).toContain('Section 1.C');
     expect(notice).toContain('not universal clearance');
     expect(footer).toContain("import quoteNotice from '../typing/QUOTE-NOTICE.txt?url&no-inline'");
-    expect(footer).toContain('<a href={quoteNotice}>Quote attribution</a>');
+    expect(footer).toContain('href={quoteNotice}');
+    expect(footer).toContain('text("app-footer.quote-attribution")');
+    expect(translate('en', 'app-footer.quote-attribution')).toBe('Quote attribution');
+    expect(translate('vi', 'app-footer.quote-attribution')).toBe('Ghi công nguồn đoạn văn');
   });
 
   it('preserves original spelling, punctuation, and explicitly documented typography adaptations', () => {

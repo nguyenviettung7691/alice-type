@@ -41,7 +41,7 @@ test('separates sections, aligns metric cards, and bounds history with a sticky 
       const value = element.querySelector('dd')!.getBoundingClientRect();
       return { top: box.top, bottom: value.bottom, border: getComputedStyle(element).borderTopWidth };
     }));
-  expect(cards.length).toBe(5);
+  expect(cards.length).toBe(6);
   for (const card of cards) {
     expect(card.border).toBe('2px');
     for (const peer of cards.filter((other) => Math.abs(other.top - card.top) < 1)) {

@@ -5,6 +5,7 @@ import {
 import { isRecord, StorageError, storageFailure } from './errors';
 import { KEYBOARD_TEST_EFFECTS, type KeyboardTestEffect } from '../audio/keyboard-test-sound';
 import { isKeyboardProfileId } from '../keyboard/keyboard-profiles';
+import { isLanguageId, type LanguageId } from '../i18n/languages';
 
 export const PREFERENCES_KEY = 'alicetype.preferences';
 export const CARET_STYLES = ['block', 'line', 'underline'] as const;
@@ -28,6 +29,7 @@ export interface KeyboardLayoutConfirmation {
 }
 
 export interface Preferences extends PracticeSettings {
+  readonly language: LanguageId;
   readonly caretStyle: CaretStyle;
   readonly soundEnabled: boolean;
   readonly showLiveStats: boolean;
@@ -41,6 +43,7 @@ export interface Preferences extends PracticeSettings {
 
 export const DEFAULT_PREFERENCES: Preferences = {
   ...DEFAULT_SETTINGS,
+  language: 'en',
   caretStyle: 'block',
   soundEnabled: false,
   showLiveStats: true,
@@ -58,9 +61,9 @@ function member<T>(values: readonly T[], value: unknown): value is T {
 
 type Version1Preferences = Omit<Preferences,
   'keyboardTestSoundEnabled' | 'keyboardTestSoundEffect' | 'keyboardProfileId' | 'keyboardUserDetails'
-  | 'keyboardLayoutConfirmation'>;
-type Version2Preferences = Omit<Preferences, 'keyboardProfileId' | 'keyboardUserDetails' | 'keyboardLayoutConfirmation'>;
-type Version3Preferences = Omit<Preferences, 'keyboardLayoutConfirmation'>;
+  | 'keyboardLayoutConfirmation' | 'language'>;
+type Version2Preferences = Omit<Preferences, 'keyboardProfileId' | 'keyboardUserDetails' | 'keyboardLayoutConfirmation' | 'language'>;
+type Version3Preferences = Omit<Preferences, 'keyboardLayoutConfirmation' | 'language'>;
 
 function validateVersion1(value: unknown): Version1Preferences {
   if (!isRecord(value)
@@ -167,7 +170,7 @@ function validateLayoutConfirmation(value: unknown, profileId: string | null): K
   };
 }
 
-function validateVersion4(value: unknown): Preferences {
+function validateVersion4(value: unknown): Omit<Preferences, 'language'> {
   const existing = validateVersion3(value);
   if (!isRecord(value)) throw new StorageError('Saved preferences contain invalid keyboard details.');
   return {
@@ -177,13 +180,16 @@ function validateVersion4(value: unknown): Preferences {
 }
 
 export function validatePreferences(value: unknown): Preferences {
+  if (!isRecord(value) || !isLanguageId(value.language)) {
+    throw new StorageError('Saved preferences contain an unsupported or missing language.');
+  }
   if (!isRecord(value)
     || (value.mode !== 'timed' && value.mode !== 'words' && value.mode !== 'quote'
       && value.mode !== 'custom' && value.mode !== 'zen')) {
     throw new StorageError('Saved preferences contain an invalid practice mode.');
   }
   // Historical validators retain their original two-mode contract.
-  return { ...validateVersion4({ ...value, mode: 'timed' }), mode: value.mode };
+  return { language: value.language, ...validateVersion4({ ...value, mode: 'timed' }), mode: value.mode };
 }
 
 export class PreferenceMigrationError extends StorageError {
@@ -200,16 +206,17 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     if (raw === null) return { ...DEFAULT_PREFERENCES };
     const record: unknown = JSON.parse(raw);
     if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3
-      && record.version !== 4 && record.version !== 5)) {
+      && record.version !== 4 && record.version !== 5 && record.version !== 6)) {
       throw new StorageError('Saved preferences use an unsupported schema version.');
     }
-    if (record.version === 5) return validatePreferences(record.settings);
+    if (record.version === 6) return validatePreferences(record.settings);
 
     let migrated: Preferences;
     if (record.version === 1) {
       const phaseOne = validateVersion1(record.settings);
       migrated = validatePreferences({
         ...phaseOne,
+        language: 'en',
         keyboardTestSoundEnabled: false,
         keyboardTestSoundEffect: 'default',
         keyboardProfileId: null,
@@ -220,14 +227,18 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
       const phaseTwo = validateVersion2(record.settings);
       migrated = validatePreferences({
         ...phaseTwo,
+        language: 'en',
         keyboardProfileId: null,
         keyboardUserDetails: {},
         keyboardLayoutConfirmation: null
       });
     } else if (record.version === 3) {
-      migrated = validatePreferences({ ...validateVersion3(record.settings), keyboardLayoutConfirmation: null });
+      migrated = validatePreferences({ ...validateVersion3(record.settings), keyboardLayoutConfirmation: null, language: 'en' });
+    } else if (record.version === 5) {
+      if (!isRecord(record.settings)) throw new StorageError('Saved preferences contain invalid settings.');
+      migrated = validatePreferences({ ...record.settings, language: 'en' });
     } else {
-      migrated = validateVersion4(record.settings);
+      migrated = validatePreferences({ ...validateVersion4(record.settings), language: 'en' });
     }
     try {
       savePreferences(migrated, storage);
@@ -245,7 +256,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
 }
 
 export function savePreferences(settings: Preferences, storage?: PreferenceStorage): void {
-  const record = { version: 5, settings: validatePreferences(settings) };
+  const record = { version: 6, settings: validatePreferences(settings) };
   try {
     (storage ?? window.localStorage).setItem(PREFERENCES_KEY, JSON.stringify(record));
   } catch (error) {

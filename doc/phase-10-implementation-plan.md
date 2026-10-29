@@ -1,6 +1,6 @@
 # AliceType Phase 10 Technical Implementation Plan
 
-> **Status:** In progress. The first implementation milestone delivers typed localization/text foundations and a resource-driven header. The public app remains English/ASCII: full language packs, selector/persistence, Practice/IME integration, history changes and release reviews are pending.
+> **Status:** Runtime integration and automated verification delivered. English/Vietnamese UI/content, selector/persistence, committed Unicode/composition input and history are wired. Fluent Vietnamese editorial review and actual Windows/macOS Telex/VNI/screen-reader sign-off remain release gates, not completed checks.
 
 ## Goal and governing contract
 
@@ -26,22 +26,24 @@ The [Technical Design Document](./tech-design.md) remains the product source of 
 
 P10-02, P10-03 and P10-04 are independent after baseline. Do not wire a language into the public selector until its message and content resources validate. Keep intermediate changes type-safe; adapt related test fixtures at the same time as their types.
 
-### First milestone progress (2026-10-29)
+### Integrated implementation progress (2026-10-29)
 
 | Work package | State | Delivered / remaining |
 | --- | --- | --- |
-| P10-01 | Complete for first milestone | Repository/input/resource inspection; baseline check, 476 unit tests and production build pass |
-| P10-02 | Partial | Registry, typed initial 25-message en/vi catalogs, exact key/placeholder/runtime-parameter validation, number/date/accuracy/collation formatting and resource-driven header; full message inventory/extraction and shared reactive context remain |
-| P10-04 | Partial | Shared NFC/grapheme profile with explicit unsupported-browser errors; full engine, Custom and Zen conversion remains |
-| P10-08 | Partial | Pure trailing-token reconciliation, edit validation and committed-text scoring with tests; no native event lifecycle or renderer integration yet |
-| P10-03, P10-05-P10-07, P10-09-P10-11 | Pending | Reviewed data, generation, selector/migrations, full UI, history, integration and release sign-off |
+| P10-01 | Complete | Baseline and affected-contract inventory; eight unrelated Chromium failures reproduced before integration |
+| P10-02 | Implemented | Typed registry, full en/vi catalogs with exact placeholders/runtime validation, reactive context, locale formatting; no dependency added |
+| P10-03 | Implemented; editorial gate pending | Exactly 5,000 pinned subtitle-derived tokens, prefix tiers, reproducible import/filtering, 12 original passages/three collections; fluent review not performed |
+| P10-04, P10-05 | Implemented | Shared NFC/repertoire and committed edits, language-aware generation/configuration, Custom/Zen support |
+| P10-06, P10-07 | Implemented | Responsive selector, schema-v6 migration/recovery/reset, resource-driven visible/assistive/error copy |
+| P10-08 | Implemented; real IME gate pending | Retained native buffer, composition commit/deduplication/cancellation, explicit finite Finish, deadline safety and physical-code separation |
+| P10-09 | Implemented | v3 language/scoring metadata, unchanged legacy scores/database schema, locale Stats and separate accuracy summaries |
+| P10-10 | Automated checks complete | Types/unit/build pass; 152 Chromium cases pass with the same eight reproduced baseline failures; real OS/assistive review pending |
+| P10-11 | Documentation updated; sign-off pending | README/product/detail design/notices reflect delivered behavior and remaining gates |
 
-This staged boundary keeps the public app coherent: incomplete Vietnamese
-content is not selectable, current Practice semantics and persisted schemas do
-not change, and no placeholder bank, unreviewed translation pack or silent
-English fallback is introduced. The header accepts a typed language prop;
-English is its explicit default. Its Vietnamese/reactive behavior is exercised
-only by the localization browser fixture until App integration is ready.
+The public selector now exposes both languages. The Vietnamese snapshot is not
+a placeholder or English fallback, but its automated filtering is **not**
+equivalent to fluent content review. Do not mark the entire phase/release signed
+off until the manual gates below are completed.
 
 ## P10-01. Establish baseline and affected contracts
 
@@ -235,15 +237,18 @@ Synthetic browser events do not prove OS IME integration. If a required native e
 | --- | --- |
 | Requirement analysis and Phase 10 documentation | Defined by this documentation change |
 | Foundation implementation | Registry, initial 25-message en/vi catalogs, strict translator, locale formatters, resource-driven header, pure Unicode text/edit helpers |
-| Complete en/vi resource packs, native capture, selector/migrations/history | Pending; not exposed as functional |
+| Complete en/vi resources, native capture, selector/migrations/history | Integrated and covered by automated checks |
 | Baseline | `npm run check`: 0 errors/warnings; `npm test`: 476 passed; `npm run build`: passed |
 | Focused foundation unit/type checks | `npm run check`: 0 errors/warnings; `npx vitest run src\lib\i18n src\lib\typing\text.test.ts src\lib\typing\practice-input.test.ts`: 91 tests passed |
 | Focused Chromium checks | `npx playwright test localization-foundation.spec.ts modes.spec.ts`: 31 passed (new header fixture plus existing Modes and Remaining Modes) |
 | Full milestone regression/build | Type check and production build pass; 567 unit tests pass; full Chromium run: 144 passed, 8 pre-existing failures (see below) |
-| Vietnamese resource/content/provenance review | Pending |
+| Integrated type/unit/build verification | `npm run check`: 0 errors/warnings; `npm test`: 587 passed; `npm run build`: passed |
+| Integrated Chromium verification | `npx playwright test`: 152 passed, the same 8 pre-existing failures; includes 8 app-level language/composition cases plus foundation header fixtures |
+| Vietnamese provenance/automated content checks | Pinned FrequencyWords revision, CC BY-SA notice/filter script; exact NFC tiers and 12 original passages validated |
+| Fluent Vietnamese resource/content review | Pending; subtitle filtering is not a dictionary/quality sign-off |
 | Actual Windows/macOS Telex/VNI checks | Pending |
 | Desktop/narrow visual and screen-reader checks | Pending |
-| Release/sign-off | Not complete; public language/input/scoring behavior unchanged; header labels now resource-driven |
+| Release/sign-off | Runtime integration delivered; full Vietnamese/native-IME/accessibility sign-off remains pending |
 
 ### Existing Chromium failures reproduced against baseline
 
@@ -251,7 +256,8 @@ The full suite's eight failures were rerun with the original header restored
 byte-for-byte against `HEAD` (`git diff --exit-code` passed). None of the new
 foundation modules were imported by the baseline app. All eight failures
 reproduced; the resource-driven header was then restored and its focused tests
-rerun. These unrelated assertions are not changed by this milestone:
+rerun. These unrelated assertions remain unchanged by the integration (line numbers
+below refer to the first-milestone baseline):
 
 - `keyboard-details.spec.ts:73`: generic Keyboard Test expects 60 keys, current map has 73.
 - `keyboard-layout.spec.ts:49`: an existing text parser passes `Physical key: Escape` to `keyboard.press`.

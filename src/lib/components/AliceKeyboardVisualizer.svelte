@@ -8,6 +8,17 @@
     type KeyFeedback
   } from '../keyboard/alice-layout';
   import { expectedTestKey, testKeyCount, type KeyboardTestState } from '../keyboard/keyboard-test';
+  import { useLocalization } from '../i18n/context';
+  import { TOOL_MESSAGES, keyResultMessage } from '../i18n/tool-messages';
+  const i18n = useLocalization();
+  const { text } = i18n;
+  const statusLabel = (code: string) => {
+    const status = testStatus(code);
+    return {
+      'not tested': text("alice-keyboard-visualizer.not-tested"), pressed: text("alice-keyboard-visualizer.pressed-2"), unpressed: text("alice-keyboard-visualizer.unpressed"),
+      unexpected: text("alice-keyboard-visualizer.unexpected"), expected: text("alice-keyboard-visualizer.expected"), tested: text("alice-keyboard-visualizer.tested"), untested: text("alice-keyboard-visualizer.untested")
+    }[status];
+  };
 
   let {
     layout, feedback = {}, testState, errorCode, testLayoutLabel = 'Generic Alice', browserLegends = false,
@@ -50,7 +61,7 @@
     return testState ? testKeyCount(testState, code) : 0;
   }
 
-  function testStatus(code: string): string {
+  function testStatus(code: string): 'not tested' | 'pressed' | 'unpressed' | 'unexpected' | 'expected' | 'tested' | 'untested' {
     if (!sequenceCodes.has(code)) return 'not tested';
     if (freestyle) return count(code) ? 'pressed' : 'unpressed';
     if (code === activeError) return 'unexpected';
@@ -60,10 +71,6 @@
 
   function marked(code: string): boolean {
     return !['untested', 'unpressed', 'not tested'].includes(testStatus(code));
-  }
-
-  function plural(value: number, word: string): string {
-    return `${value} ${word}${value === 1 ? '' : 'es'}`;
   }
 
   const id = $props.id();
@@ -83,42 +90,40 @@
 
 <figure class="keyboard-visualizer" class:heatmap data-layout-source={layoutSource}>
   <figcaption>
-    <span class="keyboard-title">{title ?? (testState ? `${testLayoutLabel} test matrix` : 'Alice visualizer')}</span>
+    <span class="keyboard-title">{title ?? (testState ? text("alice-keyboard-visualizer.test-matrix", { p0: String(testLayoutLabel) }) : text("alice-keyboard-visualizer.alice-visualizer"))}</span>
     <span class="keyboard-legend">
       {#if heatmap}
-        <span class="heat-scale"><span>0 misses</span><span class="heat-gradient" aria-hidden="true"></span><span>{maxMisses} max</span></span>
+        <span class="heat-scale"><span>{text("alice-keyboard-visualizer.0-misses")}</span><span class="heat-gradient" aria-hidden="true"></span><span>{text("alice-keyboard-visualizer.max", { p0: String(maxMisses) })}</span></span>
       {:else if layoutSource !== 'preview'}
-        <span><span class="legend-mark neutral" aria-hidden="true"></span>Neutral</span>
+        <span><span class="legend-mark neutral" aria-hidden="true"></span>{text("alice-keyboard-visualizer.neutral")}</span>
         {#if freestyle}
-          <span><span class="legend-mark correct" aria-hidden="true">+</span>Pressed</span>
+          <span><span class="legend-mark correct" aria-hidden="true">+</span>{text("alice-keyboard-visualizer.pressed")}</span>
         {:else}
           {#if testState}
-            <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>Expected key</span>
+            <span><span class="legend-mark expected" aria-hidden="true">&gt;</span>{text("alice-keyboard-visualizer.expected-key")}</span>
           {/if}
-          <span><span class="legend-mark correct" aria-hidden="true">+</span>Correct press</span>
-          <span><span class="legend-mark incorrect" aria-hidden="true">!</span>Mismatch</span>
+          <span><span class="legend-mark correct" aria-hidden="true">+</span>{text("alice-keyboard-visualizer.correct-press")}</span>
+          <span><span class="legend-mark incorrect" aria-hidden="true">!</span>{text("alice-keyboard-visualizer.mismatch")}</span>
         {/if}
       {/if}
       {#if inertKeys.length > 0}
-        <span><span class="legend-mark inert" aria-hidden="true"></span>No standard key code</span>
+        <span><span class="legend-mark inert" aria-hidden="true"></span>{text("alice-keyboard-visualizer.no-standard-key-code")}</span>
       {/if}
     </span>
   </figcaption>
   {#if heatmap}
-    <p class="keyboard-note">Numbers show miss counts. Heat = key misses / highest miss count across all recorded physical keys; not a per-key error percentage. Zero misses stay neutral.</p>
+    <p class="keyboard-note">{text(TOOL_MESSAGES.heatmapHelp)}</p>
   {/if}
   {#if layoutSource === 'preview'}
-    <p class="keyboard-note">Preview, not confirmed · Default key labels may differ from yours. Dashed keys are not testable.</p>
+    <p class="keyboard-note">{text(TOOL_MESSAGES.previewHelp)}</p>
   {:else if imported}
     <p class="keyboard-note">
-      {testLayoutLabel} layout · {layoutSource === 'confirmed' ? 'Confirmed by you' : 'Preview, not confirmed'} · VIA/QMK data, not detected hardware ·
-      {browserLegends ? 'Browser layout legends (default keymap legends for missing keys)' : 'Default keymap legends'}.
-      Dashed keys have no standard key code and are never highlighted or tested. Keycaps that share one physical code highlight together.
+      {text("alice-keyboard-visualizer.layout-via-qmk-data-not-detected-hardware", { p0: testLayoutLabel, p1: text(layoutSource === 'confirmed' ? 'visualizer.confirmed' : 'visualizer.preview'), p2: text(browserLegends ? 'visualizer.browserDefaultLegends' : 'visualizer.defaultLegends') })}
+      {text(TOOL_MESSAGES.importedKeysHelp)}
     </p>
   {:else}
     <p class="keyboard-note">
-      {testLayoutLabel} layout · {browserLegends ? 'Browser layout legends (reference legends for missing keys)' : 'US ANSI legends'}, not detected hardware.
-      Both spacebars represent the same Space key.
+      {text("alice-keyboard-visualizer.layout-not-detected-hardware-both-spacebars-represent", { p0: testLayoutLabel, p1: text(browserLegends ? 'visualizer.browserReferenceLegends' : 'visualizer.ansiLegends') })}
     </p>
   {/if}
 
@@ -127,7 +132,7 @@
     bind:this={scrollRegion}
     class="keyboard-scroll"
     role="region"
-    aria-label="Keyboard diagram scroll area"
+    aria-label={text("alice-keyboard-visualizer.keyboard-diagram-scroll-area")}
     aria-describedby={scrollable ? `${id}-scroll-help` : undefined}
     tabindex={scrollable ? 0 : undefined}
   >
@@ -137,34 +142,25 @@
       aria-labelledby={`${id}-title`}
       aria-describedby={`${id}-description`}
     >
-      <title id={`${id}-title`}>{heatmap ? `${testLayoutLabel} missed-key heatmap` : testState
-        ? `${testLayoutLabel} keyboard test matrix`
-        : imported ? `${testLayoutLabel} keyboard` : 'Generic Alice keyboard'}</title>
+      <title id={`${id}-title`}>{heatmap ? text("alice-keyboard-visualizer.missed-key-heatmap", { p0: String(testLayoutLabel) }) : testState
+        ? text("alice-keyboard-visualizer.keyboard-test-matrix", { p0: String(testLayoutLabel) })
+        : imported ? text("alice-keyboard-visualizer.keyboard", { p0: String(testLayoutLabel) }) : text("alice-keyboard-visualizer.generic-alice-keyboard")}</title>
       <desc id={`${id}-description`}>
         {#if imported}
-          {layoutSource === 'confirmed' ? 'Layout confirmed by you' : 'Unconfirmed layout preview'} from imported VIA and QMK data, with {browserLegends ? 'browser layout legends where available' : 'default keymap legends'}; not a detected device.
-          Keys without a standard key code are drawn dashed and never highlighted.
+          {text('visualizer.importedDescription', { state: text(layoutSource === 'confirmed' ? 'visualizer.confirmed' : 'visualizer.preview'), labels: text(browserLegends ? 'visualizer.browserLegends' : 'visualizer.defaultLegends') })}
         {:else}
-          Angled split layout with {browserLegends ? 'browser layout legends where available' : 'generic US ANSI legends'}, not a detected device.
+          {text('visualizer.referenceDescription', { labels: text(browserLegends ? 'visualizer.browserLegends' : 'visualizer.ansiLegends') })}
         {/if}
         {#if heatmap}
-          Each mapped key shows its miss count. Color intensity is relative to the highest recorded miss count ({maxMisses}).
-          Exact counts and physical codes are available in Text key results below.
+          {text('visualizer.heatDescription', { maximum: maxMisses })}
         {:else if freestyle}
-          Each countable cell shows how many times it was pressed in this run. A plus
-          marks a pressed key. There is no expected key or mismatch feedback.
-          Text key results are available below the diagram.
+          {text(TOOL_MESSAGES.freestyleDescription)}
         {:else if testState}
-          An arrow marks the expected key, a plus marks a tested key, and an
-          exclamation mark indicates temporary unexpected input. Escape and function
-          keys are testable when present on the selected layout. Text key results
-          are available below the diagram.
+          {text(TOOL_MESSAGES.guidedDescription)}
         {:else if layoutSource !== 'preview'}
-          Recent accepted printable presses briefly show an orange plus for correct
-          input or a red exclamation mark for a mismatch. Unmapped physical codes
-          do not highlight.
+          {text(TOOL_MESSAGES.practiceDescription)}
         {/if}
-        {imported ? 'Keycaps that share a physical code highlight together.' : 'Both spacebar shapes share one physical Space code.'}
+        {text(imported ? 'visualizer.sharedCodes' : 'visualizer.sharedSpace')}
       </desc>
       <g aria-hidden="true">
         {#each inertKeys as key (key.id)}
@@ -237,30 +233,30 @@
   </div>
   {#if scrollable}
     <p id={`${id}-scroll-help`} class="keyboard-note scroll-help">
-      Scroll to see all keys. Keyboard: focus the diagram and use Left/Right arrows.
+      {text("alice-keyboard-visualizer.scroll-to-see-all-keys-keyboard-focus")}
     </p>
   {/if}
   {#if heatmap}
     <details class="key-results">
-      <summary>Text key results</summary>
+      <summary>{text("alice-keyboard-visualizer.text-key-results")}</summary>
       <ul>
         {#each layout as key (key.code)}
-          <li>{key.legend} ({key.code}): {misses(key.code)} {misses(key.code) === 1 ? 'miss' : 'misses'}</li>
+          <li>{keyResultMessage(i18n.language, key.legend, key.code, misses(key.code), 'miss')}</li>
         {/each}
         {#each inertKeys as key (key.id)}
-          <li>{key.legend || 'Unlabeled key'} (no standard key code): miss count unavailable</li>
+          <li>{text("alice-keyboard-visualizer.no-standard-key-code-miss-count-unavailable", { p0: key.legend || text('alice-keyboard-visualizer.unlabeled-key') })}</li>
         {/each}
       </ul>
     </details>
   {:else if testState}
     <details class="key-results">
-      <summary>Text key results</summary>
+      <summary>{text("alice-keyboard-visualizer.text-key-results")}</summary>
       <ul>
         {#each layout as key (key.code)}
-          <li>{key.legend} ({key.code}): {#if !sequenceCodes.has(key.code)}{freestyle ? 'not counted in this test' : 'not part of the guided test'}{:else if freestyle}{plural(count(key.code), 'press')}{:else}{testStatus(key.code)}{/if}</li>
+          <li>{key.legend} ({key.code}): {#if !sequenceCodes.has(key.code)}{freestyle ? text("alice-keyboard-visualizer.not-counted-in-this-test") : text("alice-keyboard-visualizer.not-part-of-the-guided-test")}{:else if freestyle}{count(key.code) === 1 ? text("alice-keyboard-visualizer.1-press") : text("alice-keyboard-visualizer.presses", { p0: String(count(key.code)) })}{:else}{statusLabel(key.code)}{/if}</li>
         {/each}
         {#each inertKeys as key (key.id)}
-          <li>{key.legend || 'Unlabeled key'} (no standard key code): {freestyle ? 'not counted in this test' : 'not part of the guided test'}</li>
+          <li>{key.legend || text("alice-keyboard-visualizer.unlabeled-key")} ({text("alice-keyboard-visualizer.no-standard-key-code-2")}): {freestyle ? text("alice-keyboard-visualizer.not-counted-in-this-test") : text("alice-keyboard-visualizer.not-part-of-the-guided-test")}</li>
         {/each}
       </ul>
     </details>

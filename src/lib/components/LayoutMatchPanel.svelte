@@ -8,6 +8,10 @@
   } from '../keyboard/layout-catalog';
   import { distinguishingCodes, eliminatedVariantOptions, rankLayoutCandidates } from '../keyboard/layout-matching';
   import { type KeyboardLayoutConfirmation } from '../storage/preferences';
+  import { useLocalization } from '../i18n/context';
+  import { candidateReason } from '../i18n/tool-messages';
+  const localization = useLocalization();
+  const { text } = localization;
 
   let { connectedDevice = null, boardNames = [], confirmation, layoutNotice = '', onconfirm, onclear }: {
     connectedDevice?: KeyboardDevice | null;
@@ -63,7 +67,7 @@
       if (!cancelled) profile = loaded;
     }, (error: unknown) => {
       if (!(error instanceof LayoutProfileLoadError)) throw error;
-      if (!cancelled) loadError = `${error.message} The generic Alice layout stays active.`;
+      if (!cancelled) loadError = error.message;
     });
     return () => { cancelled = true; };
   });
@@ -102,72 +106,70 @@
 </script>
 
 <fieldset class="layout-match" aria-labelledby="layout-match-heading">
-  <legend><span id="layout-match-heading" tabindex="-1">Find my layout</span></legend>
-  <p class="finder-intro">Nothing changes until you confirm a layout.</p>
+  <legend><span id="layout-match-heading" tabindex="-1">{text("keyboard-connection.find-my-layout")}</span></legend>
+  <p class="finder-intro">{text("layout-match-panel.nothing-changes-until-you-confirm-a-layout")}</p>
 
   <div class="layout-status" role="status">
     {#if confirmation && confirmedEntry}
       <p>
-        Active layout: <strong>{confirmedEntry.displayName}</strong> <span class="source-label">Confirmed by you</span>
+        {text("layout-match-panel.active-layout")} <strong>{confirmedEntry.displayName}</strong> <span class="source-label">{text("layout-match-panel.confirmed-by-you")}</span>
         {#if confirmedEntry.groups.length > 0 && isValidVariant(confirmedEntry, confirmation.variant)}
           <span class="variant-summary">({describeVariant(confirmedEntry, confirmation.variant)})</span>
         {/if}
       </p>
     {:else}
-      <p>Active layout: <strong>Generic Alice</strong>. No layout is confirmed.</p>
+      <p>{text("layout-match-panel.active-layout")} <strong>Generic Alice</strong>{text("layout-match-panel.no-layout-is-confirmed")}</p>
     {/if}
   </div>
   {#if layoutNotice}
-    <p class="layout-warning" role="alert">{layoutNotice}</p>
+    <p class="layout-warning" role="alert">{text("layout-match-panel.saved-layout-unavailable", { p0: String(layoutNotice) })}</p>
   {/if}
   {#if deviceMismatch && confirmation?.confirmedFor}
     <p class="layout-warning" role="alert">
-      The connected device ({deviceId(connectedDevice!.vendorId)}:{deviceId(connectedDevice!.productId)}) differs from the device this
-      layout was confirmed for ({deviceId(confirmation.confirmedFor.vendorId)}:{deviceId(confirmation.confirmedFor.productId)}).
-      The confirmed layout is kept. Review the suggestions below to choose another.
+      {text("layout-match-panel.the-connected-device-differs-from-the-device", { p0: String(deviceId(connectedDevice!.vendorId)), p1: String(deviceId(connectedDevice!.productId)), p2: String(deviceId(confirmation.confirmedFor.vendorId)), p3: String(deviceId(confirmation.confirmedFor.productId)) })}
     </p>
   {/if}
   {#if confirmation}
     <div class="panel-actions">
-      <button class="secondary-button danger-button" type="button" onclick={onclear}>Clear confirmation</button>
+      <button class="secondary-button danger-button" type="button" onclick={onclear}>{text("layout-match-panel.clear-confirmation")}</button>
     </div>
   {/if}
 
   <div class="finder-grid">
   <div class="layout-choices">
-  <label for="layout-board-name">Board name</label>
+  <label for="layout-board-name">{text("layout-match-panel.board-name")}</label>
   <input id="layout-board-name" name="board-name" type="search" autocomplete="off" spellcheck="false"
-    maxlength="120" bind:value={boardName} placeholder="e.g. Keychron Q8…" aria-describedby="board-name-help" />
-  <p id="board-name-help" class="variant-hint">Search by model. No connection needed.</p>
-  <h3>Suggestions <span class="result-count" role="status" aria-label={`${candidates.length} suggested layouts`}>({candidates.length})</span></h3>
+    maxlength="120" bind:value={boardName} placeholder={text("layout-match-panel.e-g-keychron-q8")} aria-describedby="board-name-help" />
+  <p id="board-name-help" class="variant-hint">{text("layout-match-panel.search-by-model-no-connection-needed")}</p>
+  <h3>{text("layout-match-panel.suggestions")} <span class="result-count" role="status" aria-label={text("layout-match-panel.suggested-layouts", { p0: String(candidates.length) })}>({candidates.length})</span></h3>
   {#if candidates.length === 0}
     <p class="empty-suggestions">
       {#if boardName.trim()}
-        No suggestions for “{boardName}”. Try another model or browse all layouts.
+        {text("layout-match-panel.no-suggestions-for-try-another-model-or", { p0: String(boardName) })}
       {:else if connectedDevice}
-        No match for this device. Try its board name or browse all layouts.
+        {text("layout-match-panel.no-match-for-this-device-try-its")}
       {:else}
-        Enter your board name, or browse all layouts below.
+        {text("layout-match-panel.enter-your-board-name-or-browse-all")}
       {/if}
     </p>
   {:else}
-    <ul class="candidate-list" aria-label="Suggested layouts">
+    <ul class="candidate-list" aria-label={text("layout-match-panel.suggested-layouts-2")}>
       {#each candidates as candidate (candidate.entry.id)}
         <li class="candidate" data-candidate={candidate.entry.id}>
-          <button class="candidate-button" type="button" aria-label={`Review ${candidate.entry.displayName}`}
+          <button class="candidate-button" type="button" aria-label={text("layout-match-panel.review", { p0: String(candidate.entry.displayName) })}
             aria-pressed={selectedId === candidate.entry.id} onclick={() => review(candidate.entry.id)}>
             <strong>{candidate.entry.displayName}</strong>
-            <span class="source-label">Suggested — not confirmed</span>
-            <span class="candidate-reasons">{candidate.reasons.join(' ')}</span>
+            <span class="source-label">{text("layout-match-panel.suggested-not-confirmed")}</span>
+            <span class="candidate-reasons">{candidate.reasons.map((reason) => candidateReason(localization.language, reason)).join(' ')}</span>
           </button>
         </li>
       {/each}
     </ul>
   {/if}
 
-  <label for="layout-catalog-select">Browse catalog layouts</label>
+  <label for="layout-catalog-select">{text("layout-match-panel.browse-catalog-layouts")}</label>
   <select id="layout-catalog-select" value={selectedId} onchange={(event) => choose(event.currentTarget.value)}>
-    <option value="">Choose a layout to review</option>
+    <option value="">{text("layout-match-panel.choose-a-layout-to-review")}</option>
     {#each sortedEntries as entry (entry.id)}
       <option value={entry.id}>{entry.displayName}</option>
     {/each}
@@ -176,23 +178,25 @@
 
   {#if selectedEntry}
     <section class="layout-review" aria-labelledby="layout-review-heading">
-      <h3 id="layout-review-heading" tabindex="-1">Review {selectedEntry.displayName}</h3>
-      <p class="variant-hint">Does this match your keyboard? Check the shape and key sizes.</p>
+      <h3 id="layout-review-heading" tabindex="-1">{text("layout-match-panel.review", { p0: String(selectedEntry.displayName) })}</h3>
+      <p class="variant-hint">{text("layout-match-panel.does-this-match-your-keyboard-check-the")}</p>
 
       {#if loadError}
-        <p class="layout-warning" role="alert">{loadError}</p>
+        <p class="layout-warning" role="alert">{text("layout-match-panel.the-generic-alice-layout-stays-active", { p0: String(loadError) })}</p>
       {:else if !preview}
-        <p role="status">Loading layout preview…</p>
+        <p role="status">{text("layout-match-panel.loading-layout-preview")}</p>
       {:else if preview.layout}
         <AliceKeyboardVisualizer layout={preview.layout.keys} inertKeys={preview.layout.inertKeys} viewBox={preview.layout.viewBox}
-          layoutSource="preview" testLayoutLabel={selectedEntry.displayName} title="Layout preview" />
+          layoutSource="preview" testLayoutLabel={selectedEntry.displayName} title={text("layout-match-panel.layout-preview")} />
         {#if !preview.eligible}
           <p class="layout-warning" role="alert">
-            This variant cannot be used: missing keys {preview.layout.missingCodes.join(', ') || 'or invalid key shapes'}.
+            {preview.layout.missingCodes.length > 0
+              ? text("layout-match-panel.this-variant-cannot-be-used-missing-keys", { p0: String(preview.layout.missingCodes.join(', ')) })
+              : text("layout-match-panel.this-variant-cannot-be-used-missing-keys-2")}
           </p>
         {/if}
       {:else}
-        <p class="layout-warning" role="alert">{preview.error}</p>
+        <p class="layout-warning" role="alert">{text("layout-match-panel.preview-error", { p0: String(preview.error ?? '') })}</p>
       {/if}
 
       <div class="variant-options">
@@ -205,7 +209,7 @@
               <input type="radio" name={`layout-variant-${groupIndex}`} value={optionIndex}
                 checked={variant[String(groupIndex)] === optionIndex}
                 onchange={() => { variant = { ...variant, [String(groupIndex)]: optionIndex }; }} />
-              {option}{#if ruledOut}{' '}<span class="ruled-out">— ruled out by your key presses</span>{/if}
+              {option}{#if ruledOut}{' '}<span class="ruled-out">{text("layout-match-panel.ruled-out-by-your-key-presses")}</span>{/if}
             </label>
           {/each}
         </fieldset>
@@ -213,45 +217,45 @@
       </div>
       <div class="panel-actions">
         <button class="primary-button" type="button" disabled={!preview?.eligible || alreadyConfirmed} onclick={confirm}>
-          {alreadyConfirmed ? 'Layout confirmed' : 'Confirm this layout'}
+          {alreadyConfirmed ? text("layout-match-panel.layout-confirmed") : text("layout-match-panel.confirm-this-layout")}
         </button>
       </div>
 
       <details class="layout-help">
-      <summary>{selectedEntry.groups.length > 0 ? 'Key check & layout sources' : 'Layout sources'}</summary>
+      <summary>{selectedEntry.groups.length > 0 ? text("layout-match-panel.key-check-layout-sources") : text("layout-match-panel.layout-sources")}</summary>
       <p class="catalog-sources">
-        Sources:
-        <a href={selectedEntry.sources.via.url} target="_blank" rel="noreferrer">VIA definition</a>,
-        <a href={selectedEntry.sources.qmkInfo.url} target="_blank" rel="noreferrer">QMK keyboard info</a>,
-        <a href={selectedEntry.sources.keymap.url} target="_blank" rel="noreferrer">QMK default keymap</a>
-        (layer {selectedEntry.sources.keymap.layer}). Legends come from the default keymap; your firmware may differ.
+        {text("layout-match-panel.sources")}
+        <a href={selectedEntry.sources.via.url} target="_blank" rel="noreferrer">{text("layout-match-panel.via-definition")}</a>,
+        <a href={selectedEntry.sources.qmkInfo.url} target="_blank" rel="noreferrer">{text("layout-match-panel.qmk-keyboard-info")}</a>,
+        <a href={selectedEntry.sources.keymap.url} target="_blank" rel="noreferrer">{text("layout-match-panel.qmk-default-keymap")}</a>
+        {text("layout-match-panel.layer-legends-come-from-the-default-keymap", { p0: String(selectedEntry.sources.keymap.layer) })}
       </p>
 
       {#each selectedEntry.groups as group, groupIndex (groupIndex)}
           {#if hints.get(groupIndex)}
-            <p class="variant-hint">{group.label} — Distinguishing keys: {hints.get(groupIndex)?.join(', ')}.</p>
+            <p class="variant-hint">{text("layout-match-panel.distinguishing-keys", { p0: String(group.label), p1: String(hints.get(groupIndex)?.join(', ')) })}</p>
           {:else}
-            <p class="variant-hint">{group.label}: compare the preview; key presses cannot tell these options apart.</p>
+            <p class="variant-hint">{text("layout-match-panel.compare-the-preview-key-presses-cannot-tell", { p0: String(group.label) })}</p>
           {/if}
       {/each}
 
       {#if selectedEntry.groups.length > 0}
-        <label for="layout-key-check">Check with key presses (optional)</label>
+        <label for="layout-key-check">{text("layout-match-panel.check-with-key-presses-optional")}</label>
         <input id="layout-key-check" type="text" readonly autocomplete="off" aria-describedby="layout-key-check-help"
-          placeholder="Press a key to check…" onkeydown={checkKey} />
+          placeholder={text("layout-match-panel.press-a-key-to-check")} onkeydown={checkKey} />
         <p id="layout-key-check-help" class="variant-hint">
-          Pressed keys only rule out options; they never confirm a layout. Nothing is saved.
-          Checked: {observed.size > 0 ? [...observed].join(', ') : 'none yet'}.
+          {text("layout-match-panel.pressed-keys-only-rule-out-options-they")}
+          {text("layout-match-panel.checked", { p0: observed.size > 0 ? [...observed].join(', ') : text('layout.noneChecked') })}
         </p>
         {#if observed.size > 0}
-          <button class="secondary-button danger-button" type="button" onclick={() => { observed = new Set(); }}>Clear checked keys</button>
+          <button class="secondary-button danger-button" type="button" onclick={() => { observed = new Set(); }}>{text("layout-match-panel.clear-checked-keys")}</button>
         {/if}
       {/if}
 
       </details>
     </section>
   {:else}
-    <div class="review-empty"><h3>Preview your layout</h3><p>Choose a suggestion or a catalog layout to see it here.</p></div>
+    <div class="review-empty"><h3>{text("layout-match-panel.preview-your-layout")}</h3><p>{text("layout-match-panel.choose-a-suggestion-or-a-catalog-layout")}</p></div>
   {/if}
   </div>
 </fieldset>

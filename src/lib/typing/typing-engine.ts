@@ -3,6 +3,9 @@ import {
   type Exercise,
   type CopyConfiguration
 } from './exercise-generator';
+import { preparePracticeText } from './text';
+import { reconcilePracticeInput, scoreCommittedEdit } from './practice-input';
+import { DEFAULT_LANGUAGE, getLanguage, type LanguageId } from '../i18n/languages';
 
 export const PRACTICE_TEXT =
   'Slow down, take a breath, and let steady hands find their way across the keys.';
@@ -29,7 +32,7 @@ interface WritingChunk {
 
 export type ZenSession = Lifecycle & {
   readonly kind: 'zen';
-  readonly configuration: { readonly mode: 'zen' };
+  readonly configuration: { readonly mode: 'zen'; readonly language?: LanguageId };
   readonly writing: WritingChunk | null;
   readonly retainedCharacters: number;
   readonly totalAttempts: number;
@@ -40,9 +43,10 @@ export function isZenSession(session: PracticeSession): session is ZenSession {
   return 'kind' in session && session.kind === 'zen';
 }
 
-export function createZenSession(): ZenSession {
+export function createZenSession(language: LanguageId = DEFAULT_LANGUAGE): ZenSession {
+  validateConfiguration({ mode: 'zen', language });
   return {
-    kind: 'zen', configuration: { mode: 'zen' }, writing: null,
+    kind: 'zen', configuration: { mode: 'zen', language }, writing: null,
     retainedCharacters: 0, totalAttempts: 0, status: 'ready', startedAt: null, endedAt: null
   };
 }
@@ -83,9 +87,7 @@ export function createSession(
   configuration?: CopyConfiguration,
   wordEnds?: readonly number[]
 ): TypingSession {
-  if (target.length === 0 || /[^\x20-\x7e]/.test(target)) {
-    throw new Error('Typing exercises must contain non-empty printable ASCII text.');
-  }
+  target = preparePracticeText(target).text;
 
   let metadata: Pick<SessionData, 'configuration' | 'wordEnds'> = {};
   if (configuration) {
@@ -136,6 +138,9 @@ export function extendTarget(session: TypingSession, exercise: Exercise): Typing
     || configuration.numbers !== exercise.configuration.numbers) {
     throw new Error('An appended exercise must use the same session configuration.');
   }
+  if ((configuration.language ?? 'en') !== (exercise.configuration.language ?? 'en')) {
+    throw new Error('An appended exercise must use the same session language.');
+  }
   createSession(exercise.target, exercise.configuration, exercise.wordEnds);
   const offset = session.target.length + 1;
   return {
@@ -180,9 +185,9 @@ export function applyAction(
         writing: text.length === 1 ? previous : { text: text.slice(0, -1), previous }
       };
     }
-    if (!/^[\x20-\x7e]$/.test(action.character)) {
-      throw new Error('A typing action must contain one printable ASCII character.');
-    }
+    const character = preparePracticeText(action.character);
+    if (character.graphemes.length !== 1) throw new Error('A typing action must contain one supported character.');
+    action = { type: 'character', character: character.text };
     const last = session.writing;
     const writing = last && last.text.length < 256
       ? { text: last.text + action.character, previous: last.previous }
@@ -204,9 +209,9 @@ export function applyAction(
       : { ...session, input: session.input.slice(0, -1) };
   }
 
-  if (!/^[\x20-\x7e]$/.test(action.character)) {
-    throw new Error('A typing action must contain one printable ASCII character.');
-  }
+  const character = preparePracticeText(action.character);
+  if (character.graphemes.length !== 1) throw new Error('A typing action must contain one supported character.');
+  action = { type: 'character', character: character.text };
 
   const input = session.input + action.character;
   if (input.length > session.target.length) {
@@ -221,9 +226,74 @@ export function applyAction(
       + Number(action.character === session.target[session.input.length])
   };
 
-  return input.length === session.target.length && session.configuration?.mode !== 'timed'
+  return input.length === session.target.length && session.configuration?.mode !== 'timed' && !requiresFinish(session)
     ? { ...data, status: 'completed', startedAt, endedAt: now }
     : { ...data, status: 'running', startedAt, endedAt: null };
+}
+
+export function requiresFinish(session: TypingSession): boolean {
+  return session.configuration?.mode !== 'timed'
+    && (getLanguage(session.configuration?.language ?? DEFAULT_LANGUAGE).explicitFinish
+      || (session.configuration?.mode === 'custom' && /[^\x20-\x7e]/.test(session.target)));
+}
+
+export function finishSession(session: TypingSession, now: number): TypingSession {
+  if (session.status !== 'running' || session.input.length !== session.target.length || !requiresFinish(session)) {
+    throw new Error('Only a fully consumed explicit-finish session can be finished.');
+  }
+  return { ...session, status: 'completed', endedAt: Math.max(session.startedAt, now) };
+}
+
+export function getAcceptedText(session: PracticeSession): string {
+  if (!isZenSession(session)) return session.input;
+  const parts: string[] = [];
+  let chunk = session.writing;
+  while (chunk) { parts.push(chunk.text); chunk = chunk.previous; }
+  return parts.reverse().join('');
+}
+
+export function applyCommittedInput(session: TypingSession, nativeValue: string, now: number): TypingSession;
+export function applyCommittedInput(session: ZenSession, nativeValue: string, now: number): ZenSession;
+export function applyCommittedInput(session: PracticeSession, nativeValue: string, now: number): PracticeSession;
+export function applyCommittedInput(session: PracticeSession, nativeValue: string, now: number): PracticeSession {
+  if (!isZenSession(session)) session = expireSession(session, now);
+  if (session.status === 'completed') return session;
+  const accepted = getAcceptedText(session);
+  const result = reconcilePracticeInput(accepted, nativeValue, isZenSession(session) ? undefined : session.target.length);
+  if (!result.edit) return session;
+  if (isZenSession(session)) {
+    let writing = session.writing;
+    let removed = session.retainedCharacters - result.edit.start;
+    while (writing && removed > 0) {
+      if (removed >= writing.text.length) {
+        removed -= writing.text.length;
+        writing = writing.previous;
+      } else {
+        writing = { text: writing.text.slice(0, -removed), previous: writing.previous };
+        removed = 0;
+      }
+    }
+    const tail = result.text.slice(result.edit.start);
+    for (let index = 0; index < tail.length; index += 256) {
+      writing = { text: tail.slice(index, index + 256), previous: writing };
+    }
+    const inserted = result.edit.inserted.length;
+    if (session.status === 'ready' && !inserted) return session;
+    return {
+      ...session, writing, retainedCharacters: result.text.length,
+      totalAttempts: session.totalAttempts + inserted, status: 'running',
+      startedAt: session.startedAt ?? now, endedAt: null
+    };
+  }
+  const score = scoreCommittedEdit(session.target, accepted, result);
+  if (session.status === 'ready' && score.attempts === 0) return session;
+  const data = {
+    ...session, input: result.text, totalAttempts: session.totalAttempts + score.attempts,
+    correctAttempts: session.correctAttempts + score.correctAttempts, startedAt: session.startedAt ?? now
+  };
+  return result.text.length === session.target.length && session.configuration?.mode !== 'timed' && !requiresFinish(session)
+    ? { ...data, status: 'completed', endedAt: now }
+    : { ...data, status: 'running', endedAt: null };
 }
 
 export function getMetrics(session: PracticeSession, now: number) {

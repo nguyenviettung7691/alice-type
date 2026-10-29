@@ -1,9 +1,12 @@
 import { DURATIONS, WORD_LIMITS, WORD_BANK_TIERS } from '../typing/exercise-generator';
 import { getMetrics, isZenSession, type PracticeSession } from '../typing/typing-engine';
 import { isRecord, StorageError, storageFailure } from './errors';
+import { isLanguageId, type LanguageId } from '../i18n/languages';
 
 interface RecordBase {
-  readonly version: 2;
+  readonly version: 2 | 3;
+  readonly language?: LanguageId;
+  readonly scoringVersion?: 'committed-grapheme-v1';
   readonly id: string;
   readonly completedAt: number;
   readonly wpm: number;
@@ -98,6 +101,13 @@ function safeCount(value: unknown, minimum = 0): value is number {
 }
 
 export function validateSessionRecord(value: unknown): SessionRecord {
+  if (isRecord(value) && value.version === 3) {
+    if (!isLanguageId(value.language) || value.scoringVersion !== 'committed-grapheme-v1') {
+      throw new StorageError('A saved session contains invalid language or scoring metadata.');
+    }
+    const validated = validateSessionRecord({ ...value, version: 2 });
+    return { ...validated, version: 3, language: value.language, scoringVersion: value.scoringVersion };
+  }
   const invalid = () => new StorageError('A saved session contains invalid data.');
   if (!isRecord(value) || value.version !== 2
     || typeof value.id !== 'string' || !value.id.trim()
@@ -159,7 +169,8 @@ export function completedRecord(
   }
   const metrics = getMetrics(session, session.endedAt);
   const base = {
-    version: 2, id, completedAt: startedWallTime + metrics.elapsedMs,
+    version: 3, language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
+    id, completedAt: startedWallTime + metrics.elapsedMs,
     wpm: metrics.wpm, totalAttempts: session.totalAttempts
   };
   if (isZenSession(session)) {
@@ -202,6 +213,10 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
   let zenCount = 0;
   let zenBestWpm = 0;
   let zenWpm = 0;
+  let committedAccuracy = 0;
+  let committedCount = 0;
+  let legacyAccuracy = 0;
+  let legacyCount = 0;
   for (const record of records) {
     if (record.mode === 'zen') {
       zenCount += 1;
@@ -213,6 +228,13 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
     bestWpm = Math.max(bestWpm, record.wpm);
     wpm += record.wpm;
     accuracy += record.accuracy;
+    if (record.scoringVersion === 'committed-grapheme-v1') {
+      committedAccuracy += record.accuracy;
+      committedCount++;
+    } else {
+      legacyAccuracy += record.accuracy;
+      legacyCount++;
+    }
     for (const [code, misses] of Object.entries(record.missedKeys)) {
       keys.set(code, (keys.get(code) ?? 0) + misses);
     }
@@ -221,6 +243,8 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
     count, targetCount, bestWpm: targetCount ? bestWpm : null,
     averageWpm: targetCount ? Math.round(wpm / targetCount) : null,
     averageAccuracy: targetCount ? (accuracy / targetCount).toFixed(1) : null,
+    committedAccuracy: committedCount ? committedAccuracy / committedCount : null,
+    legacyAccuracy: legacyCount ? legacyAccuracy / legacyCount : null,
     zenCount, zenBestWpm: zenCount ? zenBestWpm : null,
     zenAverageWpm: zenCount ? Math.round(zenWpm / zenCount) : null,
     missedKeys: [...keys].sort(([a, x], [b, y]) => y - x || a.localeCompare(b))

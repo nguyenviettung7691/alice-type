@@ -10,6 +10,9 @@
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import LayoutMatchPanel from './LayoutMatchPanel.svelte';
   import { deviceId, type KeyboardDevice } from '../keyboard/keyboard-access';
+  import { useLocalization } from '../i18n/context';
+  const localization = useLocalization();
+  const { text } = localization;
 
   type TextField = typeof KEYBOARD_DETAIL_TEXT_FIELDS[number];
   type BooleanField = typeof KEYBOARD_DETAIL_BOOLEAN_FIELDS[number];
@@ -30,16 +33,16 @@
     onlayoutclear: () => void;
   } = $props();
 
-  const fieldLabels: Record<DetailField, string> = {
-    name: 'Name',
-    brand: 'Brand',
-    model: 'Model',
-    version: 'Version',
-    connectivity: 'Connectivity',
-    rgbBacklighting: 'RGB / backlighting',
-    keyRollover: 'Key rollover',
-    programmableKeys: 'Programmable keys'
-  };
+  const fieldLabels: Record<DetailField, string> = $derived({
+    name: text("keyboard-details-panel.name"),
+    brand: text("keyboard-details-panel.brand"),
+    model: text("keyboard-details-panel.model"),
+    version: text("keyboard-details-panel.version"),
+    connectivity: text("keyboard-details-panel.connectivity"),
+    rgbBacklighting: text("keyboard-details-panel.rgb-backlighting"),
+    keyRollover: text("keyboard-details-panel.key-rollover"),
+    programmableKeys: text("keyboard-details-panel.programmable-keys")
+  });
   const identityFields: readonly DetailField[] = ['name', 'brand', 'model', 'version'];
   const featureFields: readonly DetailField[] = ['rgbBacklighting', 'connectivity', 'keyRollover', 'programmableKeys'];
 
@@ -59,14 +62,14 @@
   function resolvedValue(field: DetailField) {
     const userValue = userDetails[field];
     if (userValue !== undefined) {
-      return { value: typeof userValue === 'boolean' ? (userValue ? 'Yes' : 'No') : userValue, source: 'You provided this' };
+      return { value: typeof userValue === 'boolean' ? (userValue ? text("keyboard-details-panel.yes") : text("keyboard-details-panel.no")) : userValue, source: text("keyboard-details-panel.you-provided-this") };
     }
     const catalog = catalogValue(field);
     if (catalog) {
-      return { value: typeof catalog.value === 'boolean' ? (catalog.value ? 'Yes' : 'No') : catalog.value,
-        source: 'Catalog verified', citation: catalog.source };
+      return { value: typeof catalog.value === 'boolean' ? (catalog.value ? text("keyboard-details-panel.yes") : text("keyboard-details-panel.no")) : catalog.value,
+        source: text("keyboard-details-panel.catalog-verified"), citation: catalog.source };
     }
-    return { value: 'Unknown', source: 'Unknown' };
+    return { value: text("keyboard-details-panel.unknown"), source: text("keyboard-details-panel.unknown") };
   }
 
   async function beginEditing() {
@@ -130,10 +133,10 @@
 </script>
 
 <section class="practice-panel settings-panel keyboard-details-panel" aria-labelledby="keyboard-details-heading">
-  <p class="eyebrow">Make it yours</p>
-  <h2 id="keyboard-details-heading" tabindex="-1">Keyboard Details</h2>
+  <p class="eyebrow">{text("keyboard-details-panel.make-it-yours")}</p>
+  <h2 id="keyboard-details-heading" tabindex="-1">{text("keyboard-details-panel.keyboard-details")}</h2>
   <p class="panel-copy">
-    Find a layout that looks like your keyboard. Your choices stay in this browser.
+    {text("keyboard-details-panel.find-a-layout-that-looks-like-your")}
   </p>
 
   <LayoutMatchPanel {connectedDevice} boardNames={[
@@ -144,61 +147,61 @@
     confirmation={layoutConfirmation} {layoutNotice} onconfirm={onlayoutconfirm} onclear={onlayoutclear} />
 
   <details class="device-disclosure">
-  <summary>Connected keyboard <span>{connectedDevice?.productName || (connectedDevice ? 'Unnamed device' : 'No device selected')}</span></summary>
+  <summary>{text("keyboard-details-panel.connected-keyboard")} <span>{connectedDevice?.productName || (connectedDevice ? text("keyboard-connection.unnamed-device") : text("keyboard-connection.no-device-selected"))}</span></summary>
   <fieldset class="browser-device">
-    <legend>Browser-reported device</legend>
+    <legend>{text("keyboard-details-panel.browser-reported-device")}</legend>
     {#if connectedDevice}
       <div class="browser-device-card">
-        <span class="device-source">Shared by your browser</span>
+        <span class="device-source">{text("keyboard-details-panel.shared-by-your-browser")}</span>
         <dl class="browser-device-values">
-          <div class="device-product"><dt>Product name</dt><dd>{connectedDevice.productName || 'Not provided'}</dd></div>
-          <div><dt>Vendor ID</dt><dd><code>{deviceId(connectedDevice.vendorId)}</code></dd></div>
-          <div><dt>Product ID</dt><dd><code>{deviceId(connectedDevice.productId)}</code></dd></div>
+          <div class="device-product"><dt>{text("keyboard-details-panel.product-name")}</dt><dd>{connectedDevice.productName || text("keyboard-details-panel.not-provided")}</dd></div>
+          <div><dt>{text("keyboard-details-panel.vendor-id")}</dt><dd><code>{deviceId(connectedDevice.vendorId)}</code></dd></div>
+          <div><dt>{text("keyboard-details-panel.product-id")}</dt><dd><code>{deviceId(connectedDevice.productId)}</code></dd></div>
           <div><dt>VID:PID (VPID)</dt><dd><code>{deviceId(connectedDevice.vendorId).slice(2)}:{deviceId(connectedDevice.productId).slice(2)}</code></dd></div>
         </dl>
-        <p class="device-explanation">Device IDs help find suggestions, but do not prove a layout or model.</p>
+        <p class="device-explanation">{text("keyboard-details-panel.device-ids-help-find-suggestions-but-do")}</p>
       </div>
-      <p class="device-limitation"><strong>Reference layout only.</strong> Your browser cannot report the physical layout or full specifications.</p>
+      <p class="device-limitation"><strong>{text("keyboard-details-panel.reference-layout-only")}</strong> {text("keyboard-details-panel.your-browser-cannot-report-the-physical-layout")}</p>
     {:else}
       <div class="browser-device-card">
-        <p class="device-empty-title">No device selected</p>
-        <p class="device-explanation">Use <strong>Connect keyboard</strong> above if available. You can find a layout, practice, and test keys without connecting.</p>
+        <p class="device-empty-title">{text("keyboard-connection.no-device-selected")}</p>
+        <p class="device-explanation">{text("keyboard-details-panel.use-connect-keyboard-above-if-available-you")}</p>
       </div>
     {/if}
   </fieldset>
   </details>
 
   <details class="details-disclosure">
-  <summary>Device details &amp; reference profile <span>Optional</span></summary>
-  <p class="details-intro">Add notes or choose a catalog reference. AliceType cannot detect your connected keyboard's full specifications.</p>
+  <summary>{text("keyboard-details-panel.device-details-reference-profile")} <span>{text("keyboard-details-panel.optional")}</span></summary>
+  <p class="details-intro">{text("keyboard-details-panel.add-notes-or-choose-a-catalog-reference")}</p>
   <fieldset>
-    <legend>Keyboard profile</legend>
-    <label for="keyboard-profile">Reference profile</label>
+    <legend>{text("keyboard-details-panel.keyboard-profile")}</legend>
+    <label for="keyboard-profile">{text("keyboard-details-panel.reference-profile")}</label>
     <select id="keyboard-profile" value={profileId ?? ''} onchange={(event) => {
       const value = event.currentTarget.value;
       onprofilechange(value || null);
     }}>
-      <option value="">No profile selected</option>
+      <option value="">{text("keyboard-details-panel.no-profile-selected")}</option>
       {#each KEYBOARD_PROFILES as profile (profile.id)}
         <option value={profile.id}>{profile.displayName}</option>
       {/each}
     </select>
     {#if layoutConfirmation}
-      <p class="profile-summary">Choosing a different reference profile clears your confirmed layout.</p>
+      <p class="profile-summary">{text("keyboard-details-panel.choosing-a-different-reference-profile-clears-your")}</p>
     {/if}
     {#if selectedProfile}
       <p class="profile-summary">
         <strong>{selectedProfile.displayName}</strong>
-        - Catalog revision {KEYBOARD_PROFILE_CATALOG_REVISION}, reviewed {KEYBOARD_PROFILE_CATALOG_UPDATED_AT}.
+        {text("keyboard-details-panel.catalog-revision-reviewed", { p0: String(KEYBOARD_PROFILE_CATALOG_REVISION), p1: String(KEYBOARD_PROFILE_CATALOG_UPDATED_AT) })}
       </p>
       <details class="profile-provenance">
-        <summary>Reference sources</summary>
+        <summary>{text("keyboard-details-panel.reference-sources")}</summary>
         {#if selectedProfile.testLayout}
           <p class="profile-summary">
-            Test map: <strong>{selectedProfile.testLayout.label}</strong>
-            <span class="source-label">Catalog verified</span>
+            {text("keyboard-details-panel.test-map")} <strong>{selectedProfile.testLayout.label}</strong>
+            <span class="source-label">{text("keyboard-details-panel.catalog-verified")}</span>
             {#if selectedProfile.testLayout.source.kind === 'internal'}
-              <span class="source-reference">Source: {selectedProfile.testLayout.source.label} ({selectedProfile.testLayout.source.path})</span>
+              <span class="source-reference">{text("keyboard-details-panel.source")} {selectedProfile.testLayout.source.label} ({selectedProfile.testLayout.source.path})</span>
             {:else}
               <a href={selectedProfile.testLayout.source.url} target="_blank" rel="noreferrer">
                 {selectedProfile.testLayout.source.title}
@@ -208,14 +211,14 @@
         {/if}
       </details>
     {:else}
-      <p class="profile-summary">No catalog profile is selected. Add your own details below if needed.</p>
+      <p class="profile-summary">{text("keyboard-details-panel.no-catalog-profile-is-selected-add-your")}</p>
     {/if}
   </fieldset>
 
   {#if !editing}
   <div class="specification-grid">
   <fieldset>
-    <legend>Device information</legend>
+    <legend>{text("keyboard-details-panel.device-information")}</legend>
     {#each identityFields as field (field)}
       {@const resolved = resolvedValue(field)}
       <div class="detail-row">
@@ -225,14 +228,14 @@
         {#if resolved.citation?.kind === 'external'}
           <a href={resolved.citation.url} target="_blank" rel="noreferrer">{resolved.citation.title}</a>
         {:else if resolved.citation?.kind === 'internal'}
-          <span class="source-reference">Source: {resolved.citation.label} ({resolved.citation.path})</span>
+          <span class="source-reference">{text("keyboard-details-panel.source")} {resolved.citation.label} ({resolved.citation.path})</span>
         {/if}
       </div>
     {/each}
   </fieldset>
 
   <fieldset>
-    <legend>Supported features</legend>
+    <legend>{text("keyboard-details-panel.supported-features")}</legend>
     {#each featureFields as field (field)}
       {@const resolved = resolvedValue(field)}
       <div class="detail-row">
@@ -242,7 +245,7 @@
         {#if resolved.citation?.kind === 'external'}
           <a href={resolved.citation.url} target="_blank" rel="noreferrer">{resolved.citation.title}</a>
         {:else if resolved.citation?.kind === 'internal'}
-          <span class="source-reference">Source: {resolved.citation.label} ({resolved.citation.path})</span>
+          <span class="source-reference">{text("keyboard-details-panel.source")} {resolved.citation.label} ({resolved.citation.path})</span>
         {/if}
       </div>
     {/each}
@@ -251,8 +254,8 @@
   {/if}
 
   <fieldset>
-    <legend>Your device details</legend>
-    <p>Your notes appear instead of catalog values and are labeled "You provided this".</p>
+    <legend>{text("keyboard-details-panel.your-device-details")}</legend>
+    <p>{text("keyboard-details-panel.your-notes-appear-instead-of-catalog-values")}</p>
     {#if editing}
       <div class="edit-grid">
       {#each KEYBOARD_DETAIL_TEXT_FIELDS as field (field)}
@@ -274,22 +277,22 @@
         <label for={`keyboard-detail-${field}`}>{fieldLabels[field]}</label>
         <select id={`keyboard-detail-${field}`} value={draft[field] === undefined ? '' : draft[field] ? 'yes' : 'no'}
           onchange={(event) => updateBoolean(field, event.currentTarget.value)}>
-          <option value="">No personal override</option>
-          <option value="yes">Yes</option>
-          <option value="no">No</option>
+          <option value="">{text("keyboard-details-panel.no-personal-override")}</option>
+          <option value="yes">{text("keyboard-details-panel.yes")}</option>
+          <option value="no">{text("keyboard-details-panel.no")}</option>
         </select>
         </div>
       {/each}
       </div>
       <div class="panel-actions">
-        <button class="primary-button" type="button" onclick={saveDetails}>Save details</button>
-        <button class="secondary-button" type="button" onclick={cancelEditing}>Cancel</button>
+        <button class="primary-button" type="button" onclick={saveDetails}>{text("keyboard-details-panel.save-details")}</button>
+        <button class="secondary-button" type="button" onclick={cancelEditing}>{text("confirmation-dialog.cancel")}</button>
       </div>
     {:else}
       <div class="panel-actions">
-        <button bind:this={editButton} class="secondary-button" type="button" onclick={beginEditing}>Edit device details</button>
+        <button bind:this={editButton} class="secondary-button" type="button" onclick={beginEditing}>{text("keyboard-details-panel.edit-device-details")}</button>
         <button class="secondary-button danger-button" type="button" disabled={Object.keys(userDetails).length === 0}
-          onclick={() => { confirmingClear = true; }}>Clear my details</button>
+          onclick={() => { confirmingClear = true; }}>{text("keyboard-details-panel.clear-my-details")}</button>
       </div>
     {/if}
   </fieldset>
@@ -298,9 +301,9 @@
 
 {#if confirmingClear}
   <ConfirmationDialog
-    title="Clear your device details?"
-    message="This removes only your saved personal details. Your selected catalog profile stays selected."
-    confirmText="Clear my details"
+    title={text("keyboard-details-panel.clear-your-device-details")}
+    message={text("keyboard-details-panel.this-removes-only-your-saved-personal-details")}
+    confirmText={text("keyboard-details-panel.clear-my-details")}
     oncancel={() => { confirmingClear = false; }}
     onconfirm={clearDetails}
   />

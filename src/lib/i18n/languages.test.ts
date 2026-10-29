@@ -5,8 +5,8 @@ describe('language registry', () => {
   it('uses stable IDs, native names and explicit formatting locales', () => {
     expect(DEFAULT_LANGUAGE).toBe('en');
     expect(Object.keys(LANGUAGES)).toEqual(['en', 'vi']);
-    expect(getLanguage('en')).toEqual({ nativeName: 'English', documentLanguage: 'en', locale: 'en-US' });
-    expect(getLanguage('vi')).toEqual({ nativeName: 'Tiếng Việt', documentLanguage: 'vi', locale: 'vi-VN' });
+    expect(getLanguage('en')).toEqual({ nativeName: 'English', documentLanguage: 'en', locale: 'en-US', labelKey: 'stats-panel.english', explicitFinish: false });
+    expect(getLanguage('vi')).toEqual({ nativeName: 'Tiếng Việt', documentLanguage: 'vi', locale: 'vi-VN', labelKey: 'stats-panel.vietnamese', explicitFinish: true });
     expect(Object.isFrozen(LANGUAGES)).toBe(true);
     for (const language of Object.values(LANGUAGES)) expect(Object.isFrozen(language)).toBe(true);
   });

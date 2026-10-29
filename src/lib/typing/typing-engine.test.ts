@@ -46,10 +46,10 @@ describe('session transitions', () => {
     });
   });
 
-  it.each(['', 'a\nb', 'a\tb', 'caf\u00e9', '\u{1f600}', '\x7f'])(
+  it.each(['', 'a\nb', 'a\tb', '\u{1f600}', '\x7f'])(
     'rejects an unsupported target %j explicitly',
     (target) => {
-      expect(() => createSession(target)).toThrow('non-empty printable ASCII');
+      expect(() => createSession(target)).toThrow();
     }
   );
 
@@ -116,8 +116,8 @@ describe('session transitions', () => {
     expect(createSession(completed.target)).toEqual(createSession('a'));
   });
 
-  it.each(['ab', '\n', '\u00e9'])('rejects an invalid direct character action %j', (character) => {
-    expect(() => type(createSession('abc'), character)).toThrow('one printable ASCII character');
+  it.each(['ab', '\n'])('rejects an invalid direct character action %j', (character) => {
+    expect(() => type(createSession('abc'), character)).toThrow();
   });
 });
 
@@ -244,7 +244,7 @@ describe('keyboard filtering', () => {
       expect(() => extendTarget(create(words), exercise)).toThrow('timed');
       expect(() => extendTarget(expireSession(session, 15_000), exercise)).toThrow('timed');
       expect(() => extendTarget(session, generateExercise({ ...timed, numbers: true }, () => 0))).toThrow('same session');
-      expect(() => extendTarget(session, { ...exercise, target: '' })).toThrow('non-empty');
+      expect(() => extendTarget(session, { ...exercise, target: '' })).toThrow('not be empty');
     });
 
     it('tracks base-word offsets, not numeric tokens or correctness, and rolls back with Backspace', () => {

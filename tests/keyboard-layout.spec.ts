@@ -8,7 +8,7 @@ const Q8: Device = { productName: 'Keychron Q8', vendorId: 0x3434, productId: 0x
 const UNKNOWN: Device = { productName: 'Example Alice HID', vendorId: 0x1234, productId: 0xabcd };
 
 async function setup(page: Page, options: { device?: Device; stored?: unknown } = {}) {
-  const stored = options.stored ?? { version: 5, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } };
+  const stored = options.stored ?? { version: 6, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } };
   await page.addInitScript(({ device, key, value }) => {
     if (localStorage.getItem(key) === null) localStorage.setItem(key, value);
     const hid = device ? Object.assign(new EventTarget(), {
@@ -40,7 +40,7 @@ function confirmation(overrides: Partial<KeyboardLayoutConfirmation> = {}): Keyb
 }
 
 function storedWith(layout: KeyboardLayoutConfirmation, extra: Partial<Preferences> = {}) {
-  return { version: 5, settings: {
+  return { version: 6, settings: {
     ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardProfileId: layout.profileId, keyboardLayoutConfirmation: layout, ...extra
   } };
 }
@@ -66,13 +66,13 @@ test.describe('Keyboard layout profiles', () => {
     await expect(preview.getByText('Correct press', { exact: true })).toHaveCount(0);
     await expect(preview.getByText('Mismatch', { exact: true })).toHaveCount(0);
     await expect(preview.locator('g[transform^="rotate"]').first()).toBeAttached();
-    expect(await saved(page)).toEqual({ version: 5, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
+    expect(await saved(page)).toEqual({ version: 6, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
 
     await nav(page, 'Confirm this layout').click();
     await expect(matchPanel(page).locator('.layout-status')).toContainText('Keychron Q8 ANSI Confirmed by you');
     await expect(nav(page, 'Layout confirmed')).toBeDisabled();
     const stored = await saved(page);
-    expect(stored.version).toBe(5);
+    expect(stored.version).toBe(6);
     expect(stored.settings.keyboardProfileId).toBe('keychron-q8-ansi');
     expect(stored.settings.keyboardLayoutConfirmation).toEqual({
       profileId: 'keychron-q8-ansi', variant: {}, confirmedFor: { vendorId: 0x3434, productId: 0x0180 },
@@ -183,11 +183,11 @@ test.describe('Keyboard layout profiles', () => {
     await expect(page.locator('#layout-match-heading')).toBeFocused();
   });
 
-  test('migrates version 3 preferences to version 5 with no confirmation', async ({ page }) => {
+  test('migrates version 3 preferences to version 6 with no confirmation', async ({ page }) => {
     const { keyboardLayoutConfirmation: _omit, ...v3 } = { ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardProfileId: 'generic-alice' };
     await setup(page, { stored: { version: 3, settings: v3 } });
     await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeVisible();
-    expect(await saved(page)).toEqual({ version: 5, settings: { ...v3, keyboardLayoutConfirmation: null } });
+    expect(await saved(page)).toEqual({ version: 6, settings: { ...v3, language: 'en', keyboardLayoutConfirmation: null } });
   });
 
   test('links the layout data attribution and GPL license in the footer', async ({ page }) => {

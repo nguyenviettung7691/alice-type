@@ -4,8 +4,14 @@ import { type ImportedLayoutProfile, type LayoutCatalogEntry } from './layout-ca
 export interface LayoutCandidate {
   readonly entry: LayoutCatalogEntry;
   readonly score: number;
-  readonly reasons: readonly string[];
+  readonly reasons: readonly LayoutCandidateReason[];
 }
+
+export type LayoutCandidateReason =
+  | { readonly code: 'usb-id'; readonly id: string }
+  | { readonly code: 'shared-id'; readonly count: number }
+  | { readonly code: 'device-name' | 'board-name'; readonly name: string }
+  | { readonly code: 'name-only' };
 
 function normalizedName(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
@@ -44,14 +50,14 @@ export function rankLayoutCandidates(
       const board = boardNames.map((name) => ({ name, score: nameMatchScore(name, entry) }))
         .sort((a, b) => b.score - a.score)[0];
       const boardName = board?.score ? board.name : '';
-      const reasons: string[] = [];
+      const reasons: LayoutCandidateReason[] = [];
       if (idMatch) {
-        reasons.push(`USB ID ${deviceId(device.vendorId)}:${deviceId(device.productId)} matches.`);
-        if (shared > 1) reasons.push(`ID shared by ${shared} keyboards; check the preview.`);
+        reasons.push({ code: 'usb-id', id: `${deviceId(device.vendorId)}:${deviceId(device.productId)}` });
+        if (shared > 1) reasons.push({ code: 'shared-id', count: shared });
       }
-      if (named && device) reasons.push(`Device name "${device.productName}" matches the board name.`);
-      if (boardName) reasons.push(`Your board name "${boardName}" matches.`);
-      if (!idMatch && (named || boardName)) reasons.push('Name match only; check the preview.');
+      if (named && device) reasons.push({ code: 'device-name', name: device.productName });
+      if (boardName) reasons.push({ code: 'board-name', name: boardName });
+      if (!idMatch && (named || boardName)) reasons.push({ code: 'name-only' });
       return { entry, score: (idMatch ? 3 + 1 / shared : 0) + named * 0.5 + (board?.score ?? 0), reasons };
     })
     .filter((candidate) => candidate.score > 0)

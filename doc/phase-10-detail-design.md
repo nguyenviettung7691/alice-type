@@ -6,7 +6,7 @@
 | --- | --- |
 | Product | AliceType |
 | Phase | Phase 10: Multi-language Support |
-| Status | In progress; foundation milestone implemented, full localization/content/IME integration and release verification pending |
+| Status | Runtime integration and automated verification implemented; fluent content/UI review, real OS IME and accessibility sign-off pending |
 | Source design | [Technical Design Document](./tech-design.md), sections 4.2-4.4 and 5.6 |
 | Preceding phase | [Phase 9 Detail Design](./phase-9-detail-design.md) |
 | Practice/storage contracts | [Phase 8 Detail Design](./phase-8-detail-design.md), [Phase 5 Detail Design](./phase-5-detail-design.md) |
@@ -14,7 +14,7 @@
 
 ## 2. Requirement analysis and decisions
 
-The current app is English-only, not merely missing a language selector:
+The pre-Phase-10 baseline was English-only, not merely missing a language selector:
 
 - Components contain English labels, instructions, accessible names, status messages, and interpolated sentences.
 - The generator imports one English JSON bank, validates lowercase ASCII words, and builds tier prefixes of 200/1000/5000 entries.
@@ -46,18 +46,31 @@ Therefore "complete Vietnamese support" means translated app-owned UI, Vietnames
 
 ### Current implementation boundary
 
-The first milestone implements `i18n/languages.ts`, typed message contracts with
-25 initial English/Vietnamese messages, strict translation validation, locale
-formatting, and resource-driven header labels. Shared `typing/text.ts` and
-`practice-input.ts` provide NFC/grapheme validation and pure committed-edit
-reconciliation/scoring. The new helpers have unit coverage and header reactivity
-has a dedicated browser fixture.
+The app now integrates the typed en/vi registry and complete UI catalogs,
+reactive context and locale formatting across all views. The far-right selector
+persists schema-v6 preferences; schemas 1-5 migrate to English. Timed/Words select
+language-specific 200/1000/5000 prefix banks; Quote selects one of 12 passages per
+language. Vietnamese passages are original practice prose, not translated
+literary excerpts.
 
-This is not a complete language pack: the app still selects English, has no
-language selector, and retains existing ASCII capture/scoring/history. Native
-composition lifecycle, full engine/renderer conversion, content packs,
-preferences/history migrations, remaining UI translations and review gates are
-not yet implemented. The rest of this document remains the target contract.
+Practice retains its native buffer, normalizes NFC, reconciles committed edits,
+and does not score provisional composition. Vietnamese finite Finish, Custom/Zen
+input, deadline/blur/reset cancellation, reliable physical-key attribution,
+v3 history metadata and separate accuracy summaries are integrated.
+
+Implementation choices: the supported NFC repertoire contains only single-BMP
+graphemes, so validated engine offsets, chunks and word boundaries can safely
+retain existing string indices; expanding to another script must revisit that
+invariant. Native input remains visibly focusable rather than using a hidden
+cleared field. The input buffer is authoritative; target/render windows are
+derived from accepted text. Domain diagnostic details remain verbatim inside
+localized error envelopes; the translator never guesses keys from errors or
+silently substitutes another language.
+
+Automated checks establish integration, not full release sign-off. Vocabulary
+filtering and original prose have automated checks/provenance but **no fluent
+editorial sign-off**. Actual Windows/macOS Telex/VNI and screen-reader checks
+remain pending. The acceptance criteria below remain the full release contract.
 
 ### 3.1 In scope
 
@@ -354,4 +367,4 @@ No navigation duplication, component fork, separate preferences key, remote tran
 - **Translation gaps:** English strings can originate in domain errors and data arrays, not just templates. Inventory every app-owned surface and have a fluent reviewer inspect success and failure flows.
 - **Content quality/rights:** 5,000 clean tokens and 12 reviewed passages are deliverables, not placeholders. Unverified sources or untranslated quote fallback block release.
 - **Historical comparability:** committed text and physical keystrokes are not equivalent accuracy measures. Keep scoring metadata and separate summaries.
-- **Documentation status:** only the foundation milestone above is implemented. Full implementation sign-off requires the linked plan's evidence; initial messages and pure text helpers must not be presented as complete Vietnamese support.
+- **Documentation status:** runtime integration is delivered with automated evidence in the linked plan. Full Vietnamese/native-input release sign-off is not claimed until fluent review and actual OS/accessibility checks are recorded.

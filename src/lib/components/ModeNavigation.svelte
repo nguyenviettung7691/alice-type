@@ -1,5 +1,7 @@
 <script lang="ts">
   import type { PracticeMode } from '../typing/exercise-generator';
+  import { useLocalization } from '../i18n/context';
+  const i18n = useLocalization();
 
   let { mode, disabled, onmodechange }: {
     mode: PracticeMode;
@@ -12,8 +14,8 @@
   ] as const;
 </script>
 
-<nav aria-label="Practice modes" class="practice-modes">
-  <p class="mode-label">Practice mode</p>
+<nav aria-label={i18n.text("mode-navigation.practice-modes")} class="practice-modes">
+  <p class="mode-label">{i18n.text("mode-navigation.practice-mode")}</p>
   <ul>
     {#each modes as option}
       <li>
@@ -23,7 +25,7 @@
           class:selected={option.id === mode}
           {disabled}
           onclick={() => onmodechange(option.id)}
-        >{option.label}</button>
+        >{{timed: i18n.text("mode-navigation.timed"), words: i18n.text("mode-navigation.words"), quote: i18n.text("mode-navigation.quote"), custom: i18n.text("mode-navigation.custom"), zen: 'Zen'}[option.id]}</button>
       </li>
     {/each}
   </ul>

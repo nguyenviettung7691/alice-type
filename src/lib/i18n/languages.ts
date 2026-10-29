@@ -1,6 +1,8 @@
+import type { MessageKey } from './message-contract';
+
 export const LANGUAGES = Object.freeze({
-  en: Object.freeze({ nativeName: 'English', documentLanguage: 'en', locale: 'en-US' }),
-  vi: Object.freeze({ nativeName: 'Tiếng Việt', documentLanguage: 'vi', locale: 'vi-VN' })
+  en: Object.freeze({ nativeName: 'English', documentLanguage: 'en', locale: 'en-US', labelKey: 'stats-panel.english' satisfies MessageKey, explicitFinish: false }),
+  vi: Object.freeze({ nativeName: 'Tiếng Việt', documentLanguage: 'vi', locale: 'vi-VN', labelKey: 'stats-panel.vietnamese' satisfies MessageKey, explicitFinish: true })
 });
 
 export type LanguageId = keyof typeof LANGUAGES;

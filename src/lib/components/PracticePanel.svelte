@@ -4,13 +4,12 @@
   import ModeNavigation from './ModeNavigation.svelte';
   import { ALICE_LAYOUT, ALICE_VIEW_BOX, type AliceKey, type InertKey, type KeyFeedback } from '../keyboard/alice-layout';
   import {
-    applyAction,
     createSession,
     expireSession,
     extendTarget,
     getMetrics,
     getProgress,
-    getTypingAction,
+    applyCommittedInput, getAcceptedText, requiresFinish, finishSession,
     createZenSession, isZenSession, stopSession, getWritingWindow,
     type PracticeSession
   } from '../typing/typing-engine';
@@ -24,6 +23,12 @@
   import { completedRecord, type SessionRecord } from '../storage/session-history';
   import { prepareCustomText } from '../typing/custom-text';
   import { selectQuote, type Quote } from '../typing/quote-catalog';
+  import { hasGraphemeSupport, PracticeTextError, segmentGraphemes } from '../typing/text';
+  import { PracticeEditError, reconcilePracticeInput } from '../typing/practice-input';
+  import { useLocalization } from '../i18n/context';
+  import { formatAccuracy, formatNumber } from '../i18n/format';
+  const i18n = useLocalization();
+  const { text } = i18n;
 
   let {
     settings = $bindable({ ...DEFAULT_SETTINGS }), running = $bindable(false),
@@ -80,7 +85,12 @@
   let inputElement = $state<HTMLInputElement>();
   let targetElement = $state<HTMLLabelElement>();
   let focused = $state(false);
-  let composing = false;
+  let composing = $state(false);
+  let inputNotice = $state<'cancelled' | 'rejected' | 'unsupported' | ''>('');
+  let preedit = $state('');
+  let compositionGeneration = 0;
+  let activeCompositionGeneration = -1;
+  let directCode: string | null = null;
   let feedback = $state<KeyFeedback>({});
   const feedbackTimers = new Map<string, number>();
   const metrics = $derived(session && (!isZenSession(session) || session.status === 'completed') ? getMetrics(session, now) : null);
@@ -88,17 +98,27 @@
   const timed = $derived(settings.mode === 'timed');
   const zen = $derived(settings.mode === 'zen');
   const finiteSession = $derived(session && !isZenSession(session) ? session : null);
+  const targetCharacters = $derived(finiteSession ? segmentGraphemes(finiteSession.target) : []);
+  const inputCharacters = $derived(finiteSession ? segmentGraphemes(finiteSession.input) : []);
   const writing = $derived(session && isZenSession(session) ? getWritingWindow(session) : '');
-  const modeLabel = $derived(({ timed: 'Timed', words: 'Word', quote: 'Quote', custom: 'Custom text', zen: 'Zen' })[settings.mode]);
+  const modeLabel = $derived(({
+    timed: text("mode-navigation.timed"), words: text("practice-panel.word"),
+    quote: text("mode-navigation.quote"), custom: text("practice-panel.custom-text"), zen: 'Zen'
+  })[settings.mode]);
   const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
+  const completionReason = $derived({
+    timed: text("practice-panel.time-is-up"), words: text("practice-panel.word-limit-reached"),
+    quote: text("practice-panel.quote-complete"), custom: text("practice-panel.custom-text-complete"),
+    zen: text("practice-panel.zen-stopped-2")
+  }[settings.mode]);
   const statusMessage = $derived(
     !session
-      ? 'Paste your text and choose Apply text to get started.'
+      ? text("practice-panel.paste-your-text-and-choose-apply-text")
       : session.status === 'ready'
-      ? 'Press Start typing, or just begin typing, when you are ready.'
+      ? text("practice-panel.press-start-typing-or-just-begin-typing")
       : session?.status === 'completed'
-        ? `Session complete. ${{ timed: 'Time is up.', words: 'Word limit reached.', quote: 'Quote complete.', custom: 'Custom text complete.', zen: 'Zen stopped.' }[settings.mode]} Choose Restart to practice again.`
-        : 'You are typing. Use Backspace to fix mistakes.'
+        ? text("practice-panel.session-complete-choose-restart-to-practice-again", { p0: String(completionReason) })
+        : text("practice-panel.you-are-typing-use-backspace-to-fix")
   );
 
   $effect(() => {
@@ -171,12 +191,13 @@
   onDestroy(clearFeedback);
 
   function generationFailed(error: unknown) {
-    if (!(error instanceof ExerciseGenerationError)) throw error;
+    if (!(error instanceof ExerciseGenerationError) && !(error instanceof PracticeTextError)) throw error;
     exerciseError = error.message;
     clearFeedback();
   }
 
   function prepareExercise(selected: PracticeSettings) {
+    cancelComposition(false);
     clearFeedback();
     sessionId = '';
     missedKeys = {};
@@ -192,14 +213,14 @@
           break;
         }
         case 'quote':
-          quote ??= selectQuote();
-          session = createSession(quote.text, { mode: 'quote', quoteId: quote.id });
+          quote ??= selectQuote(undefined, Math.random, selected.language ?? 'en');
+          session = createSession(quote.text, { mode: 'quote', quoteId: quote.id, language: selected.language ?? 'en' });
           break;
         case 'custom':
-          session = customTarget && !editing ? createSession(customTarget, { mode: 'custom' }) : null;
+          session = customTarget && !editing ? createSession(customTarget, { mode: 'custom', language: selected.language ?? 'en' }) : null;
           break;
         case 'zen':
-          session = createZenSession();
+          session = createZenSession(selected.language ?? 'en');
           break;
         default: throw new ExerciseGenerationError('Unsupported practice mode.');
       }
@@ -207,6 +228,7 @@
       session = null;
       generationFailed(error);
     }
+    synchronizeInput();
   }
 
   function changeSettings(next: PracticeSettings) {
@@ -217,6 +239,7 @@
   }
 
   function complete() {
+    cancelComposition(false);
     clearFeedback();
     if (!submitted && session?.status === 'completed' && oncomplete) {
       submitted = true;
@@ -224,12 +247,15 @@
     }
   }
 
-  function refillTarget(): boolean {
-    if (!session || isZenSession(session) || session.configuration?.mode !== 'timed' || session.target.length - session.input.length >= 80) {
+  function refillTarget(required = 0): boolean {
+    if (!session || isZenSession(session) || session.configuration?.mode !== 'timed') {
       return true;
     }
     try {
-      session = extendTarget(session, generateExercise(session.configuration));
+      const configuration = session.configuration;
+      while (session.target.length - session.input.length < Math.max(80, required)) {
+        session = extendTarget(session, generateExercise(configuration));
+      }
       return true;
     } catch (error) {
       generationFailed(error);
@@ -255,48 +281,101 @@
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    if (!active || !focused || composing || (settings.mode === 'custom' && editing)) return;
-
-    const action = getTypingAction(event);
-    if (!action) return;
-
-    event.preventDefault();
-    if (!session || exerciseError || session.status === 'completed') return;
-
-    now = performance.now();
-    if (!isZenSession(session)) session = expireSession(session, now);
-    if (session.status === 'completed') {
-      complete();
+    directCode = null;
+    if (event.key === 'Enter' && !event.isComposing && !composing && event.keyCode !== 229) {
+      if (finiteSession && requiresFinish(finiteSession) && finiteSession.input.length === finiteSession.target.length) {
+        event.preventDefault();
+        finish();
+      }
       return;
     }
-    if (action.type === 'character' && !refillTarget()) return;
-    const correct = !isZenSession(session) && action.type === 'character'
-      && action.character === session.target[session.input.length];
-    if (action.type === 'character') {
-      if (session.status === 'ready') {
-        sessionId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
-        startedWallTime = Date.now();
-      }
-      if (!zen && !correct && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(event.code) && event.code !== 'Unidentified') {
-        missedKeys[event.code] = (Object.hasOwn(missedKeys, event.code) ? missedKeys[event.code] : 0) + 1;
-      }
-    }
-    session = applyAction(session, action, now);
-    if (!zen && action.type === 'character') oncharacter?.();
-    if (session.status === 'completed') {
-      complete();
-    } else if (!zen && action.type === 'character' && layoutCodes.has(event.code)) {
-      highlightKey(event.code, correct);
-    }
+    if (!active || !focused || composing || (settings.mode === 'custom' && editing)) return;
+    if (event.repeat) { event.preventDefault(); return; }
+    if (!event.isComposing && !event.ctrlKey && !event.altKey && !event.metaKey
+      && /^[\x20-\x7e]$/.test(event.key)) directCode = event.code;
   }
 
+    function synchronizeInput() {
+      if (inputElement && !composing) inputElement.value = session ? getAcceptedText(session) : '';
+    }
+
+    function cancelComposition(announce = true) {
+      const pending = composing;
+      composing = false;
+      preedit = '';
+      compositionGeneration++;
+      activeCompositionGeneration = -1;
+      directCode = null;
+      if (pending && announce) inputNotice = 'cancelled';
+      synchronizeInput();
+    }
+
+    function commitNative(value: string) {
+      if (!active || !focused || !session || exerciseError || session.status === 'completed') {
+        synchronizeInput(); return;
+      }
+      try {
+        now = performance.now();
+        if (!isZenSession(session)) session = expireSession(session, now);
+        if (session.status === 'completed') { complete(); synchronizeInput(); return; }
+        const previous = getAcceptedText(session);
+        const next = value.normalize('NFC');
+        const result = reconcilePracticeInput(previous, next);
+        if (!result.edit) { synchronizeInput(); return; }
+        if (!refillTarget(Math.max(0, next.length - previous.length))) { synchronizeInput(); return; }
+        const oldStatus = session.status;
+        const before = session.totalAttempts;
+        const direct = directCode && result.edit.deleteCount === 0 && result.edit.inserted.length === 1
+          && result.edit.start === previous.length;
+        const correct = !isZenSession(session) && result.edit.inserted[0] === session.target[result.edit.start];
+        session = applyCommittedInput(session, next, now);
+        if (oldStatus === 'ready' && session.status !== 'ready') {
+          sessionId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
+          startedWallTime = Date.now();
+        }
+        if (!zen && direct && directCode) {
+          if (!correct && /^[A-Za-z][A-Za-z0-9]{0,63}$/.test(directCode) && directCode !== 'Unidentified') {
+            missedKeys[directCode] = (missedKeys[directCode] ?? 0) + 1;
+          }
+          if (layoutCodes.has(directCode)) highlightKey(directCode, correct);
+        }
+        if (!zen && session.totalAttempts > before) oncharacter?.();
+        inputNotice = '';
+        if (session.status === 'completed') complete();
+      } catch (error) {
+        if (error instanceof PracticeEditError || error instanceof PracticeTextError) inputNotice = 'rejected';
+        else throw error;
+      } finally { directCode = null; synchronizeInput(); }
+    }
+
+    function beforeInput(event: InputEvent) {
+      if (['insertFromPaste', 'insertFromDrop', 'insertLineBreak', 'insertParagraph', 'historyUndo', 'historyRedo'].includes(event.inputType)) {
+        event.preventDefault(); inputNotice = 'unsupported'; return;
+      }
+      if (composing || event.isComposing) return;
+    }
+
+    function nativeInput(event: Event) {
+      const element = event.currentTarget;
+      if (!(element instanceof HTMLInputElement)) return;
+      if (composing) { preedit = element.value; return; }
+      if (event instanceof InputEvent && event.isComposing) { synchronizeInput(); return; }
+      commitNative(element.value);
+    }
+
+    function finish() {
+      if (!finiteSession || composing) return;
+      session = finishSession(finiteSession, performance.now());
+      cancelComposition(false);
+      complete();
+    }
   function restart() {
     prepareExercise(settings);
   }
 
   function nextQuote() {
     try {
-      quote = selectQuote(quote?.id);
+      quote = selectQuote(quote?.id, Math.random, settings.language ?? 'en');
       prepareExercise(settings);
     } catch (error) { generationFailed(error); }
   }
@@ -315,6 +394,7 @@
 
   async function stop() {
     if (!session || !isZenSession(session)) return;
+    cancelComposition();
     session = stopSession(session, performance.now());
     complete();
     await tick();
@@ -323,165 +403,175 @@
 </script>
 
 <section class="practice-panel" data-caret={caretStyle} aria-labelledby="practice-panel-heading" data-status={exerciseError ? 'error' : session?.status ?? 'ready'}>
-  <h3 id="practice-panel-heading" class="sr-only" tabindex="-1">Typing practice</h3>
+  <h3 id="practice-panel-heading" class="sr-only" tabindex="-1">{text("practice-panel.typing-practice")}</h3>
+  {#if !hasGraphemeSupport()}<p role="alert">{text("practice-panel.update-your-browser-to-use-unicode-practice")}</p>{/if}
 
   <ModeNavigation mode={settings.mode} disabled={running}
     onmodechange={(mode) => changeSettings({ ...settings, mode })} />
 
   {#if settings.mode === 'timed' || settings.mode === 'words'}
   <fieldset class="exercise-settings" disabled={running}>
-    <legend>Practice options</legend>
+    <legend>{text("practice-panel.practice-options")}</legend>
     {#if timed}
-      <label>Duration
-        <select aria-label="Duration" value={settings.durationSeconds} onchange={(event) => {
+      <label>{text("practice-panel.duration")}
+        <select aria-label={text("practice-panel.duration")} value={settings.durationSeconds} onchange={(event) => {
           const durationSeconds = DURATIONS.find((duration) => String(duration) === event.currentTarget.value);
           if (durationSeconds === undefined) throw new Error('Unsupported duration selection.');
           changeSettings({ ...settings, durationSeconds });
         }}>
-          {#each DURATIONS as duration}<option value={duration}>{duration} seconds</option>{/each}
+          {#each DURATIONS as duration}<option value={duration}>{text("practice-panel.seconds", { p0: String(duration) })}</option>{/each}
         </select>
       </label>
     {:else}
-      <label>Word limit
-        <select aria-label="Word limit" value={settings.wordLimit} onchange={(event) => {
+      <label>{text("practice-panel.word-limit")}
+        <select aria-label={text("practice-panel.word-limit")} value={settings.wordLimit} onchange={(event) => {
           const wordLimit = WORD_LIMITS.find((limit) => String(limit) === event.currentTarget.value);
           if (wordLimit === undefined) throw new Error('Unsupported word-limit selection.');
           changeSettings({ ...settings, wordLimit });
         }}>
-          {#each WORD_LIMITS as limit}<option value={limit}>{limit} words</option>{/each}
+          {#each WORD_LIMITS as limit}<option value={limit}>{text("practice-panel.words", { p0: String(limit) })}</option>{/each}
         </select>
       </label>
     {/if}
-    <label>Vocabulary
-      <select aria-label="Vocabulary" value={settings.wordBankTier} onchange={(event) => {
+    <label>{text("practice-panel.vocabulary")}
+      <select aria-label={text("practice-panel.vocabulary")} value={settings.wordBankTier} onchange={(event) => {
         const wordBankTier = WORD_BANK_TIERS.find((tier) => String(tier) === event.currentTarget.value);
         if (wordBankTier === undefined) throw new Error('Unsupported vocabulary selection.');
         changeSettings({ ...settings, wordBankTier });
       }}>
-        {#each WORD_BANK_TIERS as tier}<option value={tier}>{tier} words</option>{/each}
+        {#each WORD_BANK_TIERS as tier}<option value={tier}>{text("practice-panel.words-2", { p0: String(tier) })}</option>{/each}
       </select>
     </label>
     <label class="modifier"><input type="checkbox" checked={settings.punctuation} onchange={(event) => {
       changeSettings({ ...settings, punctuation: event.currentTarget.checked });
-    }} />Punctuation</label>
+    }} />{text("practice-panel.punctuation")}</label>
     <label class="modifier"><input type="checkbox" checked={settings.numbers} onchange={(event) => {
       changeSettings({ ...settings, numbers: event.currentTarget.checked });
-    }} />Numbers</label>
+    }} />{text("practice-panel.numbers")}</label>
   </fieldset>
+  {#if settings.language === 'vi'}<p class="settings-note">{text('practice.vietnameseTokens')}</p>{/if}
   {/if}
   {#if settings.mode === 'quote' && quote}
     <p class="quote-attribution" data-quote-id={quote.id}>{quote.author} - {quote.workTitle}</p>
-    <button class="secondary-button" type="button" disabled={running} onclick={nextQuote}>Next quote</button>
+    <button class="secondary-button" type="button" disabled={running} onclick={nextQuote}>{text("practice-panel.next-quote")}</button>
   {:else if settings.mode === 'custom'}
-    <p id="custom-privacy">Paste any text you want to practice. It stays in this tab and is never saved.
-      It clears when you leave Practice or restore defaults, but survives switching modes.</p>
-    <p id="custom-format">Up to 10,000 printable ASCII characters. Line breaks become spaces, and curly quotes, dashes, and ellipses are converted to plain versions. Check the result before you start typing.</p>
+    <p id="custom-privacy">{text("practice-panel.paste-any-text-you-want-to-practice")}</p>
+    <p id="custom-format">{text("practice-panel.up-to-10-000-english-or-vietnamese")}</p>
     {#if editing}
-      <label class="custom-label" for="custom-draft">Custom text</label>
+      <label class="custom-label" for="custom-draft">{text("practice-panel.custom-text")}</label>
       <textarea id="custom-draft" bind:value={draft} aria-describedby="custom-privacy custom-format custom-error"
         aria-invalid={Boolean(customError || (draft && customPreparation.error))} spellcheck={false}></textarea>
-      <p id="custom-error" class="exercise-error" role={customError ? 'alert' : undefined}>{customError || (draft ? customPreparation.error : '')}</p>
+      <p id="custom-error" class="exercise-error" role={customError ? 'alert' : undefined}>{(customError || (draft ? customPreparation.error : '')) ? text("practice-panel.custom-error", { p0: String(customError || customPreparation.error) }) : ''}</p>
     {:else}
-      <p role="status">{normalized ? 'Whitespace/typography normalized; review the target before typing. ' : ''}{customTarget.length} target characters. Ready to practice.</p>
+      <p role="status">{text("practice-panel.target-characters-ready-to-practice", { p0: normalized ? text('practice.normalizedReview') : '', p1: formatNumber(i18n.language, customTarget.length) })}</p>
     {/if}
     <div class="custom-actions">
-      <button class="secondary-button" type="button" disabled={running || !customPreparation.value} onclick={applyCustom}>Apply text</button>
+      <button class="secondary-button" type="button" disabled={running || !customPreparation.value} onclick={applyCustom}>{text("practice-panel.apply-text")}</button>
       {#if editing && customTarget}
-        <button class="secondary-button" type="button" onclick={() => { editing = false; customError = ''; prepareExercise(settings); }}>Cancel editing</button>
+        <button class="secondary-button" type="button" onclick={() => { editing = false; customError = ''; prepareExercise(settings); }}>{text("practice-panel.cancel-editing")}</button>
       {:else if !editing}
-        <button class="secondary-button" type="button" disabled={running} onclick={() => { editing = true; clearFeedback(); }}>Edit text</button>
+        <button class="secondary-button" type="button" disabled={running} onclick={() => { editing = true; clearFeedback(); }}>{text("practice-panel.edit-text")}</button>
       {/if}
       <button class="secondary-button danger-button" type="button" disabled={running} onclick={() => {
         draft = ''; customTarget = ''; editing = true; customError = ''; session = null;
-      }}>Clear text</button>
+      }}>{text("practice-panel.clear-text")}</button>
     </div>
   {/if}
   {#if !zen}
-  <p class="settings-note">{running ? 'Options are locked while you type. Restart to change them.' : 'Pick a mode and options, then start typing.'}</p>
+  <p class="settings-note">{running ? text("practice-panel.options-are-locked-while-you-type-restart") : text("practice-panel.pick-a-mode-and-options-then-start")}</p>
   {:else}
-    <p id="zen-instructions">Free writing: type whatever you like. Only your latest 2,000 characters are shown, but Backspace can still edit earlier text.
-      Use printable ASCII keys; paste and IME input are not supported. Tab leaves the writing area, and the clock keeps running while you are away.
-      Stop saves your result; Restart discards an unfinished run. Sound and live stats are always off in Zen.</p>
+    <p id="zen-instructions">{text("practice-panel.free-writing-english-and-vietnamese-are-supported")}</p>
   {/if}
 
   {#if exerciseError}
-    <p role="alert" class="exercise-error">We couldn't prepare this exercise: {exerciseError} Choose Restart to try again.</p>
+    <p role="alert" class="exercise-error">{text("practice-panel.we-couldn-t-prepare-this-exercise-choose", { p0: String(exerciseError) })}</p>
   {/if}
   {#if session && !(settings.mode === 'custom' && editing)}
   {#if metrics}
   <div class="practice-toolbar">
-    <p class="practice-label">{modeLabel} practice</p>
+    <p class="practice-label">{text("practice-panel.practice", { p0: String(modeLabel) })}</p>
 
     {#if showLiveStats || session.status === 'completed'}
-    <div class="metrics" role="group" aria-label="Practice metrics">
+    <div class="metrics" role="group" aria-label={text("practice-panel.practice-metrics")}>
       <div class="metric">
-        <span class="metric-label">{zen ? 'Free-writing WPM' : 'WPM'}</span>
+        <span class="metric-label">{zen ? text("practice-panel.free-writing-wpm") : 'WPM'}</span>
         <span
           class="metric-value"
-          aria-label={metrics.wpm === null ? 'Not available' : `${metrics.wpm} words per minute`}
-        >{metrics.wpm ?? '—'}</span>
+          aria-label={metrics.wpm === null ? text("practice-panel.not-available") : text("practice-panel.words-per-minute", { p0: String(metrics.wpm) })}
+        >{metrics.wpm === null ? '—' : formatNumber(i18n.language, metrics.wpm)}</span>
       </div>
       <div class="metric">
-        <span class="metric-label">Accuracy</span>
+        <span class="metric-label">{text("practice-panel.accuracy")}</span>
         <span
           class="metric-value"
-          aria-label={zen ? 'Not applicable - free writing' : metrics.accuracy === null ? 'Not available' : `${metrics.accuracy.toFixed(1)} percent`}
-        >{zen ? 'Not applicable - free writing' : metrics.accuracy === null ? '—' : `${metrics.accuracy.toFixed(1)}%`}</span>
+          aria-label={zen ? text("practice-panel.not-applicable-free-writing") : metrics.accuracy === null ? text("practice-panel.not-available") : formatAccuracy(i18n.language, metrics.accuracy)}
+        >{zen ? text("practice-panel.not-applicable-free-writing") : metrics.accuracy === null ? '—' : formatAccuracy(i18n.language, metrics.accuracy)}</span>
       </div>
     </div>
     {/if}
   </div>
   {/if}
   {#if zen && session.status === 'completed' && isZenSession(session) && metrics}
-    <h4 bind:this={resultHeading} tabindex="-1">Zen stopped</h4>
-    <p>Free-writing WPM is not target-verified. Elapsed: {(metrics.elapsedMs / 1000).toFixed(1)} seconds.
-      Retained characters: {session.retainedCharacters}. Total attempts: {session.totalAttempts}.</p>
+    <h4 bind:this={resultHeading} tabindex="-1">{text("practice-panel.zen-stopped")}</h4>
+    <p>{text("practice-panel.free-writing-wpm-is-not-target-verified", { p0: formatNumber(i18n.language, metrics.elapsedMs / 1000, 1), p1: String(session.retainedCharacters), p2: String(session.totalAttempts) })}</p>
   {/if}
 
   {#if !zen}
   <p id="typing-instructions" class="sr-only">
-    Type the text shown, one key at a time. Backspace fixes the last character.
-    Tab leaves the typing area. The clock keeps running if focus moves away.
-    Paste and IME input are not supported.
+    {text("practice-panel.type-the-text-shown-backspace-fixes-the")}
   </p>
   {/if}
   <input
     bind:this={inputElement}
     id="practice-input"
-    class="typing-input sr-only"
+    class="typing-input"
     type="text"
-    disabled={!active || Boolean(exerciseError)}
-    aria-label={zen ? 'Zen writing' : 'Typing practice'}
+    disabled={!active || Boolean(exerciseError) || !hasGraphemeSupport()}
+    aria-label={zen ? text("practice-panel.zen-writing") : text("practice-panel.typing-practice")}
     aria-describedby={zen ? 'zen-instructions' : 'typing-instructions practice-target'}
     autocomplete="off"
     autocapitalize="off"
     spellcheck={false}
     onkeydown={handleKeydown}
-    onbeforeinput={(event) => event.preventDefault()}
-    oninput={(event) => { event.currentTarget.value = ''; }}
-    oncompositionstart={() => { composing = true; }}
-    oncompositionend={(event) => { composing = false; event.currentTarget.value = ''; }}
+    onbeforeinput={beforeInput}
+    oninput={nativeInput}
+    onpaste={(event) => { event.preventDefault(); inputNotice = 'unsupported'; }}
+    ondrop={(event) => { event.preventDefault(); inputNotice = 'unsupported'; }}
+    oncompositionstart={(event) => {
+      activeCompositionGeneration = compositionGeneration;
+      event.currentTarget.value = session ? getAcceptedText(session) : '';
+      composing = true; directCode = null;
+    }}
+    oncompositionend={(event) => {
+      if (activeCompositionGeneration !== compositionGeneration) { synchronizeInput(); return; }
+      composing = false; preedit = ''; directCode = null;
+      commitNative(event.currentTarget.value);
+    }}
     onfocus={() => { focused = true; }}
-    onblur={(event) => { focused = false; composing = false; event.currentTarget.value = ''; clearFeedback(); }}
+    onblur={() => { focused = false; cancelComposition(); clearFeedback(); }}
   />
-  <label bind:this={targetElement} class="sample-text practice-text" for="practice-input" id="practice-target">
+  {#if inputNotice}<p role="status">{inputNotice === 'cancelled'
+    ? text("practice-panel.uncommitted-input-was-cancelled")
+    : text("practice-panel.this-edit-is-not-supported-or-exceeds")}</p>{/if}
+  {#if composing}<p class="preedit" aria-live="off">{preedit}</p>{/if}
+  <label bind:this={targetElement} class="sample-text practice-text" for="practice-input" id="practice-target" lang={session.configuration?.language ?? 'en'}>
     {#if zen}
       <span class="zen-writing">{writing}</span>{#if session.status !== 'completed'}<span class="zen-caret" aria-hidden="true">&nbsp;</span>{/if}
     {:else if finiteSession}
     <span class="sr-only">{finiteSession.target}</span>
-    <span aria-hidden="true">{#each Array.from(finiteSession.target) as character, index}<span
+    <span aria-hidden="true">{#each targetCharacters as character, index}<span
         class="typing-character"
-        class:correct={index < finiteSession.input.length && finiteSession.input[index] === character}
-        class:incorrect={index < finiteSession.input.length && finiteSession.input[index] !== character}
-        class:active={!exerciseError && session.status !== 'completed' && index === finiteSession.input.length}
+        class:correct={index < inputCharacters.length && inputCharacters[index] === character}
+        class:incorrect={index < inputCharacters.length && inputCharacters[index] !== character}
+        class:active={!exerciseError && session.status !== 'completed' && index === inputCharacters.length}
       >{character}</span>{/each}</span>
     {/if}
   </label>
 
   {#if progress}
   <div class="exercise-progress">
-    <label for="session-progress">{timed ? 'Elapsed time' : settings.mode === 'words' ? 'Completed words' : 'Consumed target characters'}</label>
-    <span id="progress-description">{timed ? Math.floor(progress.value) : progress.value} / {progress.maximum} {timed ? 'seconds' : settings.mode === 'words' ? 'words' : 'characters'}</span>
+    <label for="session-progress">{timed ? text("practice-panel.elapsed-time") : settings.mode === 'words' ? text("practice-panel.completed-words") : text("practice-panel.consumed-target-characters")}</label>
+    <span id="progress-description">{formatNumber(i18n.language, timed ? Math.floor(progress.value) : progress.value)} / {formatNumber(i18n.language, progress.maximum)} {timed ? text("practice-panel.seconds-2") : settings.mode === 'words' ? text("practice-panel.words-3") : text("practice-panel.characters")}</span>
     <progress id="session-progress" max={progress.maximum} value={progress.value} aria-describedby="progress-description"></progress>
   </div>
   {/if}
@@ -493,51 +583,57 @@
   {/if}
 
   <div class="practice-bottom">
-    {#if !zen}<p class="session-note" role="status">{exerciseError ? 'Practice stopped. Choose Restart for a new exercise.' : statusMessage}</p>{/if}
+    {#if !zen}<p class="session-note" role="status">{exerciseError ? text("practice-panel.practice-stopped-choose-restart-for-a-new") : statusMessage}</p>{/if}
     <div class="practice-actions">
       {#if session && !exerciseError && session.status !== 'completed' && !(settings.mode === 'custom' && editing)}
         <button
           class="start-button"
           type="button"
           onclick={() => inputElement?.focus()}
-        >{zen ? 'Focus writing' : session.status === 'ready' ? 'Start typing' : focused ? 'Typing…' : 'Resume typing'}</button>
+        >{zen ? text("practice-panel.focus-writing") : session.status === 'ready' ? text("practice-panel.start-typing") : focused ? text("practice-panel.typing") : text("practice-panel.resume-typing")}</button>
       {/if}
-      {#if zen}<button class="secondary-button" type="button" disabled={session?.status !== 'running'} onclick={stop}>Stop</button>{/if}
-      <button class="restart-button danger-button" type="button" onclick={restart}>Restart</button>
+      {#if finiteSession && requiresFinish(finiteSession) && finiteSession.status !== 'completed'}
+        <button class="secondary-button" type="button" disabled={composing || finiteSession.status !== 'running' || inputCharacters.length !== targetCharacters.length} onclick={finish}>{text("practice-panel.finish")}</button>
+      {/if}
+      {#if zen}<button class="secondary-button" type="button" disabled={session?.status !== 'running'} onclick={stop}>{text("practice-panel.stop")}</button>{/if}
+      <button class="restart-button danger-button" type="button" onclick={restart}>{text("practice-panel.restart")}</button>
     </div>
   </div>
 
   <fieldset class="preferences" disabled={running}>
-    <legend>Display and sound</legend>
-    <label>Caret style
+    <legend>{text("practice-panel.display-and-sound")}</legend>
+    <label>{text("practice-panel.caret-style")}
       <select value={caretStyle} onchange={(event) => {
         const next = CARET_STYLES.find((style) => style === event.currentTarget.value);
         if (!next) throw new Error('Unsupported caret selection.');
         oncaretchange?.(next);
       }}>
-        {#each CARET_STYLES as style}<option value={style}>{style[0].toUpperCase() + style.slice(1)}</option>{/each}
+        {#each CARET_STYLES as style}<option value={style}>{{block: text("practice-panel.block"), line: text("practice-panel.line"), underline: text("practice-panel.underline")}[style]}</option>{/each}
       </select>
     </label>
     <label class="modifier"><input type="checkbox" checked={showLiveStats}
-      onchange={(event) => onlivestatschange?.(event.currentTarget.checked)} />Show live WPM and accuracy</label>
+      onchange={(event) => onlivestatschange?.(event.currentTarget.checked)} />{text("practice-panel.show-live-wpm-and-accuracy")}</label>
     <label class="modifier"><input type="checkbox" checked={soundEnabled}
-      onchange={(event) => onsoundchange?.(event.currentTarget.checked)} />Typing sound</label>
-    <p class="settings-note">Results and history are saved even when live stats are hidden. Typing sound is a soft click for each accepted key and is off by default. Preferences stay in this browser.</p>
-    <button type="button" class="secondary-button danger-button" onclick={() => { confirmingReset = true; }}>Restore defaults</button>
+      onchange={(event) => onsoundchange?.(event.currentTarget.checked)} />{text("practice-panel.typing-sound")}</label>
+    <p class="settings-note">{text("practice-panel.results-and-history-are-saved-even-when")}</p>
+    <button type="button" class="secondary-button danger-button" onclick={() => { confirmingReset = true; }}>{text("practice-panel.restore-defaults")}</button>
   </fieldset>
 </section>
 
 {#if confirmingReset}
   <ConfirmationDialog
-    title="Restore default preferences?"
-    message="This resets your practice options, caret, live stats, and sound to their defaults. Your session history is kept."
-    confirmText="Restore defaults"
+    title={text("practice-panel.restore-default-preferences")}
+    message={text("practice-panel.this-resets-your-language-to-english-practice")}
+    confirmText={text("practice-panel.restore-defaults")}
     oncancel={() => { confirmingReset = false; }}
     onconfirm={() => { confirmingReset = false; onreset?.(); }}
   />
 {/if}
 
 <style>
+  .typing-input:not(.sr-only) { width: 100%; padding: 0.6rem; color: var(--color-text); background: var(--color-background); border: 1px solid var(--color-muted); border-radius: 0.4rem; font: inherit; }
+  .typing-input:not(.sr-only):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+  .preedit { color: var(--color-accent); overflow-wrap: anywhere; }
   textarea {
     display: block;
     width: 100%;

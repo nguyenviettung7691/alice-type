@@ -4,6 +4,12 @@
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import { type AliceKey, type InertKey } from '../keyboard/alice-layout';
+  import { useLocalization } from '../i18n/context';
+  import { compareLabels, formatAccuracy, formatDate, formatNumber } from '../i18n/format';
+  import { getLanguage } from '../i18n/languages';
+  const i18n = useLocalization();
+  const { text } = i18n;
+  const number = (value: number | null) => value === null ? text("practice-panel.not-available") : formatNumber(i18n.language, value);
 
   let { history, revision, pending, layout, layoutLabel, inertKeys = [], viewBox, layoutConfirmed, browserLegends }: {
     history: SessionHistory;
@@ -47,7 +53,7 @@
       if (x === y) return 0;
       if (x === null) return 1;
       if (y === null) return -1;
-      return (typeof x === 'string' && typeof y === 'string' ? x.localeCompare(y) : Number(x) - Number(y)) * direction;
+      return (typeof x === 'string' && typeof y === 'string' ? compareLabels(i18n.language, x, y) : Number(x) - Number(y)) * direction;
     });
   });
 
@@ -67,11 +73,11 @@
 
   function modeLabel(record: SessionRecord): string {
     switch (record.mode) {
-      case 'timed': return `Timed / ${record.limit} seconds`;
-      case 'words': return `Words / ${record.limit} words`;
-      case 'quote': return `Quote / ${record.targetCharacters} characters`;
-      case 'custom': return `Custom / ${record.targetCharacters} characters`;
-      case 'zen': return `Zen / Manual stop / ${(record.elapsedMs / 1000).toFixed(1)} seconds`;
+      case 'timed': return text("stats-panel.timed-seconds", { p0: number(record.limit) });
+      case 'words': return text("stats-panel.words-words", { p0: number(record.limit) });
+      case 'quote': return text("stats-panel.quote-characters", { p0: number(record.targetCharacters) });
+      case 'custom': return text("stats-panel.custom-characters", { p0: number(record.targetCharacters) });
+      case 'zen': return text("stats-panel.zen-manual-stop-seconds", { p0: formatNumber(i18n.language, record.elapsedMs / 1000, 1) });
     }
   }
 
@@ -109,69 +115,75 @@
 </script>
 
 <section class="practice-panel stats-panel" aria-labelledby="stats-heading">
-  <p class="eyebrow">A little progress, every day</p>
-  <h2 id="stats-heading" tabindex="-1">Stats</h2>
-  <p class="panel-copy">Completed practice sessions, stored only in this browser. Clearing browser data also removes this history.</p>
+  <p class="eyebrow">{text("stats-panel.a-little-progress-every-day")}</p>
+  <h2 id="stats-heading" tabindex="-1">{text("stats-panel.stats")}</h2>
+  <p class="panel-copy">{text("stats-panel.completed-practice-sessions-stored-only-in-this")}</p>
   {#if error}
     <div class="notice" role="alert">
-      <p>{error}</p>
-      <button class="secondary-button" type="button" onclick={() => { refresh += 1; }}>Retry loading history</button>
+      <p>{text("stats-panel.history-error", { p0: String(error) })}</p>
+      <button class="secondary-button" type="button" onclick={() => { refresh += 1; }}>{text("stats-panel.retry-loading-history")}</button>
     </div>
   {/if}
-  {#if message}<p role="status">{message}</p>{/if}
+  {#if message}<p role="status">{text("stats-panel.local-session-history-deleted")}</p>{/if}
   {#if loading}
-    <p>Loading local history...</p>
+    <p>{text("stats-panel.loading-local-history")}</p>
   {:else if !error}
     {#if !records.length}
-      <p class="empty-state">No saved sessions yet. Complete a Timed, Words, Quote, or Custom exercise, or stop a Zen session to see your progress.</p>
+      <p class="empty-state">{text("stats-panel.no-saved-sessions-yet-complete-a-timed")}</p>
     {:else}
       <section class="stats-section" aria-labelledby="stats-summary-heading">
         <div class="stats-section-heading">
-          <h3 id="stats-summary-heading">Stats summary</h3>
-          <span class="stats-badge">All time</span>
+          <h3 id="stats-summary-heading">{text("stats-panel.stats-summary")}</h3>
+          <span class="stats-badge">{text("stats-panel.all-time-all-languages")}</span>
         </div>
         <dl class="stats-summary">
-          <div><dt>Completed sessions</dt><dd>{summary.count}</dd></div>
-          <div><dt>Target-copying sessions</dt><dd>{summary.targetCount}</dd></div>
-          <div><dt>Best target-verified WPM</dt><dd>{summary.bestWpm ?? 'Not available'}</dd></div>
-          <div><dt>Average target-verified WPM</dt><dd>{summary.averageWpm ?? 'Not available'}</dd></div>
-          <div><dt>Average target-copying accuracy</dt><dd>{#if summary.averageAccuracy === null}Not available{:else}<span class="percent-value" style:color={percentColor(Number(summary.averageAccuracy))}>{summary.averageAccuracy}%</span>{/if}</dd></div>
+          <div><dt>{text("stats-panel.completed-sessions")}</dt><dd>{number(summary.count)}</dd></div>
+          <div><dt>{text("stats-panel.target-copying-sessions")}</dt><dd>{number(summary.targetCount)}</dd></div>
+          <div><dt>{text("stats-panel.best-target-verified-wpm")}</dt><dd>{number(summary.bestWpm)}</dd></div>
+          <div><dt>{text("stats-panel.average-target-verified-wpm")}</dt><dd>{number(summary.averageWpm)}</dd></div>
+          {#if summary.legacyAccuracy !== null}
+            <div><dt>{text("stats-panel.historical-keystroke-accuracy")}</dt><dd><span class="percent-value" style:color={percentColor(summary.legacyAccuracy)}>{formatAccuracy(i18n.language, summary.legacyAccuracy)}</span></dd></div>
+          {/if}
+          <div><dt>{text("stats-panel.committed-text-accuracy")}</dt><dd>{#if summary.committedAccuracy === null}{text("practice-panel.not-available")}{:else}<span class="percent-value" style:color={percentColor(summary.committedAccuracy)}>{formatAccuracy(i18n.language, summary.committedAccuracy)}</span>{/if}</dd></div>
           {#if summary.zenCount}
-            <div><dt>Zen sessions</dt><dd>{summary.zenCount}</dd></div>
-            <div><dt>Best free-writing WPM</dt><dd>{summary.zenBestWpm}</dd></div>
-            <div><dt>Average free-writing WPM</dt><dd>{summary.zenAverageWpm}</dd></div>
+            <div><dt>{text("stats-panel.zen-sessions")}</dt><dd>{number(summary.zenCount)}</dd></div>
+            <div><dt>{text("stats-panel.best-free-writing-wpm")}</dt><dd>{number(summary.zenBestWpm)}</dd></div>
+            <div><dt>{text("stats-panel.average-free-writing-wpm")}</dt><dd>{number(summary.zenAverageWpm)}</dd></div>
           {/if}
         </dl>
-        <p class="panel-copy">Target-verified WPM and accuracy summarize only Timed, Words, Quote, and Custom sessions. Averages are arithmetic per-session means. Zen free-writing WPM measures retained writing, is not target-verified, and is summarized separately.</p>
+        <p class="panel-copy">{text("stats-panel.target-verified-wpm-and-accuracy-summarize-timed")}</p>
       </section>
       <section class="stats-section" aria-labelledby="recent-sessions-heading">
         <div class="stats-section-heading">
           <div>
-            <h3 id="recent-sessions-heading">Recent sessions</h3>
-            <p class="panel-copy">Newest first by default; select a column heading to sort. Up to {MAX_SESSION_HISTORY} sessions are kept; the oldest are removed beyond that.</p>
+            <h3 id="recent-sessions-heading">{text("stats-panel.recent-sessions")}</h3>
+            <p class="panel-copy">{text("stats-panel.newest-first-by-default-select-a-column", { p0: number(MAX_SESSION_HISTORY) })}</p>
           </div>
-          <span class="stats-badge">{summary.count} saved</span>
+          <span class="stats-badge">{text("stats-panel.saved", { p0: number(summary.count) })}</span>
         </div>
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
-        <div class="history-scroll" role="region" aria-label="Session history table" tabindex="0">
+        <div class="history-scroll" role="region" aria-label={text("stats-panel.session-history-table")} tabindex="0">
           <table>
-            <caption class="sr-only">Completed sessions, sortable by column</caption>
+            <caption class="sr-only">{text("stats-panel.completed-sessions-sortable-by-column")}</caption>
             <thead><tr>
               {#each [['completedAt', 'Completed'], ['mode', 'Mode / limit'], ['wpm', 'WPM'], ['accuracy', 'Accuracy']] as const as [key, label]}
                 <th scope="col" aria-sort={ariaSort(key)}>
                   <button class="sort-button" type="button" onclick={() => sortBy(key)}>
-                    {label}<span aria-hidden="true">{sortKey === key ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : ''}</span>
+                    {{completedAt: text("stats-panel.completed"), mode: text("stats-panel.mode-limit"), wpm: 'WPM', accuracy: text("practice-panel.accuracy")}[key]}<span aria-hidden="true">{sortKey === key ? (sortDirection === 'asc' ? ' ▲' : ' ▼') : ''}</span>
                   </button>
                 </th>
               {/each}
+              <th scope="col">{text("stats-panel.language")}</th>
             </tr></thead>
             <tbody>
               {#each sortedRecords as record (record.id)}
                 <tr>
-                  <td><time datetime={new Date(record.completedAt).toISOString()} title={new Date(record.completedAt).toString()}>{new Date(record.completedAt).toLocaleString()}</time></td>
+                  <td><time datetime={new Date(record.completedAt).toISOString()}>{formatDate(i18n.language, record.completedAt)}</time></td>
                   <td>{modeLabel(record)}</td>
-                  <td>{record.mode === 'zen' ? `Free-writing WPM: ${record.wpm}` : record.wpm}</td>
-                  <td>{#if record.accuracy === null}Not applicable{:else}<span class="percent-value" style:color={percentColor(record.accuracy)}>{record.accuracy.toFixed(1)}%</span>{/if}</td>
+                  <td>{record.mode === 'zen' ? text("stats-panel.free-writing-wpm", { p0: number(record.wpm) }) : number(record.wpm)}</td>
+                  <td>{#if record.accuracy === null}{text("stats-panel.not-applicable")}{:else}<span class="percent-value" style:color={percentColor(record.accuracy)}>{formatAccuracy(i18n.language, record.accuracy)}</span>
+                    <span class="sr-only">{record.scoringVersion ? text("stats-panel.committed-text-accuracy") : text("stats-panel.historical-keystroke-accuracy")}</span>{/if}</td>
+                  <td>{text(getLanguage(record.language ?? 'en').labelKey)}</td>
                 </tr>
               {/each}
             </tbody>
@@ -180,38 +192,38 @@
       </section>
       <section class="stats-section" aria-labelledby="missed-keys-heading">
         <div class="stats-section-heading">
-          <h3 id="missed-keys-heading">Most-missed physical keys</h3>
+          <h3 id="missed-keys-heading">{text("stats-panel.most-missed-physical-keys")}</h3>
           <span class="stats-badge">{layoutLabel}</span>
         </div>
-        <p class="panel-copy">Target-copying incorrect attempts, including mistakes later corrected. Zen is excluded. Codes identify physical positions, not detected key legends. Missing codes are excluded.</p>
+        <p class="panel-copy">{text("stats-panel.target-copying-incorrect-attempts-including-corrected-mistakes")}</p>
         <AliceKeyboardVisualizer {layout} {inertKeys} {viewBox} {browserLegends}
           testLayoutLabel={layoutLabel} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'}
-          title="Missed-key heatmap" {missedCounts} />
-        {#if !summary.missedKeys.length}<p class="empty-state">No physical-key errors recorded. All mapped keys show zero misses.</p>{/if}
+          title={text("stats-panel.missed-key-heatmap")} {missedCounts} />
+        {#if !summary.missedKeys.length}<p class="empty-state">{text("stats-panel.no-physical-key-errors-recorded-all-mapped")}</p>{/if}
         {#if unmappedMisses.length}
           <div class="unmapped-misses">
-            <h4>Keys outside the selected layout</h4>
-            <p class="panel-copy">These historical physical codes have no keycap in this layout. They still contribute to the heat ceiling.</p>
+            <h4>{text("stats-panel.keys-outside-the-selected-layout")}</h4>
+            <p class="panel-copy">{text("stats-panel.these-historical-physical-codes-have-no-keycap")}</p>
             <ul>
-              {#each unmappedMisses as [code, count]}<li><code>{code}</code>: {count} {count === 1 ? 'miss' : 'misses'}</li>{/each}
+              {#each unmappedMisses as [code, count]}<li><code>{code}</code>: {count === 1 ? text("stats-panel.1-miss") : text("stats-panel.misses", { p0: String(number(count)) })}</li>{/each}
             </ul>
           </div>
         {/if}
       </section>
     {/if}
   {/if}
-  {#if pending}<p class="panel-copy">Resolve pending session saves before clearing history.</p>{/if}
+  {#if pending}<p class="panel-copy">{text("stats-panel.resolve-pending-session-saves-before-clearing-history")}</p>{/if}
   <div class="panel-actions">
-    <button class="secondary-button" type="button" disabled={loading || clearing} onclick={() => { message = ''; refresh += 1; }}>Refresh history</button>
-    <button class="secondary-button danger-button" type="button" disabled={pending || loading || clearing} onclick={() => { confirming = true; }}>Clear history</button>
+    <button class="secondary-button" type="button" disabled={loading || clearing} onclick={() => { message = ''; refresh += 1; }}>{text("stats-panel.refresh-history")}</button>
+    <button class="secondary-button danger-button" type="button" disabled={pending || loading || clearing} onclick={() => { confirming = true; }}>{text("stats-panel.clear-history")}</button>
   </div>
 </section>
 
 {#if confirming}
   <ConfirmationDialog
-    title="Delete local session history?"
-    message="All saved scores and missed-key statistics in this browser will be permanently deleted. Your preferences will remain."
-    confirmText="Delete history"
+    title={text("stats-panel.delete-local-session-history")}
+    message={text("stats-panel.all-saved-scores-and-missed-key-statistics")}
+    confirmText={text("stats-panel.delete-history")}
     oncancel={() => { confirming = false; }}
     onconfirm={clear}
   />

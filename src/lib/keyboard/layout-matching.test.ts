@@ -13,8 +13,8 @@ describe('layout candidate ranking', () => {
   it('suggests an exact ID match with reasons and discloses shared IDs', () => {
     const [candidate] = rankLayoutCandidates(device(0x0159, 0xa71c), LAYOUT_CATALOG.profiles);
     expect(candidate.entry.id).toBe('projectkb-alice');
-    expect(candidate.reasons[0]).toContain('0x0159:0xA71C');
-    expect(candidate.reasons[1]).toMatch(/shared by \d+ keyboards/);
+    expect(candidate.reasons[0]).toEqual({ code: 'usb-id', id: '0x0159:0xA71C' });
+    expect(candidate.reasons[1]).toMatchObject({ code: 'shared-id', count: expect.any(Number) });
   });
 
   it('uses product names to rank ID matches and suggest boards with different IDs', () => {
@@ -26,8 +26,8 @@ describe('layout candidate ranking', () => {
     ];
     const ranked = rankLayoutCandidates(device(base.vendorId, base.productId, 'Gamma Beta Board'), entries);
     expect(ranked.map((candidate) => candidate.entry.id)).toEqual(['b', 'a', 'c']);
-    expect(ranked[0].reasons.at(-1)).toContain('Device name');
-    expect(ranked[2].reasons.at(-1)).toContain('Name match only');
+    expect(ranked[0].reasons.at(-1)).toMatchObject({ code: 'device-name' });
+    expect(ranked[2].reasons.at(-1)).toEqual({ code: 'name-only' });
     expect(rankLayoutCandidates(device(base.vendorId, base.productId), entries).map((c) => c.entry.id)).toEqual(['a', 'b']);
   });
 
@@ -35,7 +35,7 @@ describe('layout candidate ranking', () => {
     const ranked = rankLayoutCandidates(null, LAYOUT_CATALOG.profiles, ['keychron Q8 ISO']);
     expect(ranked[0].entry.id).toBe('keychron-q8-iso');
     expect(ranked[0].reasons).toEqual([
-      'Your board name "keychron Q8 ISO" matches.', 'Name match only; check the preview.'
+      { code: 'board-name', name: 'keychron Q8 ISO' }, { code: 'name-only' }
     ]);
     expect(ranked.every((candidate) => candidate.entry.id.startsWith('keychron-q8-'))).toBe(true);
     expect(rankLayoutCandidates(null, LAYOUT_CATALOG.profiles, ['ProjectKB Alice'])[0].entry.id).toBe('projectkb-alice');

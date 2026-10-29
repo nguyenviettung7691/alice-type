@@ -31,7 +31,7 @@ test.describe('Keyboard Details', () => {
     await expect(row(page, 'RGB / backlighting')).toContainText('Unknown');
     const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key) ?? ''), PREFERENCES_KEY);
     expect(saved).toEqual({
-      version: 5,
+      version: 6,
       settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardProfileId: 'generic-alice' }
     });
   });

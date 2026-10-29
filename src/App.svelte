@@ -22,6 +22,8 @@
   import { StorageError } from './lib/storage/errors';
   import { SessionHistory, type SessionRecord } from './lib/storage/session-history';
   import { TypingSound, TypingSoundError } from './lib/audio/typing-sound';
+  import { provideLocalization } from './lib/i18n/context';
+  import { getLanguage } from './lib/i18n/languages';
 
   function initialPreferences() {
     try {
@@ -38,12 +40,21 @@
   function practicePreferences(value: PracticeSettings): PracticeSettings {
     return {
       mode: value.mode, durationSeconds: value.durationSeconds, wordLimit: value.wordLimit,
-      wordBankTier: value.wordBankTier, punctuation: value.punctuation, numbers: value.numbers
+      wordBankTier: value.wordBankTier, punctuation: value.punctuation, numbers: value.numbers,
+      language: value.language ?? 'en'
     };
   }
 
   const initial = initialPreferences();
   let preferences = $state<Preferences>(initial.settings);
+  const i18n = provideLocalization(() => preferences.language);
+  const { text } = i18n;
+  $effect(() => {
+    document.documentElement.lang = getLanguage(preferences.language).documentLanguage;
+    document.title = text("app.alicetype-find-your-rhythm-on-an-alice");
+    document.querySelector('meta[name="description"]')?.setAttribute('content',
+      text("app.browser-only-typing-practice-for-alice-keyboards"));
+  });
   let settings = $state(practicePreferences(initial.settings));
   let running = $state(false);
   let contentReset = $state(0);
@@ -237,7 +248,11 @@
 </script>
 
 <div class="app-shell">
-  <AppHeader disabled={running} {view} onviewchange={navigate} />
+  <AppHeader disabled={running} {view} language={preferences.language} onviewchange={navigate}
+    onlanguagechange={(language) => {
+      if (running || language === preferences.language) return;
+      changePreferences({ ...preferences, language });
+    }} />
 
   <main class="main-content">
     <KeyboardConnection {onboarding} disabled={running} onfinish={finishOnboarding}
@@ -247,30 +262,32 @@
       confirmedLayoutLabel={appliedLayout?.label ?? null} />
     {#if layoutNotice}
       <div class="notice" role="alert">
-        <p>{layoutNotice}</p>
+        <p>{text("app.layout-unavailable", { p0: String(layoutNotice) })}</p>
         {#if view !== 'keyboard-details'}
-          <button class="secondary-button" type="button" disabled={running} onclick={() => { void findLayout(); }}>Open Find my layout</button>
+          <button class="secondary-button" type="button" disabled={running} onclick={() => { void findLayout(); }}>{text("app.open-find-my-layout")}</button>
         {/if}
       </div>
     {/if}
     {#if preferenceError}
       <div class="notice" role="alert">
-        <p>{preferenceError} Current selections work in memory; saved data has not been replaced.</p>
-        <button class="secondary-button" type="button" disabled={running} onclick={retryPreferences}>Retry preferences</button>
-        <button class="secondary-button" type="button" onclick={() => { preferenceError = ''; }}>Dismiss preference warning</button>
+        <p>{preferenceOperation === 'load'
+          ? text("app.current-selections-work-in-memory-saved-data", { p0: String(preferenceError) })
+          : text("app.current-selections-work-in-memory-saved-data-2", { p0: String(preferenceError) })}</p>
+        <button class="secondary-button" type="button" disabled={running} onclick={retryPreferences}>{text("app.retry-preferences")}</button>
+        <button class="secondary-button" type="button" onclick={() => { preferenceError = ''; }}>{text("app.dismiss-preference-warning")}</button>
       </div>
     {/if}
     {#each pending as entry (entry.record.id)}
       {#if entry.error}
         <div class="notice" role="alert">
-          <p>Completed session was not saved. {entry.error}</p>
-          <button class="secondary-button" type="button" disabled={entry.saving} onclick={() => saveSession(entry.record)}>Retry session save</button>
+          <p>{text("app.completed-session-was-not-saved", { p0: String(entry.error) })}</p>
+          <button class="secondary-button" type="button" disabled={entry.saving} onclick={() => saveSession(entry.record)}>{text("app.retry-session-save")}</button>
         </div>
       {/if}
     {/each}
     {#if audioError}
-      <div class="notice" role="alert"><p>{audioError} Sound is off for this visit. Turn on Typing sound in Practice to retry.</p>
-        <button class="secondary-button" type="button" onclick={() => { audioError = ''; }}>Dismiss sound warning</button>
+      <div class="notice" role="alert"><p>{text("app.sound-is-off-for-this-visit-turn", { p0: String(audioError) })}</p>
+        <button class="secondary-button" type="button" onclick={() => { audioError = ''; }}>{text("app.dismiss-sound-warning")}</button>
       </div>
     {/if}
     <div hidden={view !== 'practice'}>

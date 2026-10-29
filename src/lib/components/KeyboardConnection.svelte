@@ -2,6 +2,9 @@
   import { onMount } from 'svelte';
   import KeyboardOnboarding from './KeyboardOnboarding.svelte';
   import { browserKeyboardAccess, type KeyboardDevice } from '../keyboard/keyboard-access';
+  import { useLocalization } from '../i18n/context';
+  const localization = useLocalization();
+  const { text } = localization;
 
   let { onboarding, disabled, onfinish, ondevicechange, onlayoutchange, onfindlayout, confirmedLayoutLabel = null }: {
     onboarding: boolean;
@@ -17,8 +20,8 @@
   let prompt = $state(false);
   let expanded = $state(false);
   let busy = $state(false);
-  let warning = $state('');
-  let layoutMessage = $state('');
+  let warning = $state<(() => string) | null>(null);
+  let layoutMessage = $state<(() => string) | null>(null);
   let devices = $state.raw<KeyboardDevice[]>([]);
   let selected = $state.raw<KeyboardDevice | null>(null);
   let alive = true;
@@ -36,15 +39,15 @@
     const current = next.find((device) => device === selected);
     selectDevice(current ?? (next.length === 1 ? next[0] : null));
     warning = next.length === 0
-      ? 'No device is available right now. It may be disconnected, hidden by browser permissions, or protected by the browser. You can still practice and test keys without connecting one.'
+      ? () => text("keyboard-connection.no-device-is-available-right-now-it")
       : next.length > 1 && !selected
-        ? 'Several devices are available. Choose the one you use; your browser cannot tell which connected device you type on.'
-        : '';
+        ? () => text("keyboard-connection.several-devices-are-available-choose-the-one")
+        : null;
   }
 
   async function restoreDevices(initial = false) {
     if (!hid) {
-      warning = 'Device access is not available in this browser. You can still practice and test keys without connecting a device.';
+      warning = () => text("keyboard-connection.device-access-is-not-available-in-this");
       return;
     }
     const revision = ++deviceRevision;
@@ -59,7 +62,7 @@
       if (alive && revision === deviceRevision) {
         selectDevice(null);
         devices = [];
-        warning = `Keyboard detection failed: ${error.message}. Try connecting again, or continue without device access.`;
+        warning = () => text("keyboard-connection.keyboard-detection-failed-try-connecting-again-or", { p0: String(error.message) });
         if (initial && !dismissed) prompt = true;
       }
     }
@@ -69,20 +72,20 @@
     const revision = ++layoutRevision;
     try {
       if (!keyboard?.getLayoutMap) {
-        layoutMessage = 'Browser key labels are not available here. The diagrams will keep their reference labels.';
+        layoutMessage = () => text("keyboard-connection.browser-key-labels-are-not-available-here");
         onlayoutchange(null);
         return;
       }
       const map = await keyboard.getLayoutMap();
       if (!alive || revision !== layoutRevision) return;
       onlayoutchange(map.size > 0 ? new Map(map) : null);
-      layoutMessage = 'Key labels are updated from your browser. The diagrams use them where available and keep reference labels for the rest. This does not identify your keyboard\'s physical layout.';
-      if (map.size === 0) layoutMessage = 'Your browser did not provide any key labels. The diagrams will keep their reference labels, and you can still practice and test keys.';
+      layoutMessage = () => text("keyboard-connection.key-labels-are-updated-from-your-browser");
+      if (map.size === 0) layoutMessage = () => text("keyboard-connection.your-browser-did-not-provide-any-key");
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (alive && revision === layoutRevision) {
         onlayoutchange(null);
-        layoutMessage = `Could not refresh key labels: ${error.message}. The diagrams will use their reference labels. You can try again anytime.`;
+        layoutMessage = () => text("keyboard-connection.could-not-refresh-key-labels-the-diagrams", { p0: String(error.message) });
       }
     }
   }
@@ -98,12 +101,12 @@
       if (next.length > 0) {
         updateDevices(next);
       } else {
-        warning = 'No device was selected. Try again, or continue practicing without connecting one.';
+        warning = () => text("keyboard-connection.no-device-was-selected-try-again-or");
       }
     } catch (error) {
       if (!(error instanceof Error)) throw error;
       if (alive && revision === deviceRevision) {
-        warning = `The browser could not connect to a device: ${error.message}. Try again, or continue practicing without one.`;
+        warning = () => text("keyboard-connection.the-browser-could-not-connect-to-a", { p0: String(error.message) });
       }
     } finally {
       if (alive) busy = false;
@@ -120,7 +123,7 @@
     } else if (choice === 'layout') {
       void requestLayout();
     } else {
-      warning = 'No problem. You can practice and test keys without connecting a device. Connect one whenever you are ready.';
+      warning = () => text("keyboard-connection.no-problem-you-can-practice-and-test");
     }
     onfinish(choice !== 'skip');
   }
@@ -149,14 +152,14 @@
   });
 </script>
 
-<section class="notice keyboard-connection" aria-label="Keyboard connection">
+<section class="notice keyboard-connection" aria-label={text("keyboard-connection.keyboard-connection")}>
   <details bind:open={expanded}>
     <summary>
-      <span class="connection-title">Keyboard connection</span>
+      <span class="connection-title">{text("keyboard-connection.keyboard-connection")}</span>
       <span class="connection-badge" data-tone={busy ? 'pending' : !hid ? 'neutral' : selected ? (warning ? 'warning' : 'success') : 'warning'}>
-        {busy ? 'Connecting...' : !hid ? 'Unavailable' : selected ? (warning ? 'Attention needed' : 'Device selected') : devices.length > 1 ? 'Choose a device' : 'No device selected'}
+        {busy ? text("keyboard-connection.connecting") : !hid ? text("keyboard-connection.unavailable") : selected ? (warning ? text("keyboard-connection.attention-needed") : text("keyboard-connection.device-selected")) : devices.length > 1 ? text("keyboard-connection.choose-a-device") : text("keyboard-connection.no-device-selected")}
       </span>
-      <span class="summary-device" aria-live="polite">{selected?.productName || (selected ? 'Unnamed device' : 'No device selected')}</span>
+      <span class="summary-device" aria-live="polite">{selected?.productName || (selected ? text("keyboard-connection.unnamed-device") : text("keyboard-connection.no-device-selected"))}</span>
       <svg class="disclosure-icon" viewBox="0 0 20 20" width="20" height="20" aria-hidden="true">
         <path d="m5 7.5 5 5 5-5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
       </svg>
@@ -164,45 +167,45 @@
     <div class="connection-content">
       <div class="connection-overview">
         <div class="connection-copy">
-          <p class="connection-intro"><strong>Device access is optional.</strong> You can practice and test keys without connecting anything.</p>
-          <p class="connection-description">Connect a device to see the details your browser provides. Refresh key labels to update both diagrams where supported.</p>
+          <p class="connection-intro"><strong>{text("keyboard-connection.device-access-is-optional")}</strong> {text("keyboard-connection.you-can-practice-and-test-keys-without")}</p>
+          <p class="connection-description">{text("keyboard-connection.connect-a-device-to-see-the-details")}</p>
           {#if selected}
-            <p class="selected-device" role="status">Selected device: <strong>{selected.productName || 'Unnamed device'}</strong></p>
+            <p class="selected-device" role="status">{text("keyboard-connection.selected-device")} <strong>{selected.productName || text("keyboard-connection.unnamed-device")}</strong></p>
             {#if confirmedLayoutLabel}
-              <p class="connection-description">Both diagrams use the <strong>{confirmedLayoutLabel}</strong> layout you confirmed. Device access cannot detect your keyboard&apos;s physical layout.</p>
+              <p class="connection-description">{text("keyboard-connection.both-diagrams-use-the-layout-you-confirmed", { p0: String(confirmedLayoutLabel) })}</p>
             {:else}
-              <p class="connection-description">No layout is confirmed yet. The diagrams show the reference Alice layout, not your keyboard&apos;s physical layout. Use Find my layout to choose a possible match.</p>
+              <p class="connection-description">{text("keyboard-connection.no-layout-is-confirmed-yet-the-diagrams")}</p>
             {/if}
           {/if}
-          {#if warning}<p class="keyboard-warning" aria-live="polite">{warning}</p>{/if}
+          {#if warning}<p class="keyboard-warning" aria-live="polite">{warning()}</p>{/if}
         </div>
         <div class="panel-actions connection-actions">
           {#if hid}
             <button class="secondary-button" type="button" disabled={disabled || busy} onclick={() => { void connect(); }}>
-              {busy ? 'Connecting...' : 'Connect a device'}
+              {busy ? text("keyboard-connection.connecting") : text("keyboard-connection.connect-a-device")}
             </button>
           {/if}
-          <button class="secondary-button" type="button" disabled={disabled} onclick={() => { void requestLayout(); }}>Refresh key labels</button>
+          <button class="secondary-button" type="button" disabled={disabled} onclick={() => { void requestLayout(); }}>{text("keyboard-connection.refresh-key-labels")}</button>
           {#if selected}
-            <button class="secondary-button" type="button" disabled={disabled} onclick={onfindlayout}>Find my layout</button>
+            <button class="secondary-button" type="button" disabled={disabled} onclick={onfindlayout}>{text("keyboard-connection.find-my-layout")}</button>
           {/if}
         </div>
       </div>
       {#if devices.length > 1}
-        <label for="connected-keyboard">Choose a device</label>
+        <label for="connected-keyboard">{text("keyboard-connection.choose-a-device")}</label>
         <select id="connected-keyboard" disabled={disabled || busy} value={selected ? devices.indexOf(selected) : ''} onchange={(event) => {
           const value = event.currentTarget.value;
           selectDevice(value === '' ? null : devices[Number(value)]);
-          warning = selected ? '' : 'Choose the device you use. Your browser cannot tell which connected device you type on.';
+          warning = selected ? null : () => text("keyboard-connection.choose-the-device-you-use-your-browser");
         }}>
-          <option value="">Choose a device</option>
+          <option value="">{text("keyboard-connection.choose-a-device")}</option>
           {#each devices as device, index}
-            <option value={index}>{device.productName || 'Unnamed device'} (device {index + 1})</option>
+            <option value={index}>{text("keyboard-connection.device", { p0: device.productName || text('keyboard-connection.unnamed-device'), p1: String(index + 1) })}</option>
           {/each}
         </select>
       {/if}
-      {#if layoutMessage}<p class="layout-message" role="status">{layoutMessage}</p>{/if}
-      <p class="connection-privacy"><strong>Your information stays private.</strong> Settings and scores stay in this browser, and device details stay in this tab. AliceType does not upload them to a server.</p>
+      {#if layoutMessage}<p class="layout-message" role="status">{layoutMessage()}</p>{/if}
+      <p class="connection-privacy"><strong>{text("keyboard-connection.your-information-stays-private")}</strong> {text("keyboard-connection.settings-and-scores-stay-in-this-browser")}</p>
     </div>
   </details>
 </section>
