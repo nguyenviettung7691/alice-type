@@ -333,7 +333,7 @@ Validate v3 language/scoring IDs and grapheme-derived bounds explicitly. Separat
 - Keep target-copying and Zen summaries distinct. WPM can retain the existing all-language aggregate with an explicit **All languages** scope label; do not imply it is a Vietnamese-only or English-only best.
 - Do not average legacy keystroke accuracy together with committed-text accuracy. Show separate labeled accuracy summaries when both exist; rows show their scoring basis through accessible text/help.
 - Translate mode/limit/duration labels and sort strings using the current locale. Sort dates/numbers by raw values; mode labels use the selected locale's collator.
-- No extra language filter, chart, export, storage index, or history rewrite is required in this phase.
+- No extra language filter, chart, export, storage index, or history rewrite is required in this phase. A later Stats addendum adds a Recent-sessions progress chart with a chart-only language filter; see [Phase 5 Detail Design §6.3.1](./phase-5-detail-design.md#631-recent-sessions-progress-chart-stats-addendum). The history table and summaries remain unfiltered.
 
 ## 10. Adding a future language
 

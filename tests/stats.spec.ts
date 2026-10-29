@@ -146,6 +146,115 @@ test('uses the confirmed layout geometry and browser key legends in Stats', asyn
   await expect(key(page, 'KeyA')).toHaveAttribute('data-heat', '1');
 });
 
+async function seedRecords(page: Page, records: Record<string, unknown>[]) {
+  await page.evaluate(async (records) => {
+    const path = '/src/lib/storage/session-history.ts';
+    const { SessionHistory }: typeof import('../src/lib/storage/session-history') = await import(path);
+    const history = new SessionHistory();
+    try {
+      for (const record of records) await history.save(record as never);
+    } finally { history.close(); }
+  }, records);
+}
+
+function timelineRecord(index: number, language: 'en' | 'vi', mode: 'timed' | 'words' | 'quote' | 'custom',
+  wpm: number, correct: number, total = 100) {
+  const branch = {
+    timed: { limit: 30, wordBankTier: 200, punctuation: false, numbers: false },
+    words: { limit: 10, wordBankTier: 200, punctuation: false, numbers: false },
+    quote: { quoteId: 'chart-quote', targetCharacters: 50, elapsedMs: 20_000 },
+    custom: { targetCharacters: 20, elapsedMs: 10_000 }
+  }[mode];
+  return {
+    version: 3, language, scoringVersion: 'committed-grapheme-v1', id: `chart-${index}`,
+    completedAt: Date.UTC(2026, 9, 29, 4, 33) + index * 60_000, mode, ...branch, wpm,
+    totalAttempts: total, correctAttempts: correct, accuracy: Math.round(correct / total * 1000) / 10, missedKeys: {}
+  };
+}
+
+test('charts the latest ten target-copying sessions above the history table', async ({ page }) => {
+  const modes = ['timed', 'words', 'quote', 'custom'] as const;
+  const records = Array.from({ length: 12 }, (_, index) =>
+    timelineRecord(index, index % 3 === 2 ? 'vi' : 'en', modes[index % 4], 30 + index, index === 11 ? 40 : 95));
+  await seedRecords(page, [...records, {
+    version: 3, language: 'en', scoringVersion: 'committed-grapheme-v1', id: 'chart-zen',
+    completedAt: Date.UTC(2026, 9, 29, 5, 0), mode: 'zen', elapsedMs: 5000, retainedCharacters: 10,
+    totalAttempts: 10, wpm: 99, accuracy: null, correctAttempts: null, missedKeys: {}
+  }]);
+  await nav(page, 'Stats').click();
+  const section = page.getByRole('region', { name: 'Recent sessions', exact: true });
+  const chart = section.locator('.progress-chart');
+  await expect(chart.getByRole('heading', { name: 'Progress: last 10 target-copying sessions' })).toBeVisible();
+  const chartBox = (await chart.boundingBox())!;
+  const tableBox = (await section.locator('.history-scroll').boundingBox())!;
+  expect(chartBox.y + chartBox.height).toBeLessThanOrEqual(tableBox.y);
+
+  const nodes = chart.locator('.timeline-chart .timeline-node');
+  await expect(nodes).toHaveCount(10);
+  const data = await nodes.evaluateAll((elements) => elements.map((element) => ({
+    order: Number(element.getAttribute('data-order')), wpm: Number(element.getAttribute('data-wpm')),
+    accuracy: Number(element.getAttribute('data-accuracy')), language: element.getAttribute('data-language'),
+    mode: element.getAttribute('data-mode'), below: element.getAttribute('data-below-floor'),
+    x: element.querySelector('.wpm-node')!.getBoundingClientRect().x
+  })));
+  expect(data.map((point) => point.order)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  expect(data.map((point) => point.wpm)).toEqual([32, 33, 34, 35, 36, 37, 38, 39, 40, 41]);
+  expect(data.every((point, index) => index === 0 || point.x > data[index - 1].x)).toBe(true);
+  expect(data[0]).toMatchObject({ language: 'vi', mode: 'quote', accuracy: 95 });
+  expect(data[9]).toMatchObject({ language: 'vi', mode: 'custom', accuracy: 40, below: 'true' });
+  expect(data.filter((point) => point.below === 'true')).toHaveLength(1);
+  await expect(chart.locator('.timeline-chart .below-floor-marker')).toHaveCount(1);
+  await expect(chart.getByText('Below 50.0%: drawn at the axis floor')).toBeVisible();
+  await expect(chart.locator('.timeline-chart .wpm-line')).toHaveCSS('stroke', 'rgb(255, 93, 0)');
+  await expect(chart.locator('.timeline-chart .accuracy-line')).toHaveCSS('stroke-dasharray', /6/);
+  await expect(chart.locator('.timeline-chart .x-tick').first()).toHaveText('#1');
+  await expect(chart.locator('.timeline-chart .accuracy-tick').first()).toHaveText('50.0%');
+  await expect(chart.locator('.timeline-chart .accuracy-tick').last()).toHaveText('100.0%');
+  const colors = await chart.locator('.timeline-chart .wpm-node').evaluateAll((elements) =>
+    elements.map((element) => `${element.getAttribute('data-language')}:${getComputedStyle(element).fill}`));
+  expect(new Set(colors)).toEqual(new Set(['en:rgb(77, 163, 255)', 'vi:rgb(46, 196, 166)']));
+  await expect(chart.getByRole('img', { name: /^10 sessions charted\. WPM from 32 to 41\. Accuracy from 40\.0% to 95\.0%\.$/ })).toBeAttached();
+  await expect(chart.getByRole('list', { name: 'Charted sessions, oldest first' }).locator('li').first())
+    .toContainText('#1, ');
+
+  const vietnamese = chart.getByRole('button', { name: 'Vietnamese' });
+  await expect(vietnamese).toHaveAttribute('aria-pressed', 'true');
+  const firstEnglish = chart.locator('.timeline-chart .timeline-node[data-language="en"] .wpm-node').first();
+  const firstEnglishPath = await firstEnglish.getAttribute('d');
+  await vietnamese.click();
+  await expect(vietnamese).toHaveAttribute('aria-pressed', 'false');
+  await expect(nodes).toHaveCount(6);
+  await expect(chart.locator('.timeline-chart .timeline-node[data-language="vi"]')).toHaveCount(0);
+  await expect(chart.locator('.timeline-chart .wpm-node').first()).toHaveAttribute('d', firstEnglishPath!);
+  await expect(chart.getByText('Below 50.0%: drawn at the axis floor')).toHaveCount(0);
+  await chart.getByRole('button', { name: 'English' }).click();
+  await expect(nodes).toHaveCount(0);
+  await expect(chart.getByText('All languages are hidden.', { exact: false })).toBeVisible();
+  await expect(section.locator('.history-scroll tbody tr')).toHaveCount(13);
+});
+
+test('explains an empty chart for Zen-only history and keeps the chart usable on narrow screens', async ({ page }) => {
+  await seedRecords(page, [{
+    version: 3, language: 'vi', scoringVersion: 'committed-grapheme-v1', id: 'only-zen',
+    completedAt: 5000, mode: 'zen', elapsedMs: 5000, retainedCharacters: 10,
+    totalAttempts: 10, wpm: 30, accuracy: null, correctAttempts: null, missedKeys: {}
+  }]);
+  await nav(page, 'Stats').click();
+  await expect(stats(page).getByText(/No target-copying sessions to chart yet/)).toBeVisible();
+  await expect(stats(page).locator('.timeline-chart')).toHaveCount(0);
+
+  await seedRecords(page, [timelineRecord(1, 'en', 'timed', 50, 98)]);
+  await page.setViewportSize({ width: 375, height: 812 });
+  await nav(page, 'Refresh history').click();
+  await expect(stats(page).locator('.timeline-chart .timeline-node')).toHaveCount(1);
+  const scroll = stats(page).getByRole('region', { name: 'Progress: last 10 target-copying sessions' });
+  await expect(scroll).toHaveAttribute('tabindex', '0');
+  await scroll.focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(() => scroll.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+});
+
 test('destructive actions use error colors without changing confirmation behavior', async ({ page }) => {
   const expectDanger = async (button: ReturnType<Page['getByRole']>, filled = false) => {
     await expect(button).toHaveClass(/danger-button/);

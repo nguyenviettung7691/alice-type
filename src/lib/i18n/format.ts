@@ -30,6 +30,18 @@ export function formatDate(language: LanguageId, timestamp: number): string {
   }).format(timestamp);
 }
 
+export function formatTime(language: LanguageId, timestamp: number): string {
+  finite(timestamp);
+  if (!Number.isFinite(new Date(timestamp).getTime())) throw new Error('Unsupported date.');
+  return new Intl.DateTimeFormat(getLanguage(language).locale, { timeStyle: 'short' }).format(timestamp);
+}
+
+export function formatShortDay(language: LanguageId, timestamp: number): string {
+  finite(timestamp);
+  if (!Number.isFinite(new Date(timestamp).getTime())) throw new Error('Unsupported date.');
+  return new Intl.DateTimeFormat(getLanguage(language).locale, { day: 'numeric', month: 'short' }).format(timestamp);
+}
+
 export function compareLabels(language: LanguageId, left: string, right: string): number {
   return new Intl.Collator(getLanguage(language).locale).compare(left, right);
 }

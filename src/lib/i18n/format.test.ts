@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { compareLabels, formatAccuracy, formatDate, formatNumber } from './format';
+import { compareLabels, formatAccuracy, formatDate, formatNumber, formatShortDay, formatTime } from './format';
 
 describe('locale-aware presentation', () => {
   it('formats numbers without modifying their numeric values', () => {
@@ -30,6 +30,15 @@ describe('locale-aware presentation', () => {
     expect(formatDate('en', timestamp)).toBe(new Intl.DateTimeFormat('en-US', {
       dateStyle: 'medium', timeStyle: 'short'
     }).format(timestamp));
+  });
+
+  it('formats short chart times and days in the selected locale', () => {
+    const timestamp = Date.UTC(2026, 9, 29, 8, 30);
+    expect(formatTime('en', timestamp)).toBe(new Intl.DateTimeFormat('en-US', { timeStyle: 'short' }).format(timestamp));
+    expect(formatTime('vi', timestamp)).toBe(new Intl.DateTimeFormat('vi-VN', { timeStyle: 'short' }).format(timestamp));
+    expect(formatShortDay('vi', timestamp)).toBe(new Intl.DateTimeFormat('vi-VN', { day: 'numeric', month: 'short' }).format(timestamp));
+    expect(() => formatTime('en', NaN)).toThrow('finite');
+    expect(() => formatShortDay('en', 8.64e15 + 1)).toThrow('Unsupported date');
   });
 
   it('compares localized labels with the selected language collator', () => {

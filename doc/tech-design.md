@@ -58,6 +58,7 @@ A utility module that dynamically generates the text block based on current sett
 * **Settings Save:** Automatically saves changes to modes, difficulties, and themes into `localStorage` so the user's preferences persist across sessions.
 * **Phase 10 language:** Persist one validated language ID with existing preferences (schema v6). Default/migrate to English; no browser-language guessing. The selection drives UI and built-in practice resources, never keyboard geometry or an input-method installation.
 * **Stat Aggregation:** At the end of a session, the payload `{ wpm, accuracy, mode, date, missedKeys }` is written to IndexedDB. This allows the app to chart progress over time and show which specific keys on the Alice layout the user struggles with most.
+* **Progress chart (Stats addendum):** Stats → Recent sessions shows a dual-axis timeline above the history table: the latest 10 target-copying sessions (Zen excluded), oldest to newest; WPM as a bold accent line on the left axis and accuracy (50–100%) as a dashed line with a faint fill on the right axis. Point color encodes language and point shape encodes mode, with in-memory language filter toggles. See [Phase 5 Detail Design §6.3.1](./phase-5-detail-design.md#631-recent-sessions-progress-chart-stats-addendum).
 
 ### 4.5. Keyboard Keys Test Matrix
 
@@ -164,6 +165,7 @@ Provide a device information view that presents a realistic layout profile and c
 * Wire up `localStorage` for settings and IndexedDB for the Stats page.
 * Add the Initial Keyboard Permission overlay.
 * Add typing sounds and final bug testing.
+* Stats addendum (implemented): a Recent-sessions dual-axis progress chart (WPM vs. accuracy, language-colored and mode-shaped points, language filter) above the history table, derived in memory from existing history. See [Phase 5 Detail Design §6.3.1](./phase-5-detail-design.md#631-recent-sessions-progress-chart-stats-addendum).
 
 ### Phase 6: Keyboard Keys Test Matrix
 

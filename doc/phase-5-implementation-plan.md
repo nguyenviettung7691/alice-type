@@ -102,3 +102,27 @@ Implementation completed on 2026-10-25. All execution steps above are implemente
 The Phase 2-4 browser setup now seeds only the onboarding-complete default so regression tests retain their prior focus assumptions. The obsolete no-persistence assertion now verifies recoverable database denial and absence of external requests. Lifecycle fixtures keep standalone practice coverage and add full-app audio teardown coverage.
 
 Final review includes `git diff --check`. The existing `main` branch and configured `origin` are the publication target; the commit and remote verification are reported in the delivery summary. Temporary preview processes and inspection screenshots are cleaned up after verification.
+
+## Stats addendum: Recent-sessions progress chart
+
+Implements [Phase 5 Detail Design §6.3.1](./phase-5-detail-design.md#631-recent-sessions-progress-chart-stats-addendum) without storage, preference, or dependency changes.
+
+### Execution steps
+
+1. **Timeline data:** `src/lib/storage/session-timeline.ts` builds the latest 10 target-copying points in chronological order (Zen excluded, ID tie-break, integer WPM, float accuracy, below-floor flag, legacy → English, scoring basis) and computes the WPM axis ceiling aligned to five accuracy intervals. Covered by `session-timeline.test.ts`.
+2. **Formatting:** `formatTime` and `formatShortDay` in `src/lib/i18n/format.ts` provide localized axis labels.
+3. **Chart component:** `src/lib/components/SessionProgressChart.svelte` renders an inline SVG with gridlines, dual axes, solid accent WPM line, dashed accuracy line with area fill, language-colored and mode-shaped nodes, below-floor markers, legend, language toggles, tooltip titles, accessible summary and point list, and empty states.
+4. **Integration and style:** `StatsPanel.svelte` places the chart above the history table and supplies its mode/limit labels; chart styles live in `src/app.css`.
+5. **Localization:** typed `stats-panel.*` chart messages added to the contract and the English and Vietnamese catalogs.
+6. **Browser tests:** `tests/stats.spec.ts` covers placement above the table, the 10-point window, chronological left-to-right order, Zen exclusion, metadata and colors, below-floor marker, axis labels, accessible summary, filter behavior with stable slots, Zen-only empty state, and narrow-screen keyboard scrolling.
+
+### Verification record
+
+| Verification | Actual outcome |
+| --- | --- |
+| `npm run check` | Passed: zero errors and zero warnings. |
+| `npm test` | Passed: 594 tests across 23 files, including the new timeline and formatter cases. |
+| `npm run build` | Passed. |
+| `npx playwright test tests/stats.spec.ts` | Both new chart scenarios pass. The only failure is the existing `destructive actions` Restart-test assertion, reproduced with the addendum changes stashed. |
+| `npx playwright test --workers=4` | 156 passed; 8 failed — the same eight existing failures recorded in the [Phase 10 implementation plan](./phase-10-implementation-plan.md#existing-chromium-failures-reproduced-against-baseline). |
+| Visual checks | English desktop, Vietnamese desktop, and 375 px narrow chart screenshots inspected: aligned dual axes, legend, filters, below-range marker, localized time/day labels, and contained horizontal scrolling. |

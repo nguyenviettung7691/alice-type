@@ -173,6 +173,10 @@ counts. Completed scores use IndexedDB (record v3, database v1). **Stats** separ
 target-copying WPM/accuracy and missed-key summaries from Zen free-writing scores.
 New scores include language/scoring metadata; existing scores are not rewritten.
 Historical keystroke accuracy and committed-text accuracy have separate summaries.
+**Recent sessions** shows a progress chart above the history table: the latest 10
+target-copying sessions (Zen excluded), oldest to newest, with WPM on the left axis
+and accuracy (50–100%) on the right. Point color shows language and point shape
+shows mode; language toggles hide or show each language's sessions.
 Keyboard Test counts and raw input events are not stored.
 
 All app data stays in your browser, with no uploads or remote synchronization.

@@ -3,6 +3,7 @@
   import { MAX_SESSION_HISTORY, SessionHistory, summarizeSessions, type SessionRecord } from '../storage/session-history';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
+  import SessionProgressChart from './SessionProgressChart.svelte';
   import { type AliceKey, type InertKey } from '../keyboard/alice-layout';
   import { useLocalization } from '../i18n/context';
   import { compareLabels, formatAccuracy, formatDate, formatNumber } from '../i18n/format';
@@ -161,6 +162,7 @@
           </div>
           <span class="stats-badge">{text("stats-panel.saved", { p0: number(summary.count) })}</span>
         </div>
+        <SessionProgressChart {records} {modeLabel} />
         <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
         <div class="history-scroll" role="region" aria-label={text("stats-panel.session-history-table")} tabindex="0">
           <table>

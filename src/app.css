@@ -304,6 +304,184 @@ dialog h2 {
   background: rgb(255 255 255 / 6%);
 }
 
+.progress-chart {
+  --color-lang-en: #4da3ff;
+  --color-lang-vi: #2ec4a6;
+  margin: 0 0 1.25rem;
+  border: 1px solid rgb(255 255 255 / 12%);
+  border-radius: 0.65rem;
+  padding: 1rem;
+  background: var(--color-background);
+}
+
+.progress-chart h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+}
+
+.progress-chart figcaption .panel-copy {
+  margin: 0.35rem 0 0.75rem;
+}
+
+.chart-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem 1.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.8rem;
+}
+
+.chart-filters,
+.chart-legend,
+.chart-mode-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+}
+
+.chart-legend {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: #b8b8b8;
+}
+
+.chart-legend li,
+.chart-mode-legend > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.chart-legend svg {
+  width: 1.75rem;
+  height: 0.9rem;
+  overflow: visible;
+}
+
+.chart-mode-legend svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.chart-legend-title {
+  color: var(--color-muted);
+}
+
+.chart-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  border: 1px solid rgb(255 255 255 / 20%);
+  border-radius: 2rem;
+  padding: 0.3rem 0.7rem;
+  background: transparent;
+  color: var(--color-muted);
+  cursor: pointer;
+  text-decoration: line-through;
+}
+
+.chart-filter[aria-pressed='true'] {
+  border-color: rgb(255 255 255 / 45%);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.chart-swatch {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 50%;
+  background: var(--chart-language-color);
+}
+
+.chart-filter[aria-pressed='false'] .chart-swatch {
+  opacity: 0.35;
+}
+
+.progress-chart [data-language='en'] { --chart-language-color: var(--color-lang-en); }
+.progress-chart [data-language='vi'] { --chart-language-color: var(--color-lang-vi); }
+
+.chart-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.chart-scroll:focus-visible {
+  outline: 2px solid var(--color-focus);
+  outline-offset: 3px;
+}
+
+.timeline-chart {
+  display: block;
+  width: 100%;
+  min-width: 34rem;
+  height: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.chart-grid line {
+  stroke: rgb(255 255 255 / 10%);
+  stroke-width: 1;
+}
+
+.axis-label {
+  fill: var(--color-muted);
+  font-size: 11px;
+}
+
+.x-tick {
+  fill: var(--color-text);
+  font-weight: 600;
+}
+
+.axis-title {
+  fill: #b8b8b8;
+  font-size: 12px;
+}
+
+.wpm-title,
+.wpm-tick {
+  fill: var(--color-accent);
+}
+
+.wpm-line {
+  fill: none;
+  stroke: var(--color-accent);
+  stroke-width: 3;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.accuracy-line {
+  fill: none;
+  stroke: #d0d0d0;
+  stroke-width: 1.75;
+  stroke-dasharray: 6 5;
+}
+
+.accuracy-area {
+  fill: rgb(255 255 255 / 6%);
+}
+
+.wpm-node,
+.accuracy-node {
+  fill: var(--chart-language-color);
+  stroke: var(--color-background);
+  stroke-width: 2;
+}
+
+.legend-marker {
+  fill: #d0d0d0;
+}
+
+.below-floor-marker {
+  fill: var(--color-error);
+}
+
 .unmapped-misses {
   margin-top: 1.25rem;
   border-top: 1px solid rgb(255 255 255 / 12%);

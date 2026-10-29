@@ -161,6 +161,21 @@ Destructive actions throughout the app use the shared red/error button treatment
 
 Validate every stored record on read, including records missing an indexed timestamp; fail explicitly rather than silently skipping malformed history. Sort validated records newest-first (with stable ID tie-breaking). The v1 time index is created for future indexed retrieval; current reads inspect the entire store for validation.
 
+#### 6.3.1 Recent-sessions progress chart (Stats addendum)
+
+The **Recent sessions** section shows a dual-axis timeline chart above the history table. It is derived in memory from the validated history; no storage schema, IndexedDB, or preference changes are made.
+
+- **Window:** the latest 10 target-copying records (Timed, Words, Quote, Custom) by `completedAt`, with the same stable ID tie-break as history reads. Zen is excluded because accuracy is not applicable and free-writing WPM is not comparable. The window is independent of the table's sort state and is computed before language filtering.
+- **Values:** stored numbers are used directly; display strings such as `98.7%` are never parsed. WPM is plotted as a rounded integer and accuracy as the stored float percentage. Legacy records without language are shown as English, consistent with Phase 10.
+- **X-axis:** time flows left to right, oldest to newest. Sessions are evenly spaced ordinal slots `#1`…`#n`, each labeled with its localized short completion time; the short day is added for the first point and whenever the day changes.
+- **Left Y-axis (primary):** Speed in WPM from 0 to a rounded ceiling with headroom (minimum 20), drawn as a bold solid `#FF5D00` line.
+- **Right Y-axis (secondary):** Accuracy fixed at 50–100%, drawn as a dashed line with a faint area fill. Both axes share five aligned gridline intervals. Accuracy below 50% is drawn at the floor with a red "below range" marker and legend entry; its exact value stays in the tooltip and accessible text.
+- **Metadata encoding:** point fill shows language (English blue `#4DA3FF`, Vietnamese teal `#2EC4A6`; orange is reserved for the WPM line). Point shape shows mode: Timed circle, Words square, Quote diamond, Custom triangle. A legend explains line styles, mode shapes, and the below-range marker, so language-driven WPM changes are not mistaken for regression.
+- **Language filter:** toggle buttons (`aria-pressed`) for languages present in the window hide or show their points and line segments. Axes and slot positions do not change when filtering. Filter state is in memory only and is not persisted.
+- **Accessibility:** the chart is a labeled `figure`. The SVG is `role="img"` with a summary of the charted count and WPM/accuracy ranges; a visually hidden ordered list describes each point (order, full date/time, mode/limit, language, WPM, accuracy, and scoring basis). Points also expose a hover tooltip. Color is never the sole encoding. Narrow screens use a keyboard-focusable horizontal scroll region without page overflow.
+- **Empty states:** with no target-copying records (for example, Zen-only history) the chart shows an explicit message instead of axes; when every language is hidden it says so. One visible point is drawn without connecting lines.
+- Legacy keystroke and committed-text accuracy share the accuracy line but are labeled per point and are never averaged together.
+
 ## 7. Keyboard onboarding and optional layout access
 
 ### 7.1 First-use flow
