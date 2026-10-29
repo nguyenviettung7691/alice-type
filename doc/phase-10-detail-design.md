@@ -61,8 +61,11 @@ v3 history metadata and separate accuracy summaries are integrated.
 Implementation choices: the supported NFC repertoire contains only single-BMP
 graphemes, so validated engine offsets, chunks and word boundaries can safely
 retain existing string indices; expanding to another script must revisit that
-invariant. Native input remains visibly focusable rather than using a hidden
-cleared field. The input buffer is authoritative; target/render windows are
+invariant. Native capture retains its buffer in a transparent, focusable input
+anchored to the current letter inside the writing area, not a second visible
+textbox. Composition preview appears at that anchor in the same writing area.
+Caret positioning and auto-scroll run after DOM updates and follow edits,
+wrapping, container scrolling and resize. The input buffer is authoritative; target/render windows are
 derived from accepted text. Domain diagnostic details remain verbatim inside
 localized error envelopes; the translator never guesses keys from errors or
 silently substitutes another language.

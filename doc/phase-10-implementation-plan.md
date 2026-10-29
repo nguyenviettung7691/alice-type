@@ -244,6 +244,7 @@ Synthetic browser events do not prove OS IME integration. If a required native e
 | Full milestone regression/build | Type check and production build pass; 567 unit tests pass; full Chromium run: 144 passed, 8 pre-existing failures (see below) |
 | Integrated type/unit/build verification | `npm run check`: 0 errors/warnings; `npm test`: 587 passed; `npm run build`: passed |
 | Integrated Chromium verification | `npx playwright test`: 152 passed, the same 8 pre-existing failures; includes 8 app-level language/composition cases plus foundation header fixtures |
+| Caret/single-surface follow-up | Native capture is transparent and anchored to the active letter; positioning/auto-scroll wait for DOM updates and follow resize/scroll. Regression cases cover edits, three caret styles, wrapped scrolling, Vietnamese preedit/final Finish, and Zen; focused Practice/language/remaining-modes suite passes. |
 | Vietnamese provenance/automated content checks | Pinned FrequencyWords revision, CC BY-SA notice/filter script; exact NFC tiers and 12 original passages validated |
 | Fluent Vietnamese resource/content review | Pending; subtitle filtering is not a dictionary/quality sign-off |
 | Actual Windows/macOS Telex/VNI checks | Pending |

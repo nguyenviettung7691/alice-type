@@ -102,6 +102,9 @@ but do not alter Quote or Custom text.
 - **Restart** discards an unfinished run and resets metrics. Navigation and
   settings stay locked while running; use Restart, or Stop in Zen, first.
 - Practice retains a native input buffer for English/Vietnamese input methods.
+  There is one visible writing surface: the caret follows the current target
+  letter, and provisional composition appears inline rather than in a separate
+  textbox above the exercise.
   Committed text is normalized to NFC; provisional composition is not scored.
   Edits may rewrite the active trailing token, not arbitrary earlier text.
   Held-key repeat, pasted/dropped answers and undo/redo are blocked. Paste is

@@ -60,12 +60,26 @@ test('Vietnamese Custom commits NFC composition once, permits final tone correct
   });
   await expect(page.getByRole('button', { name: 'Hoàn tất', exact: true })).toBeDisabled();
   await expect(page.locator('.metric-value').nth(1)).toHaveText('0,0%');
+  await expect(page.locator('.preedit')).toHaveText('á');
+  await expect(page.locator('.preedit')).toHaveCSS('position', 'absolute');
+  await expect(page.locator('.preedit')).toHaveAttribute('aria-hidden', 'true');
+  await expect.poll(async () => {
+    const preview = await page.locator('.preedit').boundingBox();
+    const character = await page.locator('.typing-character[data-position="0"]').boundingBox();
+    return preview && character ? Math.abs(preview.x - character.x) < 1 && Math.abs(preview.y - character.y) < 1 : false;
+  }).toBe(true);
   await page.locator('#practice-input').evaluate((element: HTMLInputElement) => {
     element.dispatchEvent(new CompositionEvent('compositionend', { bubbles: true, data: 'á' }));
     element.dispatchEvent(new InputEvent('input', { bubbles: true, data: 'á', inputType: 'insertText' }));
   });
   await expect(page.locator('.metric-value').nth(1)).toHaveText('50,0%');
   await expect(page.locator('#practice-input')).toHaveValue('á');
+  await expect(page.locator('.preedit')).toHaveCount(0);
+  await expect.poll(async () => {
+    const capture = await page.locator('#practice-input').boundingBox();
+    const end = await page.locator('.typing-end-anchor').boundingBox();
+    return capture && end ? Math.abs(capture.x - end.x) < 1 && Math.abs(capture.y - end.y) < 1 : false;
+  }).toBe(true);
   await expect(page.locator('.practice-panel').first()).toHaveAttribute('data-status', 'running');
   await page.getByRole('button', { name: 'Hoàn tất', exact: true }).click();
   await expect(page.locator('.practice-panel').first()).toHaveAttribute('data-status', 'completed');
@@ -192,4 +206,27 @@ test('missing grapheme capability shows an actionable message without crashing t
   await expect(page.locator('#app-language')).toBeEnabled();
   await page.getByRole('button', { name: 'Kiểm tra bàn phím', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Tự do', exact: true })).toBeVisible();
+});
+
+test('Zen capture follows the writing caret without duplicating accepted text during composition', async ({ page }) => {
+  await setup(page);
+  await page.getByRole('button', { name: 'Zen', exact: true }).click();
+  await page.getByRole('button', { name: 'Đặt con trỏ để viết', exact: true }).click();
+  await commit(page, 'xin ');
+  await expect(page.locator('.zen-writing')).toHaveText('xin ');
+  await expect.poll(async () => {
+    const capture = await page.locator('#practice-input').boundingBox();
+    const caret = await page.locator('.zen-caret').boundingBox();
+    return capture && caret ? Math.abs(capture.x - caret.x) < 1 && Math.abs(capture.y - caret.y) < 1 : false;
+  }).toBe(true);
+  await page.locator('#practice-input').evaluate((element: HTMLInputElement) => {
+    element.dispatchEvent(new CompositionEvent('compositionstart', { bubbles: true }));
+    element.value = 'xin cha\u0300o';
+    element.dispatchEvent(new InputEvent('input', { bubbles: true, isComposing: true, inputType: 'insertCompositionText' }));
+  });
+  await expect(page.locator('.preedit')).toHaveText('chào');
+  await expect(page.locator('.zen-writing')).toHaveText('xin ');
+  await page.locator('#practice-input').dispatchEvent('compositionend', { data: 'chào' });
+  await expect(page.locator('.zen-writing')).toHaveText('xin chào');
+  await expect(page.locator('.preedit')).toHaveCount(0);
 });

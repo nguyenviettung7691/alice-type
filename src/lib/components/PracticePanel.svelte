@@ -84,6 +84,8 @@
   let now = $state(0);
   let inputElement = $state<HTMLInputElement>();
   let targetElement = $state<HTMLLabelElement>();
+  let writingArea = $state<HTMLDivElement>();
+  let capturePosition = $state({ left: 0, top: 0, height: 24 });
   let focused = $state(false);
   let composing = $state(false);
   let inputNotice = $state<'cancelled' | 'rejected' | 'unsupported' | ''>('');
@@ -101,6 +103,14 @@
   const targetCharacters = $derived(finiteSession ? segmentGraphemes(finiteSession.target) : []);
   const inputCharacters = $derived(finiteSession ? segmentGraphemes(finiteSession.input) : []);
   const writing = $derived(session && isZenSession(session) ? getWritingWindow(session) : '');
+  const compositionPreview = $derived.by(() => {
+    if (!composing || !session) return { start: 0, text: '' };
+    const accepted = getAcceptedText(session);
+    const preview = preedit.normalize('NFC');
+    let start = 0;
+    while (start < accepted.length && start < preview.length && accepted[start] === preview[start]) start++;
+    return { start, text: preview.slice(start) };
+  });
   const modeLabel = $derived(({
     timed: text("mode-navigation.timed"), words: text("practice-panel.word"),
     quote: text("mode-navigation.quote"), custom: text("practice-panel.custom-text"), zen: 'Zen'
@@ -168,27 +178,57 @@
     const position = finiteSession?.input.length;
     const recentWriting = writing;
     const element = targetElement;
-    untrack(() => {
+    const area = writingArea;
+    const preview = compositionPreview;
+    let disposed = false;
+    void tick().then(() => {
+      if (disposed) return;
       if (!element) return;
       if (zen) {
         if (recentWriting) element.scrollTop = element.scrollHeight;
-        return;
-      }
-      if (!position) {
+      } else if (!position) {
         element.scrollTop = 0;
-        return;
+      } else {
+        const anchor = element.querySelector<HTMLElement>('.typing-character.active, .typing-end-anchor');
+        if (anchor) {
+          const container = element.getBoundingClientRect();
+          const character = anchor.getBoundingClientRect();
+          if (character.bottom > container.bottom || character.top < container.top) {
+            element.scrollTop += character.top - container.top - element.clientHeight / 3;
+          }
+        }
       }
-      const active = element.querySelector<HTMLElement>('.typing-character.active');
-      if (!active) return;
-      const container = element.getBoundingClientRect();
-      const character = active.getBoundingClientRect();
-      if (character.bottom > container.bottom || character.top < container.top) {
-        element.scrollTop += character.top - container.top - element.clientHeight / 3;
-      }
+      updateCapturePosition(element, area, preview.text ? preview.start : undefined);
     });
+    return () => { disposed = true; };
+  });
+
+  $effect(() => {
+    const element = targetElement;
+    const area = writingArea;
+    if (!element || !area) return;
+    const update = () => updateCapturePosition(element, area, composing && compositionPreview.text ? compositionPreview.start : undefined);
+    const observer = new ResizeObserver(update);
+    observer.observe(element);
+    element.addEventListener('scroll', update);
+    return () => {
+      observer.disconnect();
+      element.removeEventListener('scroll', update);
+    };
   });
 
   onDestroy(clearFeedback);
+
+  function updateCapturePosition(element: HTMLLabelElement, area: HTMLDivElement | undefined, compositionStart?: number) {
+    if (!area) return;
+    const anchor = element.querySelector<HTMLElement>(compositionStart === undefined
+      ? '.typing-character.active, .typing-end-anchor, .zen-caret'
+      : `[data-position="${compositionStart}"], .typing-end-anchor, .zen-caret`);
+    if (!anchor) return;
+    const bounds = anchor.getBoundingClientRect();
+    const container = area.getBoundingClientRect();
+    capturePosition = { left: bounds.left - container.left, top: bounds.top - container.top, height: bounds.height };
+  }
 
   function generationFailed(error: unknown) {
     if (!(error instanceof ExerciseGenerationError) && !(error instanceof PracticeTextError)) throw error;
@@ -296,7 +336,10 @@
   }
 
     function synchronizeInput() {
-      if (inputElement && !composing) inputElement.value = session ? getAcceptedText(session) : '';
+      if (inputElement && !composing) {
+        inputElement.value = session ? getAcceptedText(session) : '';
+        inputElement.setSelectionRange(inputElement.value.length, inputElement.value.length);
+      }
     }
 
     function cancelComposition(announce = true) {
@@ -521,10 +564,14 @@
     {text("practice-panel.type-the-text-shown-backspace-fixes-the")}
   </p>
   {/if}
+  <div bind:this={writingArea} class="writing-area">
   <input
     bind:this={inputElement}
     id="practice-input"
     class="typing-input"
+    style:left={`${capturePosition.left}px`}
+    style:top={`${capturePosition.top}px`}
+    style:height={`${capturePosition.height}px`}
     type="text"
     disabled={!active || Boolean(exerciseError) || !hasGraphemeSupport()}
     aria-label={zen ? text("practice-panel.zen-writing") : text("practice-panel.typing-practice")}
@@ -547,13 +594,9 @@
       composing = false; preedit = ''; directCode = null;
       commitNative(event.currentTarget.value);
     }}
-    onfocus={() => { focused = true; }}
+    onfocus={() => { focused = true; synchronizeInput(); }}
     onblur={() => { focused = false; cancelComposition(); clearFeedback(); }}
   />
-  {#if inputNotice}<p role="status">{inputNotice === 'cancelled'
-    ? text("practice-panel.uncommitted-input-was-cancelled")
-    : text("practice-panel.this-edit-is-not-supported-or-exceeds")}</p>{/if}
-  {#if composing}<p class="preedit" aria-live="off">{preedit}</p>{/if}
   <label bind:this={targetElement} class="sample-text practice-text" for="practice-input" id="practice-target" lang={session.configuration?.language ?? 'en'}>
     {#if zen}
       <span class="zen-writing">{writing}</span>{#if session.status !== 'completed'}<span class="zen-caret" aria-hidden="true">&nbsp;</span>{/if}
@@ -564,9 +607,18 @@
         class:correct={index < inputCharacters.length && inputCharacters[index] === character}
         class:incorrect={index < inputCharacters.length && inputCharacters[index] !== character}
         class:active={!exerciseError && session.status !== 'completed' && index === inputCharacters.length}
+        data-position={index}
       >{character}</span>{/each}</span>
+    {#if session.status !== 'completed' && inputCharacters.length === targetCharacters.length}<span class="typing-end-anchor" aria-hidden="true">&nbsp;</span>{/if}
     {/if}
   </label>
+  {#if composing && compositionPreview.text}<span class="preedit" aria-hidden="true"
+    style:left={`${capturePosition.left}px`} style:top={`${capturePosition.top}px`}
+    style:max-width={`calc(100% - ${capturePosition.left}px)`}>{compositionPreview.text}</span>{/if}
+  </div>
+  {#if inputNotice}<p role="status">{inputNotice === 'cancelled'
+    ? text("practice-panel.uncommitted-input-was-cancelled")
+    : text("practice-panel.this-edit-is-not-supported-or-exceeds")}</p>{/if}
 
   {#if progress}
   <div class="exercise-progress">
@@ -631,9 +683,36 @@
 {/if}
 
 <style>
-  .typing-input:not(.sr-only) { width: 100%; padding: 0.6rem; color: var(--color-text); background: var(--color-background); border: 1px solid var(--color-muted); border-radius: 0.4rem; font: inherit; }
-  .typing-input:not(.sr-only):focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
-  .preedit { color: var(--color-accent); overflow-wrap: anywhere; }
+  .writing-area { position: relative; margin-block: 2rem; }
+  .typing-input {
+    position: absolute;
+    width: 1px;
+    min-width: 1px;
+    padding: 0;
+    border: 0;
+    outline: none;
+    background: transparent;
+    color: transparent;
+    caret-color: transparent;
+    pointer-events: none;
+  }
+  .typing-input, .preedit {
+    font: inherit;
+    font-size: clamp(1.35rem, 3vw, 2.15rem);
+    font-weight: 420;
+    letter-spacing: -0.025em;
+    line-height: normal;
+  }
+  .preedit {
+    position: absolute;
+    max-width: 100%;
+    background: var(--color-surface);
+    color: var(--color-accent);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    text-decoration: underline;
+    pointer-events: none;
+  }
   textarea {
     display: block;
     width: 100%;
@@ -657,7 +736,7 @@
     border-radius: 0.25rem;
     white-space: pre-wrap;
     max-height: 15rem;
-    margin-block: 2rem;
+    margin: 0;
     overflow-y: auto;
     overflow-wrap: anywhere;
     scrollbar-color: var(--color-accent) var(--color-surface);
@@ -761,7 +840,7 @@
     background: var(--color-accent);
   }
 
-  .typing-input:focus-visible + .practice-text,
+  .writing-area:focus-within .practice-text,
   .practice-text:focus-visible {
     outline: 2px solid var(--color-focus);
     outline-offset: 8px;
@@ -778,19 +857,19 @@
     text-underline-offset: 0.2em;
   }
 
-  .typing-character.active {
+  .typing-character.active, .typing-end-anchor {
     color: var(--color-background);
     background: var(--color-accent);
     box-shadow: -2px 0 var(--color-accent);
   }
 
-  [data-caret='line'] .typing-character.active {
+  [data-caret='line'] .typing-character.active, [data-caret='line'] .typing-end-anchor {
     color: var(--color-text);
     background: transparent;
     box-shadow: -2px 0 var(--color-accent);
   }
 
-  [data-caret='underline'] .typing-character.active {
+  [data-caret='underline'] .typing-character.active, [data-caret='underline'] .typing-end-anchor {
     color: var(--color-text);
     background: transparent;
     box-shadow: 0 2px var(--color-accent);

@@ -226,6 +226,48 @@ for (const width of [1440, 768, 320]) {
   });
 }
 
+test('uses one writing surface and anchors native capture to the tracking letter after edits, wrapping, scrolling and resize', async ({ page }) => {
+  await page.getByLabel('Word limit', { exact: true }).selectOption('100');
+  const exercise = await target(page);
+  const activeCharacter = page.locator('.typing-character.active');
+  const assertAnchored = async (position: number) => {
+    await expect(activeCharacter).toHaveAttribute('data-position', String(position));
+    await expect.poll(async () => {
+      const capture = await input(page).boundingBox();
+      const character = await activeCharacter.boundingBox();
+      if (!capture || !character) return false;
+      return Math.abs(capture.x - character.x) < 1 && Math.abs(capture.y - character.y) < 1;
+    }).toBe(true);
+  };
+  await start(page);
+  await assertAnchored(0);
+  await expect(input(page)).toHaveCSS('position', 'absolute');
+  await expect(input(page)).toHaveCSS('color', 'rgba(0, 0, 0, 0)');
+  await expect(input(page)).toHaveCSS('caret-color', 'rgba(0, 0, 0, 0)');
+  await expect(input(page)).toHaveCSS('border-top-width', '0px');
+  await page.keyboard.type(exercise.slice(0, 5));
+  await assertAnchored(5);
+  await page.keyboard.press('Backspace');
+  await assertAnchored(4);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await assertAnchored(4);
+  await input(page).fill(exercise.slice(0, 250));
+  await assertAnchored(250);
+  expect(await page.locator('#practice-target').evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await page.locator('#practice-target').evaluate((element) => { element.scrollTop -= 20; });
+  await assertAnchored(250);
+  for (const style of ['block', 'line', 'underline']) {
+    await page.getByRole('button', { name: 'Restart', exact: true }).click();
+    await page.getByLabel('Caret style').selectOption(style);
+    await page.locator('#practice-target').click();
+    await expect(input(page)).toBeFocused();
+    await page.keyboard.type(exercise.slice(0, 2));
+    await assertAnchored(2);
+    await expect(panel(page)).toHaveAttribute('data-caret', style);
+    await expect(activeCharacter).toHaveCSS('background-color', style === 'block' ? 'rgb(255, 93, 0)' : 'rgba(0, 0, 0, 0)');
+  }
+});
+
 test('reports unavailable history without runtime errors or external requests', async ({ page }) => {
   const errors: string[] = [];
   const externalRequests: string[] = [];
