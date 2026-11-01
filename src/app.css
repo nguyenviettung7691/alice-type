@@ -43,6 +43,100 @@ a {
   font: inherit;
 }
 
+select {
+  appearance: none;
+  min-height: 2.5rem;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgb(255 255 255 / 22%);
+  border-radius: 0.6rem;
+  padding-block: 0.5rem;
+  padding-inline: 0.75rem 2.5rem;
+  color: var(--color-text);
+  background-color: var(--color-surface);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23b8b8b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  font: inherit;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  color-scheme: dark;
+}
+
+select:hover:not(:disabled) { border-color: var(--color-accent); }
+select:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+select:disabled { cursor: not-allowed; opacity: 0.55; }
+select option, select optgroup { color: var(--color-text); background: var(--color-surface); }
+
+select:dir(rtl) { background-position: left 0.75rem center; }
+
+input[type="checkbox"] {
+  appearance: none;
+  flex: 0 0 1.25rem;
+  width: 1.25rem;
+  height: 1.25rem;
+  margin: 0;
+  border: 1px solid #929292;
+  border-radius: 0.3rem;
+  background-color: var(--color-background);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 1rem;
+  cursor: pointer;
+}
+
+input[type="checkbox"]:checked {
+  border-color: var(--color-accent);
+  background-color: var(--color-accent);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%231a1a1a' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m5 12 4 4 10-10'/%3E%3C/svg%3E");
+}
+
+input[type="checkbox"]:hover:not(:disabled) { border-color: var(--color-accent); }
+input[type="checkbox"]:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+input[type="checkbox"]:disabled { cursor: not-allowed; opacity: 0.55; }
+
+label:has(> input[type="checkbox"]) {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 2.5rem;
+  min-width: 0;
+  max-width: 100%;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 0.6rem;
+  padding: 0.5rem 0.65rem;
+  background: var(--color-surface);
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.settings-panel label:has(> input[type="checkbox"]) { flex-wrap: nowrap; }
+label:has(> input[type="checkbox"]:checked) { border-color: rgb(255 93 0 / 50%); }
+label:has(> input[type="checkbox"]:not(:disabled)):hover { border-color: var(--color-accent); }
+label:has(> input[type="checkbox"]:focus-visible) { border-color: var(--color-accent); }
+label:has(> input[type="checkbox"]:disabled) { cursor: not-allowed; color: var(--color-muted); }
+
+@media (forced-colors: active) {
+  select {
+    appearance: auto;
+    background-image: none;
+    padding-inline: 0.75rem;
+    border-color: ButtonText;
+  }
+  select:focus-visible { outline-color: Highlight; }
+  select:disabled { opacity: 1; color: GrayText; border-color: GrayText; }
+  input[type="checkbox"], input[type="checkbox"]:checked {
+    appearance: auto;
+    background-image: none;
+    border-color: ButtonText;
+    accent-color: auto;
+  }
+  input[type="checkbox"]:focus-visible { outline-color: Highlight; }
+  input[type="checkbox"]:disabled { opacity: 1; }
+  label:has(> input[type="checkbox"]) { border-color: ButtonText; }
+  label:has(> input[type="checkbox"]:disabled) { color: GrayText; border-color: GrayText; }
+}
+
 [hidden] {
   display: none !important;
 }
@@ -150,21 +244,11 @@ dialog h2 {
   margin-bottom: 1rem;
 }
 
-.settings-panel select {
-  border: 1px solid var(--color-muted);
-  border-radius: 0.35rem;
-  padding: 0.5rem;
-  background: var(--color-background);
-  color: var(--color-text);
-  font: inherit;
-}
-
 .settings-panel input {
   accent-color: var(--color-accent);
 }
 
 .settings-panel input:focus-visible,
-.settings-panel select:focus-visible,
 .history-scroll:focus-visible {
   outline: 2px solid var(--color-focus);
   outline-offset: 3px;
@@ -265,7 +349,7 @@ dialog h2 {
   white-space: nowrap;
 }
 
-.history-scroll th {
+.history-scroll thead th {
   position: sticky;
   top: 0;
   z-index: 1;
@@ -296,7 +380,7 @@ dialog h2 {
   outline-offset: 3px;
 }
 
-.history-scroll tbody tr:nth-child(even) {
+.history-scroll tbody tr.alternate {
   background: rgb(255 255 255 / 3%);
 }
 
@@ -304,24 +388,47 @@ dialog h2 {
   background: rgb(255 255 255 / 6%);
 }
 
+.virtual-table { scrollbar-color: var(--color-accent) var(--color-background); }
+.virtual-table :is(.virtual-row, thead tr) { height: 48px; }
+.virtual-table :is(td, th) { height: 48px; padding: 0 1rem; }
+.virtual-table tbody th { font-weight: 400; text-align: left; }
+.virtual-table .virtual-spacer td { padding: 0; border: 0; }
+.virtual-table .virtual-spacer:hover { background: transparent; }
+
 .reach-summary {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem 1.5rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
+  gap: 0.75rem;
   margin: 0 0 0.75rem;
 }
 
+.reach-panel { margin-top: 1.25rem; border-top: 1px solid rgb(255 255 255 / 12%); padding-top: 1rem; }
+.reach-panel h4 { margin: 0; }
+.reach-panel h5 { margin: 1rem 0 0.6rem; color: #b8b8b8; font-size: 0.85rem; }
+.reach-summary > div { border: 1px solid rgb(255 255 255 / 12%); border-radius: 0.65rem; padding: 1rem; background: var(--color-background); }
+.reach-summary dt { color: #b8b8b8; font-size: 0.85rem; }
+.reach-meter { height: 0.35rem; margin-top: 0.65rem; background: #404040; border-radius: 1rem; overflow: hidden; }
+.reach-meter span { display: block; height: 100%; background: var(--color-accent); }
+
 .reach-summary dd {
-  margin: 0;
+  margin: 0.5rem 0 0;
+  font-size: 1.6rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
 
 .reach-keys {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 0.6rem;
   margin: 0;
-  padding-left: 1.25rem;
+  padding: 0;
+  list-style: none;
   font-variant-numeric: tabular-nums;
 }
+
+.reach-keys li { display: grid; grid-template-columns: 1fr auto; gap: 0.5rem; padding: 0.8rem; border: 1px solid rgb(255 255 255 / 12%); border-radius: 0.6rem; font-size: 0.85rem; }
+.reach-keys li span { grid-column: 1 / -1; color: #b8b8b8; font-size: 0.75rem; }
 
 .stats-language select {
   margin-left: 0.5rem;
@@ -615,7 +722,7 @@ a:focus-visible {
 }
 
 .sample-text {
-  max-width: 58rem;
+  max-width: 100%;
   margin: clamp(2.4rem, 7vw, 4.8rem) auto;
   color: #c5c5c5;
   font-size: clamp(1.35rem, 3vw, 2.15rem);

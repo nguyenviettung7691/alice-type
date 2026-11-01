@@ -218,6 +218,16 @@ test('requires explicit device selection when multiple previously authorized dev
   await expect(connection(page)).toContainText('Several devices are available');
   await expect(connection(page)).not.toContainText('Selected device:');
   await connection(page).locator('summary').click();
+  const deviceSelect = page.getByLabel('Choose a device', { exact: true });
+  await expect(deviceSelect).toHaveCSS('background-color', 'rgb(36, 36, 36)');
+  await expect(deviceSelect).toHaveCSS('min-height', '40px');
+  await deviceSelect.hover();
+  await expect(deviceSelect).toHaveCSS('border-color', 'rgb(255, 93, 0)');
+  await page.keyboard.press('Tab');
+  await deviceSelect.focus();
+  await expect(deviceSelect).toHaveCSS('outline-style', 'solid');
+  await page.setViewportSize({ width: 320, height: 740 });
+  expect(await deviceSelect.evaluate((element) => element.getBoundingClientRect().right <= innerWidth)).toBe(true);
   await page.getByLabel('Choose a device', { exact: true }).selectOption('1');
   await expect(connection(page)).toContainText('Selected device: Second HID device');
 });

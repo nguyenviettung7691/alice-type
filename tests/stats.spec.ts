@@ -49,8 +49,9 @@ test('separates sections, aligns metric cards, and bounds history with a sticky 
     }
   }
   const scroll = stats(page).locator('.history-scroll');
-  await expect(scroll.locator('tbody tr')).toHaveCount(30);
-  await expect(scroll.locator('tbody tr').first()).toContainText('69');
+  expect(await scroll.locator('.virtual-row').count()).toBeLessThanOrEqual(17);
+  await expect(scroll.locator('table')).toHaveAttribute('aria-rowcount', '31');
+  await expect(scroll.locator('.virtual-row').first()).toContainText('69');
   const bounds = await scroll.evaluate((element) => ({
     height: element.clientHeight, content: element.scrollHeight, overflow: getComputedStyle(element).overflowY
   }));
@@ -67,7 +68,7 @@ test('separates sections, aligns metric cards, and bounds history with a sticky 
   await scroll.getByRole('button', { name: /^WPM/ }).click();
   await expect(scroll.locator('th[aria-sort="descending"]')).toContainText('WPM');
   await scroll.getByRole('button', { name: /^WPM/ }).click();
-  await expect(scroll.locator('tbody tr').first()).toContainText('40');
+  await expect(scroll.locator('.virtual-row').first()).toContainText('40');
   const header = scroll.locator('th').first();
   await scroll.focus();
   const headerOffset = async () => (await header.boundingBox())!.y - (await scroll.boundingBox())!.y;
@@ -75,6 +76,56 @@ test('separates sections, aligns metric cards, and bounds history with a sticky 
   await page.keyboard.press('PageDown');
   await expect.poll(() => scroll.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
   expect(Math.abs(await headerOffset() - before)).toBeLessThan(1);
+});
+
+test('virtualizes large histories and per-key accuracy, reaches the final row, and resets on sort or filter', async ({ page }) => {
+  await seedHistory(page, {}, 300);
+  await page.evaluate(async () => {
+    const path = '/src/lib/storage/session-history.ts';
+    const { SessionHistory }: typeof import('../src/lib/storage/session-history') = await import(path);
+    const history = new SessionHistory();
+    const keyAttempts = Object.fromEntries([
+      ...Array.from({ length: 200 }, (_, index) => [`TestKey${index}`, 20] as const),
+      ['Digit1', 20], ['KeyA', 20]
+    ]);
+    try {
+      await history.save({
+        version: 4, language: 'en', scoringVersion: 'committed-grapheme-v1', id: 'attributed',
+        completedAt: 999999, mode: 'words', limit: 10, wordBankTier: 200,
+        punctuation: false, numbers: false, wpm: 80, totalAttempts: 4040,
+        correctAttempts: 4030, accuracy: 99.8, missedKeys: { Digit1: 10 },
+        keyAttempts, handAttempts: { left: 4040, right: 0, thumb: 0, unattributed: 0 }, bKeyHand: 'left'
+      });
+    } finally { history.close(); }
+  });
+  await nav(page, 'Stats').click();
+  const history = stats(page).getByRole('region', { name: 'Session history table', exact: true });
+  const accuracy = stats(page).getByRole('region', { name: 'Per-key accuracy', exact: true });
+  await expect(history.locator('table')).toHaveAttribute('aria-rowcount', '302');
+  await expect(accuracy.locator('table')).toHaveAttribute('aria-rowcount', '203');
+  for (const [scroll, count] of [[history, 301], [accuracy, 202]] as const) {
+    await scroll.scrollIntoViewIfNeeded();
+    expect(await scroll.locator('.virtual-row').count()).toBeLessThanOrEqual(17);
+    const size = await scroll.evaluate((element) => element.scrollHeight);
+    expect(Math.abs(size - (count + 1) * 48)).toBeLessThanOrEqual(2);
+    await scroll.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    await expect(scroll.locator('.virtual-row').last()).toHaveAttribute('aria-rowindex', String(count + 1));
+    expect(await scroll.locator('.virtual-row').count()).toBeLessThanOrEqual(17);
+    await expect(scroll.locator('thead th').first()).toBeInViewport();
+  }
+  await expect(history.locator('.virtual-row').last()).toHaveAttribute('data-row-key', 'stats-0');
+  await history.getByRole('button', { name: /^Completed/ }).click();
+  await expect.poll(() => history.evaluate((element) => element.scrollTop)).toBe(0);
+  await expect(history.locator('.virtual-row').first()).toHaveAttribute('data-row-key', 'stats-0');
+  const reach = stats(page).getByRole('region', { name: 'Reach keys', exact: true });
+  await expect(reach.locator('.reach-summary dd')).toHaveText(['50.0%', '100.0%']);
+  await expect(reach.locator('.reach-keys')).toContainText('Digit1');
+  await expect(reach.locator('.reach-keys')).toContainText('Attempts: 20');
+  await stats(page).getByLabel('Language', { exact: true }).selectOption('vi');
+  await expect(accuracy).toHaveCount(0);
+  await stats(page).getByLabel('Language', { exact: true }).selectOption('en');
+  await expect(accuracy.locator('.virtual-row').first()).toHaveAttribute('data-row-key', 'Digit1');
+  await expect.poll(() => accuracy.evaluate((element) => element.scrollTop)).toBe(0);
 });
 
 test('renders exact miss counts and proportional heat, shared spacebars, and unmapped codes', async ({ page }) => {

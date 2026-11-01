@@ -70,6 +70,11 @@ Practice navigation and mode changes retain their existing behavior. Do not chan
 
 ### 5.2 Test view content
 
+The compact presentation places focus/restart actions beside the heading, followed
+by the mode controls, test status/progress, and full-width keyboard. Shift+Tab exit
+guidance stays visible. Detailed physical-key capture instructions and limitations
+live in a native disclosure below the diagram; sound controls remain below it.
+
 The view contains:
 
 1. A heading and concise instructions describing the physical-key test and generic Alice/US ANSI diagram.

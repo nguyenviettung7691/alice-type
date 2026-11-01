@@ -5,10 +5,11 @@
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import HandBalance from './HandBalance.svelte';
   import SessionProgressChart from './SessionProgressChart.svelte';
+  import VirtualTable from './VirtualTable.svelte';
   import { type AliceKey, type InertKey } from '../keyboard/alice-layout';
   import { useLocalization } from '../i18n/context';
   import { compareLabels, formatAccuracy, formatDate, formatNumber } from '../i18n/format';
-  import { LANGUAGES, getLanguage, type LanguageId } from '../i18n/languages';
+  import { LANGUAGES, getLanguage, isLanguageId, type LanguageId } from '../i18n/languages';
   import { DRILL_TYPE_LABEL_KEYS } from '../i18n/alice-messages';
   import { CODE_LANGUAGE_NAMES } from '../typing/exercise-generator';
   const i18n = useLocalization();
@@ -170,11 +171,10 @@
           </div>
           <span class="stats-badge">{text("stats-panel.saved", { p0: number(summary.count) })}</span>
         </div>
-        <!-- svelte-ignore a11y_no_noninteractive_tabindex (The history table needs native keyboard scrolling on narrow screens.) -->
-        <div class="history-scroll" role="region" aria-label={text("stats-panel.session-history-table")} tabindex="0">
-          <table>
-            <caption class="sr-only">{text("stats-panel.completed-sessions-sortable-by-column")}</caption>
-            <thead><tr>
+        <SessionProgressChart {records} {modeLabel} />
+        <VirtualTable items={sortedRecords} itemKey={(record) => record.id} columns={5}
+          label={text("stats-panel.session-history-table")} resetKey={`${sortKey}-${sortDirection}-${i18n.language}`}>
+          {#snippet header()}
               {#each [['completedAt', 'Completed'], ['mode', 'Mode / limit'], ['wpm', 'WPM'], ['accuracy', 'Accuracy']] as const as [key, label]}
                 <th scope="col" aria-sort={ariaSort(key)}>
                   <button class="sort-button" type="button" onclick={() => sortBy(key)}>
@@ -183,22 +183,16 @@
                 </th>
               {/each}
               <th scope="col">{text("stats-panel.language")}</th>
-            </tr></thead>
-            <tbody>
-              {#each sortedRecords as record (record.id)}
-                <tr>
+          {/snippet}
+          {#snippet row(record)}
                   <td><time datetime={new Date(record.completedAt).toISOString()}>{formatDate(i18n.language, record.completedAt)}</time></td>
                   <td>{modeLabel(record)}</td>
                   <td>{record.mode === 'zen' ? text("stats-panel.free-writing-wpm", { p0: number(record.wpm) }) : number(record.wpm)}</td>
                   <td>{#if record.accuracy === null}{text("stats-panel.not-applicable")}{:else}<span class="percent-value" style:color={percentColor(record.accuracy)}>{formatAccuracy(i18n.language, record.accuracy)}</span>
                     <span class="sr-only">{record.scoringVersion ? text("stats-panel.committed-text-accuracy") : text("stats-panel.historical-keystroke-accuracy")}</span>{/if}</td>
                   <td>{text(getLanguage(record.language ?? 'en').labelKey)}</td>
-                </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-        <SessionProgressChart {records} {modeLabel} />
+          {/snippet}
+        </VirtualTable>
       </section>
       <section class="stats-section" aria-labelledby="missed-keys-heading">
         <div class="stats-section-heading">
@@ -224,7 +218,11 @@
         <div class="stats-section-heading">
           <h3 id="hand-load-heading">{text("stats-panel.hand-load-heading")}</h3>
           <label class="stats-language">{text("stats-panel.attribution-language")}
-            <select value={attributionLanguage} onchange={(event) => { attributionLanguage = event.currentTarget.value as typeof attributionLanguage; }}>
+            <select aria-label={text("stats-panel.attribution-language")} value={attributionLanguage} onchange={(event) => {
+              const next = event.currentTarget.value;
+              if (next !== 'all' && !isLanguageId(next)) throw new Error('Unsupported attribution language.');
+              attributionLanguage = next;
+            }}>
               <option value="all">{text("stats.allLanguages")}</option>
               {#each Object.keys(LANGUAGES) as LanguageId[] as language (language)}<option value={language}>{text(getLanguage(language).labelKey)}</option>{/each}
             </select>
@@ -239,36 +237,48 @@
           <h4>{text("stats-panel.per-key-accuracy")}</h4>
           <p class="panel-copy">{text("stats-panel.per-key-accuracy-copy", { p0: number(MINIMUM_KEY_ATTEMPTS) })}</p>
           {#if attribution.keys.length}
-            <!-- svelte-ignore a11y_no_noninteractive_tabindex (The per-key table needs native keyboard scrolling on narrow screens.) -->
-            <div class="history-scroll" role="region" aria-label={text("stats-panel.per-key-accuracy")} tabindex="0">
-              <table class="key-accuracy">
-                <thead><tr>
+            <VirtualTable items={attribution.keys} itemKey={(key) => key.code} columns={4}
+              label={text("stats-panel.per-key-accuracy")} resetKey={`${attributionLanguage}-${i18n.language}`}>
+                {#snippet header()}
                   <th scope="col">{text("stats-panel.key")}</th>
                   <th scope="col">{text("stats-panel.attempts")}</th>
                   <th scope="col">{text("stats-panel.misses-column")}</th>
                   <th scope="col">{text("practice-panel.accuracy")}</th>
-                </tr></thead>
-                <tbody>
-                  {#each attribution.keys as key (key.code)}
-                    <tr data-key-code={key.code}><th scope="row"><code>{key.code}</code></th><td>{number(key.attempts)}</td><td>{number(key.misses)}</td><td>{formatAccuracy(i18n.language, key.accuracy)}</td></tr>
-                  {/each}
-                </tbody>
-              </table>
-            </div>
+                {/snippet}
+                {#snippet row(key)}
+                  <th scope="row" data-key-code={key.code}><code>{key.code}</code></th><td>{number(key.attempts)}</td><td>{number(key.misses)}</td><td><span class="percent-value" style:color={percentColor(key.accuracy)}>{formatAccuracy(i18n.language, key.accuracy)}</span></td>
+                {/snippet}
+            </VirtualTable>
           {:else}
             <p class="empty-state">{text("stats-panel.no-keys-with-enough-attempts", { p0: number(MINIMUM_KEY_ATTEMPTS) })}</p>
           {/if}
-          <h4>{text("stats-panel.reach-keys")}</h4>
+          <section class="reach-panel" aria-labelledby="reach-keys-heading">
+          <h4 id="reach-keys-heading">{text("stats-panel.reach-keys")}</h4>
           <p class="panel-copy">{text("stats-panel.reach-keys-copy")}</p>
           <dl class="reach-summary">
-            <div><dt>{text("stats-panel.reach-accuracy")}</dt><dd>{attribution.reachAccuracy === null ? text("practice-panel.not-available") : formatAccuracy(i18n.language, attribution.reachAccuracy)}</dd></div>
-            <div><dt>{text("stats-panel.home-row-accuracy")}</dt><dd>{attribution.homeRowAccuracy === null ? text("practice-panel.not-available") : formatAccuracy(i18n.language, attribution.homeRowAccuracy)}</dd></div>
+            {#each [
+              { label: text("stats-panel.reach-accuracy"), accuracy: attribution.reachAccuracy },
+              { label: text("stats-panel.home-row-accuracy"), accuracy: attribution.homeRowAccuracy }
+            ] as metric}
+              <div><dt>{metric.label}</dt>
+                <dd style:color={metric.accuracy === null ? undefined : percentColor(metric.accuracy)}>{metric.accuracy === null ? text("practice-panel.not-available") : formatAccuracy(i18n.language, metric.accuracy)}</dd>
+                {#if metric.accuracy !== null}<div class="reach-meter" aria-hidden="true"><span style:width={`${metric.accuracy}%`}></span></div>{/if}
+              </div>
+            {/each}
           </dl>
           {#if attribution.reachKeys.length}
+            <h5>{text("ui.reach-priority")}</h5>
             <ul class="reach-keys">
-              {#each attribution.reachKeys.slice(0, 5) as key (key.code)}<li><code>{key.code}</code>: {formatAccuracy(i18n.language, key.accuracy)}</li>{/each}
+              {#each attribution.reachKeys.slice(0, 5) as key (key.code)}
+                <li><code>{key.code}</code><strong style:color={percentColor(key.accuracy)}>{formatAccuracy(i18n.language, key.accuracy)}</strong>
+                  <span>{text("stats-panel.attempts")}: {number(key.attempts)} · {text("stats-panel.misses-column")}: {number(key.misses)}</span>
+                </li>
+              {/each}
             </ul>
+          {:else}
+            <p class="empty-state">{text("ui.reach-empty", { p0: number(MINIMUM_KEY_ATTEMPTS) })}</p>
           {/if}
+          </section>
         {/if}
       </section>
     {/if}

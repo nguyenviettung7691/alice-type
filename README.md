@@ -191,6 +191,12 @@ The **Practice** page includes Block, Line, or Underline carets, live-stat
 visibility, and optional generated typing clicks (off by default). **Restore
 defaults** requires confirmation and does not delete history.
 
+Practice keeps its mode/options, typing area, progress, and actions above the
+full-width keyboard. The two-line text window scrolls with the caret. Keyboard Test places
+focus/restart actions beside its heading and shows the full-width diagram directly
+after the compact test status. **Instructions & limitations** expands the detailed
+key-capture guidance; Shift+Tab always leaves the test.
+
 Preferences, selected profiles, confirmed layouts, and personal notes use
 versioned `localStorage` (schema v7). The far-right **Language** selector defaults
 to English and saves your choice locally; **Restore defaults** returns to English.
@@ -206,6 +212,11 @@ shows mode; language toggles hide or show each language's sessions.
 **Hand load and key accuracy** summarizes saved v4 sessions by language: hand balance,
 per-key accuracy for keys with at least 20 direct attempts, and reach-key versus
 home-row accuracy. Older records are excluded and counted in a note.
+Recent-session and per-key tables virtualize their rows in a bounded, keyboard-scrollable
+viewport with sticky headers. Sorting history or changing the attribution language resets
+the relevant table to the top; all records remain included in summaries and charts.
+Reach stats compare accuracy in two cards and show up to five lowest-accuracy reach
+keys with attempt/miss counts, or explain when the sample is too small.
 Keyboard Test counts and raw input events are not stored.
 
 All app data stays in your browser, with no uploads or remote synchronization.

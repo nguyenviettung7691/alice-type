@@ -1,4 +1,8 @@
 export const MESSAGE_PARAMETERS = {
+  'ui.keyboard-test-help': {},
+  'ui.test-exit': {},
+  'ui.reach-priority': {},
+  'ui.reach-empty': { p0: 'string' },
   'visualizer.confirmed': {},
   'visualizer.preview': {},
   'visualizer.browserDefaultLegends': {},

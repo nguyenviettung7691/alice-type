@@ -689,7 +689,7 @@
     </div>
   {/if}
   {#if !zen}
-  <p class="settings-note">{running ? text("practice-panel.options-are-locked-while-you-type-restart") : text("practice-panel.pick-a-mode-and-options-then-start")}</p>
+  {#if running}<p class="settings-note">{text("practice-panel.options-are-locked-while-you-type-restart")}</p>{/if}
   {:else}
     <p id="zen-instructions">{text("practice-panel.free-writing-english-and-vietnamese-are-supported")}</p>
   {/if}
@@ -765,7 +765,7 @@
     onfocus={() => { focused = true; synchronizeInput(); }}
     onblur={() => { focused = false; cancelComposition(); clearFeedback(); }}
   />
-  <label bind:this={targetElement} class="sample-text practice-text" for="practice-input" id="practice-target" lang={session.configuration?.language ?? 'en'}>
+  <label bind:this={targetElement} class="sample-text practice-text" for="practice-input" id="practice-target" tabindex="-1" lang={session.configuration?.language ?? 'en'}>
     {#if zen}
       <span class="zen-writing">{writing}</span>{#if session.status !== 'completed'}<span class="zen-caret" aria-hidden="true">&nbsp;</span>{/if}
     {:else if finiteSession}
@@ -797,15 +797,6 @@
   {/if}
   {/if}
 
-  {#if !zen}
-  <AliceKeyboardVisualizer {layout} {feedback} testLayoutLabel={layoutLabel} {browserLegends}
-    {inertKeys} {viewBox} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'} expected={guideExpected} />
-  {#if guideActive}
-    <p class="guide-caption" data-guide-key={guideKey?.code ?? ''}>{guideCaption}{#if !layoutMap} <span class="guide-reference">{text("alice-practice.guide-reference")}</span>{/if}</p>
-    <p class="sr-only" aria-live="polite">{guideAnnouncement}</p>
-  {/if}
-  {/if}
-
   <div class="practice-bottom">
     {#if !zen}<p class="session-note" role="status">{exerciseError ? text("practice-panel.practice-stopped-choose-restart-for-a-new") : statusMessage}</p>{/if}
     <div class="practice-actions">
@@ -823,6 +814,15 @@
       <button class="restart-button danger-button" type="button" onclick={restart}>{text("practice-panel.restart")}</button>
     </div>
   </div>
+
+  {#if !zen}
+  <AliceKeyboardVisualizer {layout} {feedback} testLayoutLabel={layoutLabel} {browserLegends}
+    {inertKeys} {viewBox} layoutSource={layoutConfirmed ? 'confirmed' : 'generic'} expected={guideExpected} />
+  {#if guideActive}
+    <p class="guide-caption" data-guide-key={guideKey?.code ?? ''}>{guideCaption}{#if !layoutMap} <span class="guide-reference">{text("alice-practice.guide-reference")}</span>{/if}</p>
+    <p class="sr-only" aria-live="polite">{guideAnnouncement}</p>
+  {/if}
+  {/if}
 
   {#if showHandBalance}
     <HandBalance hands={handAttempts} fingers={fingerAttempts} heading={text("alice-practice.hand-balance")} live />
@@ -864,9 +864,11 @@
 {/if}
 
 <style>
+  .practice-panel { padding: clamp(1rem, 2vw, 1.5rem); }
   .guide-caption { margin: 0.5rem 0 0; color: var(--color-text); font-weight: 600; }
   .guide-reference { color: var(--color-muted); font-weight: 400; font-size: 0.85em; }
-  .writing-area { position: relative; margin-block: 2rem; }
+  .writing-area { position: relative; margin-block: 0.75rem; }
+  .practice-bottom { margin: 0.5rem 0 0.75rem; }
   .typing-input {
     position: absolute;
     width: 1px;
@@ -918,7 +920,7 @@
     cursor: text;
     border-radius: 0.25rem;
     white-space: pre-wrap;
-    max-height: 15rem;
+    max-height: 2lh;
     margin: 0;
     overflow-y: auto;
     overflow-wrap: anywhere;
@@ -929,12 +931,12 @@
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 1rem;
+    gap: 0.65rem 1rem;
     min-width: 0;
     margin: 0;
     border: 0;
     border-bottom: 1px solid rgb(255 255 255 / 10%);
-    padding: 0 0 1rem;
+    padding: 0 0 0.65rem;
     font-size: 0.8rem;
   }
 
@@ -952,28 +954,23 @@
     font-weight: 600;
   }
 
+  .exercise-settings legend {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
   .exercise-settings label, .preferences label {
     display: flex;
     align-items: center;
     gap: 0.5rem;
   }
 
-  select {
-    max-width: 100%;
-    border: 1px solid var(--color-muted);
-    border-radius: 0.35rem;
-    padding: 0.4rem;
-    color: var(--color-text);
-    background: var(--color-background);
-    font: inherit;
-  }
-
-  select:focus-visible, input[type="checkbox"]:focus-visible {
-    outline: 2px solid var(--color-focus);
-    outline-offset: 3px;
-  }
-
-  input[type="checkbox"], progress {
+  progress {
     accent-color: var(--color-accent);
   }
 
@@ -982,7 +979,7 @@
   }
 
   .settings-note {
-    margin: 0.65rem 0 1.5rem;
+    margin: 0.5rem 0 0.75rem;
     color: var(--color-muted);
     font-size: 0.75rem;
   }
@@ -995,7 +992,7 @@
     display: grid;
     grid-template-columns: 1fr auto;
     gap: 0.5rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 0.75rem;
     color: var(--color-muted);
     font-size: 0.8rem;
     font-variant-numeric: tabular-nums;

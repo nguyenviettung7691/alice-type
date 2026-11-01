@@ -1,6 +1,10 @@
 import type { MessageCatalog } from '../message-contract';
 
 export const vi = {
+  'ui.keyboard-test-help': 'Hướng dẫn và giới hạn',
+  'ui.test-exit': 'Shift+Tab để rời vùng kiểm tra.',
+  'ui.reach-priority': 'Phím xa có độ chính xác thấp nhất',
+  'ui.reach-empty': 'Chưa có phím xa nào đạt {p0} lần gõ trực tiếp.',
   'visualizer.confirmed': 'Bố cục bạn đã xác nhận',
   'visualizer.preview': 'Bản xem trước chưa xác nhận',
   'visualizer.browserDefaultLegends': 'Nhãn từ trình duyệt, dùng nhãn mặc định cho phím còn thiếu',
@@ -319,7 +323,7 @@ export const vi = {
   "practice-panel.custom-text-complete": "Đã gõ hết văn bản riêng.",
   "practice-panel.zen-stopped-2": "Đã dừng Zen.",
   "practice-panel.paste-your-text-and-choose-apply-text": "Dán văn bản và chọn Áp dụng văn bản để bắt đầu.",
-  "practice-panel.press-start-typing-or-just-begin-typing": "Chọn Bắt đầu gõ khi bạn sẵn sàng.",
+  "practice-panel.press-start-typing-or-just-begin-typing": "Chọn Bắt đầu gõ hoặc nhấp vào văn bản.",
   "practice-panel.session-complete-choose-restart-to-practice-again": "Đã hoàn thành bài luyện. {p0} Chọn Bắt đầu lại để luyện tiếp.",
   "practice-panel.you-are-typing-use-backspace-to-fix": "Bạn đang gõ. Dùng Backspace để sửa lỗi.",
   "stats-panel.a-little-progress-every-day": "Tiến bộ mỗi ngày",
@@ -387,11 +391,11 @@ export const vi = {
   "stats-panel.chart-points-list": "Các bài trên biểu đồ, cũ nhất trước",
   "stats-panel.no-chart-sessions": "Chưa có bài đối chiếu mẫu để vẽ biểu đồ. Không vẽ bài Zen.",
   "stats-panel.all-chart-languages-hidden": "Đang ẩn mọi ngôn ngữ. Hãy hiện một ngôn ngữ để vẽ các bài của ngôn ngữ đó.",
-  "tool-messages.check-your-keys-one-at-a-time": "Kiểm tra từng phím hoặc theo thứ tự bất kỳ. Bài kiểm tra dựa trên vị trí phím và không thay đổi điểm luyện gõ hay Thống kê.",
+  "tool-messages.check-your-keys-one-at-a-time": "Kiểm tra phím vật lý, không ảnh hưởng thống kê luyện gõ.",
   "tool-messages.focus-the-test-area-then-press-any": "Chọn vùng kiểm tra rồi nhấn phím có trong bố cục bao nhiêu lần tùy thích. Phím được khớp theo vị trí, không theo ký tự được gõ.",
   "tool-messages.focus-the-test-area-then-press-the": "Chọn vùng kiểm tra rồi nhấn phím được tô sáng. Bài kiểm tra dựa trên vị trí phím, không theo ký tự được gõ.",
   "tool-messages.if-tab-is-highlighted-press-it-to": "Nếu Tab được tô sáng, nhấn để kiểm tra; nếu không, Tab đưa tiêu điểm ra khỏi bài kiểm tra. Shift+Tab cũng giúp thoát ra.",
-  "tool-messages.sound-is-off-by-default-when-on": "Âm thanh mặc định tắt. Khi bật, âm thanh phát theo mỗi lượt nhấn phím được nhận. Đổi hiệu ứng sẽ phát thử một đoạn ngắn. Thao tác này không đổi âm thanh gõ trong Luyện gõ.",
+  "tool-messages.sound-is-off-by-default-when-on": "Phát theo mỗi lượt nhấn phím được nhận. Tách biệt với âm thanh Luyện gõ.",
   "tool-messages.numbers-show-miss-counts-heat-key-misses": "Các số biểu thị số lần gõ sai. Độ đậm = số lần sai của phím / số lần sai cao nhất trong tất cả phím vật lý đã ghi nhận; không phải tỷ lệ lỗi của từng phím. Phím không sai giữ màu trung tính.",
   "tool-messages.preview-not-confirmed-default-key-labels-may": "Bản xem trước, chưa xác nhận · Nhãn phím mặc định có thể khác bàn phím của bạn. Phím nét đứt không thể kiểm tra.",
   "tool-messages.dashed-keys-have-no-standard-key-code": "Phím nét đứt không có mã phím chuẩn nên không được tô sáng hay kiểm tra. Các mặt phím có chung mã vật lý sẽ cùng được tô sáng.",

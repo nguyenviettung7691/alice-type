@@ -152,6 +152,27 @@ test('VIA keymap import previews, applies to Practice, offers a read-only layer 
   await expect(section).toContainText('never uploaded');
   await expect(section).toContainText('not what your keyboard currently runs');
   const input = section.getByLabel('Keymap file');
+  await expect(input).toHaveAttribute('accept', '.json,.vil,application/json');
+  await page.keyboard.press('Tab');
+  await input.focus();
+  await expect(input).toBeFocused();
+  await expect(input).toHaveCSS('outline-style', 'solid');
+  const chooserPromise = page.waitForEvent('filechooser');
+  await page.keyboard.press('Enter');
+  const chooser = await chooserPromise;
+  await chooser.setFiles([]);
+  const pickerStyle = await input.evaluate((element) => {
+    const button = getComputedStyle(element, '::file-selector-button');
+    return { background: button.backgroundColor, height: button.minHeight };
+  });
+  expect(pickerStyle).toEqual({ background: 'rgb(255, 93, 0)', height: '40px' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  const pickerWidth = await input.evaluate((element) => ({
+    width: element.getBoundingClientRect().width,
+    available: element.parentElement!.getBoundingClientRect().width
+  }));
+  expect(Math.abs(pickerWidth.width - pickerWidth.available)).toBeLessThanOrEqual(1);
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await input.setInputFiles({ name: 'wrong.json', mimeType: 'application/json', buffer: bytes('{broken') });
   await expect(section.getByRole('alert')).toHaveText('The file is not valid JSON.');

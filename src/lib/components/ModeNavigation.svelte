@@ -33,9 +33,9 @@
 </nav>
 
 <style>
-  .practice-modes { margin-bottom: 1.5rem; }
+  .practice-modes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin-bottom: 0.85rem; }
   .mode-label {
-    margin: 0 0 0.65rem;
+    margin: 0;
     color: #b8b8b8;
     font-size: 0.78rem;
     font-weight: 600;
@@ -55,7 +55,7 @@
   button {
     border: 1px solid transparent;
     border-radius: 0.5rem;
-    padding: 0.65rem 1rem;
+    padding: 0.5rem 0.8rem;
     color: var(--color-text);
     background: transparent;
     font-size: 0.85rem;

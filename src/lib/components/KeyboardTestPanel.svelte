@@ -151,43 +151,35 @@
 <svelte:window onblur={releaseFocus} onfocus={() => { focused = document.activeElement === region; }} />
 
 <section class="practice-panel settings-panel keyboard-test-panel" aria-labelledby="keyboard-test-heading">
-  <p class="eyebrow">{text("keyboard-test-panel.keyboard-check")}</p>
-  <h2 id="keyboard-test-heading" tabindex="-1">{text("keyboard-test-panel.keyboard-test")}</h2>
-  <p class="panel-copy panel-intro">
-    {text(TOOL_MESSAGES.testIntro)}
-  </p>
-  <div class="test-modes" role="group" aria-labelledby="keyboard-test-mode-label">
-    <p id="keyboard-test-mode-label" class="mode-label">{text("keyboard-test-panel.choose-a-test-style")}</p>
-    <div class="mode-buttons">
-      {#each KEYBOARD_TEST_MODES as option}
-        <button type="button" aria-pressed={option.id === mode} class:selected={option.id === mode}
-          onclick={() => selectMode(option.id)}>{testModeLabel(localization.language, option.id)}</button>
-      {/each}
+  <div class="test-heading">
+    <div>
+      <h2 id="keyboard-test-heading" tabindex="-1">{text("keyboard-test-panel.keyboard-test")}</h2>
+      <p class="panel-copy panel-intro">{text(TOOL_MESSAGES.testIntro)}</p>
     </div>
-    <p class="mode-note">
-      {#if freestyle}
-        {text("keyboard-test-panel.press-any-mapped-key-in-any-order")}
-      {:else}
-        {text("keyboard-test-panel.press-the-highlighted-key-to-check-each")}
-      {/if}
-      {text("keyboard-test-panel.changing-modes-clears-this-test")}
-    </p>
+    <div class="test-modes" role="group" aria-labelledby="keyboard-test-mode-label">
+      <p id="keyboard-test-mode-label" class="mode-label">{text("keyboard-test-panel.choose-a-test-style")}</p>
+      <div class="mode-buttons">
+        {#each KEYBOARD_TEST_MODES as option}
+          <button type="button" aria-pressed={option.id === mode} class:selected={option.id === mode}
+            onclick={() => selectMode(option.id)}>{testModeLabel(localization.language, option.id)}</button>
+        {/each}
+      </div>
+      <p class="mode-note">
+        {#if freestyle}
+          {text("keyboard-test-panel.press-any-mapped-key-in-any-order")}
+        {:else}
+          {text("keyboard-test-panel.press-the-highlighted-key-to-check-each")}
+        {/if}
+      </p>
+      <span class="mode-note">{text("ui.test-exit")}</span>
+    </div>
+    <div class="test-actions">
+      <button class="primary-button danger-button" type="button" onclick={restart}>{text("keyboard-test-panel.restart-test")}</button>
+      <button bind:this={focusButton} class="primary-button" type="button" onclick={() => region.focus()}>
+        {text("keyboard-test-panel.focus-keyboard-test")}
+      </button>
+    </div>
   </div>
-  <p id="keyboard-test-instructions" class="panel-copy">
-    {#if freestyle}
-      {text(TOOL_MESSAGES.freestyleInstructions)}
-      {text("keyboard-test-panel.tab-is-counted-press-shift-tab-to")} {captureEscape ? text("keyboard-test-panel.escape-is-counted-too") : text("keyboard-test-panel.escape-also-leaves-the-test")}
-      {text("keyboard-test-panel.browser-shortcuts-and-some-system-keys-can")}
-    {:else}
-      {text(TOOL_MESSAGES.guidedInstructions)}
-      {text(TOOL_MESSAGES.guidedTab)}
-      {captureEscape ? text("keyboard-test-panel.escape-can-be-tested-when-highlighted") : text("keyboard-test-panel.escape-also-leaves-the-test")}
-      {text("keyboard-test-panel.browser-shortcuts-and-some-system-keys-can")}
-    {/if}
-  </p>
-  <button bind:this={focusButton} class="secondary-button" type="button" onclick={() => region.focus()}>
-    {text("keyboard-test-panel.focus-keyboard-test")}
-  </button>
 
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (A physical-key test needs an explicitly focusable region; Shift+Tab always leaves.) -->
   <div
@@ -228,7 +220,22 @@
   <AliceKeyboardVisualizer layout={testLayout} {testState} {errorCode} {testLayoutLabel} {browserLegends}
     {testSequence} {inertKeys} {viewBox} layoutSource={confirmed ? 'confirmed' : 'generic'} />
 
-  <fieldset>
+  <details class="test-help">
+    <summary>{text("ui.keyboard-test-help")}</summary>
+    <p id="keyboard-test-instructions" class="panel-copy">
+      {#if freestyle}
+        {text(TOOL_MESSAGES.freestyleInstructions)}
+        {text("keyboard-test-panel.tab-is-counted-press-shift-tab-to")} {captureEscape ? text("keyboard-test-panel.escape-is-counted-too") : text("keyboard-test-panel.escape-also-leaves-the-test")}
+      {:else}
+        {text(TOOL_MESSAGES.guidedInstructions)}
+        {text(TOOL_MESSAGES.guidedTab)}
+        {captureEscape ? text("keyboard-test-panel.escape-can-be-tested-when-highlighted") : text("keyboard-test-panel.escape-also-leaves-the-test")}
+      {/if}
+      {text("keyboard-test-panel.browser-shortcuts-and-some-system-keys-can")}
+      {text("keyboard-test-panel.counts-and-highlights-are-temporary-restart-or")}
+    </p>
+  </details>
+  <fieldset class="test-sound">
     <legend>{text("keyboard-test-panel.test-sound")}</legend>
     <label><input type="checkbox" checked={soundEnabled} onchange={(event) => {
       stopSound();
@@ -255,38 +262,48 @@
       <button class="secondary-button" type="button" onclick={() => { audioError = ''; }}>{text("keyboard-test-panel.dismiss-warning")}</button>
     </div>
   {/if}
-  <button class="secondary-button" type="button" onclick={restart}>{text("keyboard-test-panel.restart-test")}</button>
-  <p class="panel-copy">{text("keyboard-test-panel.counts-and-highlights-are-temporary-restart-or")}</p>
 </section>
 
 <style>
+  .keyboard-test-panel { padding: clamp(1rem, 2vw, 1.5rem); }
+  .test-heading { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 0.5rem 1rem; }
+  .test-actions { grid-column: 2; grid-row: 1; display: flex; flex-wrap: wrap; gap: 0.6rem; }
+  .test-modes { grid-column: 1 / -1; }
+  .test-heading h2 { margin: 0; }
+  .test-help { margin-top: 0.75rem; font-size: 0.85rem; }
+  .test-help summary { cursor: pointer; color: #b8b8b8; }
+  .test-help summary:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .test-sound { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+  .test-sound label, .test-sound p { margin: 0; }
   .test-input {
-    margin-block: 1.5rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 0.4rem 0.75rem;
+    margin-block: 0.75rem;
     border: 1px solid rgb(255 255 255 / 12%);
     border-radius: 0.6rem;
-    padding: 1rem;
+    padding: 0.75rem;
     background: rgb(0 0 0 / 12%);
     overflow-wrap: anywhere;
   }
   .test-input:focus { outline: 2px solid var(--color-focus); outline-offset: 3px; }
-  .test-focus-note { margin-top: 0; color: #b8b8b8; font-size: 0.85rem; }
-  .test-progress { margin-bottom: 0.55rem; font-variant-numeric: tabular-nums; }
-  .test-status { min-height: 3rem; line-height: 1.7; }
+  .test-focus-note { margin: 0; color: #b8b8b8; font-size: 0.85rem; }
+  .test-progress { margin: 0; font-variant-numeric: tabular-nums; }
+  .test-status { grid-column: 1 / -1; margin: 0; line-height: 1.5; }
   .test-status strong { color: var(--color-accent); }
   .test-status span { font-size: 0.85rem; }
   .effect-control { display: flex; flex-wrap: wrap; align-items: center; gap: 0.7rem; }
   .effect-control label { margin: 0; }
-  .panel-intro { max-width: 46rem; margin-block: -0.5rem 1.4rem; }
-  .test-modes { margin-block: 1rem 1.25rem; }
-  .mode-label { margin: 0 0 0.65rem; color: #b8b8b8; font-size: 0.78rem; font-weight: 600; }
+  .panel-intro { margin: 0.25rem 0 0; }
+  .test-modes { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem 1rem; margin: 0; }
+  .mode-label { margin: 0; color: #b8b8b8; font-size: 0.78rem; font-weight: 600; }
   .mode-buttons {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 13rem), 1fr));
-    max-width: 34rem;
+    display: flex;
+    flex-wrap: wrap;
     gap: 0.55rem;
   }
   .mode-buttons button {
-    min-height: 2.8rem;
+    min-height: 2.5rem;
     border: 1px solid rgb(255 255 255 / 16%);
     border-radius: 0.65rem;
     padding: 0.65rem 0.85rem;
@@ -303,8 +320,15 @@
     color: var(--color-accent);
     font-weight: 650;
   }
-  .mode-note { max-width: 44rem; margin: 0.7rem 0 0; color: #b8b8b8; font-size: 0.84rem; line-height: 1.6; }
-  progress { display: block; width: 100%; height: 0.6rem; accent-color: var(--color-accent); }
+  .mode-note { margin: 0; color: #b8b8b8; font-size: 0.84rem; line-height: 1.5; }
+  progress { grid-column: 1 / -1; display: block; width: 100%; height: 0.6rem; accent-color: var(--color-accent); }
+  @media (max-width: 760px) {
+    .test-heading { grid-template-columns: 1fr; }
+    .test-actions { grid-column: 1; grid-row: auto; }
+  }
+  @media (max-width: 520px) {
+    .test-input { grid-template-columns: 1fr; }
+  }
   progress::-webkit-progress-bar { background: var(--color-background); border-radius: 0.4rem; }
   progress::-webkit-progress-value { background: var(--color-accent); border-radius: 0.4rem; }
 </style>

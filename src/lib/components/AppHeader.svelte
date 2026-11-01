@@ -31,7 +31,10 @@
       </nav>
       {#if onlanguagechange}
         <label class="language-selector">
-          <span>{translate(language, 'header.language')}</span>
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <circle cx="12" cy="12" r="9" /><ellipse cx="12" cy="12" rx="4" ry="9" /><path d="M3 12h18" />
+          </svg>
+          <span class="sr-only">{translate(language, 'header.language')}</span>
           <select id="app-language" value={language} {disabled} aria-label={translate(language, 'header.language')} aria-describedby={disabled ? 'language-locked' : undefined}
             onchange={(event) => {
               const next = event.currentTarget.value;
@@ -50,8 +53,5 @@
 </header>
 
 <style>
-  .language-selector { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; color: var(--color-text); font-size: 0.8rem; }
-  select { color: var(--color-text); background: var(--color-background); border: 1px solid var(--color-muted); border-radius: 0.4rem; padding: 0.5rem; }
-  select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
-  select:disabled { opacity: 0.6; }
+  .language-selector { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; color: #b8b8b8; font-size: 0.85rem; }
 </style>

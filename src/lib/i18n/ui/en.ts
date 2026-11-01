@@ -1,6 +1,10 @@
 import type { MessageCatalog } from '../message-contract';
 
 export const en = {
+  'ui.keyboard-test-help': 'Instructions & limitations',
+  'ui.test-exit': 'Shift+Tab leaves the test.',
+  'ui.reach-priority': 'Lowest-accuracy reach keys',
+  'ui.reach-empty': 'No reach keys with {p0} direct attempts yet.',
   'visualizer.confirmed': 'Layout confirmed by you',
   'visualizer.preview': 'Unconfirmed layout preview',
   'visualizer.browserDefaultLegends': 'Browser layout legends (default keymap legends for missing keys)',
@@ -319,7 +323,7 @@ export const en = {
   "practice-panel.custom-text-complete": "Custom text complete.",
   "practice-panel.zen-stopped-2": "Zen stopped.",
   "practice-panel.paste-your-text-and-choose-apply-text": "Paste your text and choose Apply text to get started.",
-  "practice-panel.press-start-typing-or-just-begin-typing": "Press Start typing, or just begin typing, when you are ready.",
+  "practice-panel.press-start-typing-or-just-begin-typing": "Press Start typing or click the text to begin.",
   "practice-panel.session-complete-choose-restart-to-practice-again": "Session complete. {p0} Choose Restart to practice again.",
   "practice-panel.you-are-typing-use-backspace-to-fix": "You are typing. Use Backspace to fix mistakes.",
   "stats-panel.a-little-progress-every-day": "A little progress, every day",
@@ -387,11 +391,11 @@ export const en = {
   "stats-panel.chart-points-list": "Charted sessions, oldest first",
   "stats-panel.no-chart-sessions": "No target-copying sessions to chart yet. Zen sessions are not charted.",
   "stats-panel.all-chart-languages-hidden": "All languages are hidden. Show a language to chart its sessions.",
-  "tool-messages.check-your-keys-one-at-a-time": "Check your keys one at a time or in any order. This test checks key positions and never changes your practice scores or Stats.",
+  "tool-messages.check-your-keys-one-at-a-time": "Check physical keys without affecting practice stats.",
   "tool-messages.focus-the-test-area-then-press-any": "Focus the test area, then press any mapped key as often as you like. Keys are matched by position, not by the character they type.",
   "tool-messages.focus-the-test-area-then-press-the": "Focus the test area, then press the highlighted key. The test checks key position, not the character it types.",
   "tool-messages.if-tab-is-highlighted-press-it-to": "If Tab is highlighted, press it to test it; otherwise Tab moves focus out of the test. Shift+Tab also leaves.",
-  "tool-messages.sound-is-off-by-default-when-on": "Sound is off by default. When on, it plays with each detected keypress. Changing the effect plays a short preview. This won't change your typing sound in Practice.",
+  "tool-messages.sound-is-off-by-default-when-on": "Plays on each detected keypress. Separate from Practice sound.",
   "tool-messages.numbers-show-miss-counts-heat-key-misses": "Numbers show miss counts. Heat = key misses / highest miss count across all recorded physical keys; not a per-key error percentage. Zero misses stay neutral.",
   "tool-messages.preview-not-confirmed-default-key-labels-may": "Preview, not confirmed · Default key labels may differ from yours. Dashed keys are not testable.",
   "tool-messages.dashed-keys-have-no-standard-key-code": "Dashed keys have no standard key code and are never highlighted or tested. Keycaps that share one physical code highlight together.",

@@ -120,7 +120,7 @@
     <p class="settings-note">{text('keymap-import.file-not-firmware')}</p>
     {#if loadError}<p role="alert" class="exercise-error">{loadError}</p>{/if}
     <label class="file-label">{text('keymap-import.choose-file')}
-      <input bind:this={fileInput} type="file" accept=".json,.vil,application/json" {disabled}
+      <input class="keymap-file-input" bind:this={fileInput} type="file" accept=".json,.vil,application/json" {disabled}
         aria-describedby="keymap-import-limit" onchange={(event) => { void chooseFile(event); }} />
     </label>
     <p id="keymap-import-limit" class="settings-note">{text('keymap-import.file-limit')}</p>
@@ -176,7 +176,36 @@
 <style>
   .keymap-import { border-top: 1px solid rgb(255 255 255 / 12%); padding-block: 1rem; }
   .keymap-import h3 { margin: 0 0 0.5rem; }
-  .file-label { display: grid; gap: 0.35rem; margin-block: 0.5rem; }
+  .file-label { display: grid; gap: 0.5rem; margin-block: 0.75rem 0.5rem; font-size: 0.85rem; }
+  .keymap-file-input {
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    border: 1px solid rgb(255 255 255 / 22%);
+    border-radius: 0.65rem;
+    padding: 0.4rem;
+    background: var(--color-background);
+    color: var(--color-text);
+    font: inherit;
+    cursor: pointer;
+  }
+  .keymap-file-input::file-selector-button {
+    min-height: 2.5rem;
+    margin-inline-end: 0.75rem;
+    border: 1px solid var(--color-accent);
+    border-radius: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    background: var(--color-accent);
+    color: var(--color-background);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .keymap-file-input:hover:not(:disabled) { border-color: var(--color-accent); }
+  .keymap-file-input:hover:not(:disabled)::file-selector-button { filter: brightness(1.1); }
+  .keymap-file-input:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 3px; }
+  .keymap-file-input:disabled { opacity: 0.55; cursor: not-allowed; }
+  .keymap-file-input:disabled::file-selector-button { cursor: not-allowed; }
   .keymap-preview { margin-block: 0.75rem; overflow-wrap: anywhere; }
   .keymap-differences { margin: 0.4rem 0; padding-left: 1.25rem; line-height: 1.6; }
   .keymap-warning { color: var(--color-text); }

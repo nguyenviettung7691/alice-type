@@ -280,7 +280,7 @@ test.describe('Freestyle keyboard test', () => {
     await expect(group.getByRole('button')).toHaveText(['One key at a time', 'Freestyle']);
     await expect(modeButton(page, 'Freestyle')).toHaveAttribute('aria-pressed', 'true');
     await expect(modeButton(page, 'Freestyle')).toBeFocused();
-    await expect(panel(page).locator('.eyebrow')).toHaveText('Keyboard check');
+    await expect(panel(page).getByRole('heading', { name: 'Keyboard Test', exact: true })).toBeVisible();
     await expect(status(page)).toHaveText('Switched to Freestyle. Test reset.');
     await page.keyboard.press('Shift+Tab');
     await expect(modeButton(page, 'One key at a time')).toBeFocused();

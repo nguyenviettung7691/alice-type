@@ -263,11 +263,17 @@ interface RecordV4Additions {
 
 ### 7.4 Stats presentation
 
+- Recent-session and per-key tables share a dependency-free virtual table: 48px rows
+  and header, at most a 400px scroll viewport, and eight overscan rows.
+  Spacers preserve scroll extent; native table headers and total/absolute ARIA row
+  counts preserve context. Sort/filter changes reset the viewport, not the data.
+  Summaries and chart calculations always use the complete stored dataset.
+
 - **Hand balance:** aggregate left/right/thumb/unattributed across v4 target-copying records.
 - **Per-key accuracy:**
   - Formula: `1 − misses / attempts` for codes with at least **20** attempts.
-  - Display: a sortable list with an optional visualizer overlay reusing the heatmap scale. The missed-key
-    heatmap stays.
+  - Display: a virtualized table ordered by lowest accuracy, then most attempts.
+    The missed-key heatmap stays.
 - **High-strain reach keys:**
   - A fixed, documented reach set: the number row `Backquote`, `Digit1-0`, `Minus`, `Equal`, plus `BracketLeft`,
     `BracketRight`, `Backslash`, `Quote`, `Slash`.
@@ -309,6 +315,8 @@ interface RecordV4Additions {
   The generic Alice layout has no matrix, so the section explains that import needs a confirmed board.
 - A native file input accepts `.json` and `.vil`, at most **256 KB**. The file is read with `FileReader`/`text()` and
   parsed locally. It is never uploaded or written to a device.
+  The picker fills the available width with a charcoal field and orange file-selection button, visible keyboard
+  focus, and a disabled state. Native file-dialog activation and the accessible label are preserved.
 
 ### 9.2 Catalog prerequisite: matrix dimensions
 
