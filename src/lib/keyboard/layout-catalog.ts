@@ -7,10 +7,13 @@ export interface LayoutVariantGroup {
   readonly options: readonly string[];
 }
 
+export type LayoutFamily = 'alice' | 'arisu' | 'alice75' | 'split';
+
 export interface LayoutCatalogEntry {
   readonly id: string;
   readonly displayName: string;
   readonly name: string;
+  readonly family: LayoutFamily;
   readonly brand: string;
   readonly vendorId: number;
   readonly productId: number;

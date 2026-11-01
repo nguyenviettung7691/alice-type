@@ -57,7 +57,7 @@ test('creates, edits, duplicates and reloads distinct board hardware profiles', 
   await switcher(page).selectOption(id);
   await expect(page.getByRole('region', { name: 'Your keyboards' })).toContainText('62');
   const stored = await saved(page);
-  expect(stored.version).toBe(8);
+  expect(stored.version).toBe(9);
   expect(stored.settings.keyboardBoards).toHaveLength(3);
   expect(stored.settings.keyboardBoards.find((board: { id: string }) => board.id === id)).toMatchObject({
     hardware: { family: 'arisu', switchType: 'tactile', actuationForce: 62, keycapProfile: 'MT3', tentingAngle: 12 },
@@ -95,7 +95,7 @@ test('scopes history and heatmaps to stable board IDs, keeps snapshots after ren
   await complete(page, true);
   await expect.poll(async () => (await history(page)).length).toBe(1);
   const first = (await history(page))[0];
-  expect(first).toMatchObject({ version: 5, keyboard: { id: 'default-board', name: 'My keyboard' }, missedKeys: { KeyX: 1 } });
+  expect(first).toMatchObject({ version: 6, keyboard: { id: 'default-board', name: 'My keyboard' }, missedKeys: { KeyX: 1 } });
   const id = await create(page, 'Second');
   await complete(page);
   await expect.poll(async () => (await history(page)).length).toBe(2);

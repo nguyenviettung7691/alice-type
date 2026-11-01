@@ -19,10 +19,12 @@ accent, and real-time feedback. Everything runs in your browser.
 - **Seven practice modes** with live feedback, WPM, accuracy, and progress, including Alice-specific Drills and Code.
 - **Alice keyboard visualizer** with physical-key highlights, confirmed layout variants, and an optional finger guide.
 - **Keyboard Test** with guided and Freestyle modes, plus 13 optional synthesized sound effects.
-- **Keyboard Details** with a generic Alice profile and 23 real Alice-family layouts sourced from QMK/VIA.
+- **Keyboard Details** with a generic Alice profile and 24 sourced Alice-family and split layouts from QMK/VIA.
 - **Local preferences and history** with missed-key summaries, hand load and per-key accuracy, and separate Zen scores.
 - **VIA/Vial keymap file import** onto a confirmed layout, processed locally and never uploaded.
 - **Multiple physical-board profiles** with hardware/thumb notes, a header switcher and board-isolated Stats.
+- **Four geometry presets**, per-board layer-output practice, adaptive weak-key drills and guided mod-tap practice.
+- **Setup-matched session insights** based on bounded active-time windows and explicit sample thresholds.
 - **English and Vietnamese** UI and practice resources, with a saved header language selector.
 - **No accounts, backend, telemetry, or runtime data downloads.**
 
@@ -36,10 +38,14 @@ Phase 11 (specialized Alice practices) is implemented with automated verificatio
 real-board keymap import, Vietnamese drills under OS input methods, screen-reader,
 fluent Vietnamese copy, and snippet review gates remain pending. Standard-versus-Alice
 board comparison is deferred.
-Phase 12 milestone M1 is implemented with automated verification: local board
-profiles, hardware/thumb metadata, explicit switching and per-board Stats. Four-family
-geometry presets, layer-output practice, adaptive drills, mod-tap guidance and
-long-session comparisons are planned follow-up milestones, not available yet.
+Phase 12 M1-M4 implementation is integrated with automated verification:
+local board profiles and isolated Stats; sourced Standard Alice, Arisu, 75%
+Alice and two-piece split presets; per-board observable layer-output drills;
+board/language-specific adaptive text; guided mod-tap observations; and
+setup-matched long-session insights. Firmware layer activation and tapping-term
+are not observable. Real-board/firmware, screen-reader/accessibility and fluent
+Vietnamese review remain release gates. See the [Phase 12 plan](doc/phase-12-implementation-plan.md)
+for automated evidence and outstanding manual checks.
 Difficulty rules, alternate themes, and reading
 layouts from firmware are deferred. Browser-based automatic hardware
 identification is not supported.
@@ -200,11 +206,12 @@ Finish or restart a running session first.
 
 Each board remembers its confirmed layout, keymap import, device notes and
 B-hand preference, plus optional switch type, actuation force (not bottom-out
-weight), keycap profile, tenting angle and left/right thumb roles. These are
-self-reported notes: the family field is **not** a geometry preset, and thumb
-roles do not reprogram firmware or prove which thumb/layer was used. Geometry
-still requires confirming an existing catalog layout. Connecting a device does
-not automatically switch profiles.
+weight), keycap profile, tenting angle, left/right thumb roles and layer
+bindings. These are self-reported notes: thumb roles do not reprogram firmware
+or prove which thumb/layer was used. **Four sourced geometry presets** preview
+the bundled Standard Alice, Arisu, 75% Alice and Keyhive Sofle split layouts;
+choose Apply to confirm a preset. Connecting a device does not automatically
+switch profiles.
 
 Duplicates receive a new identity and no inherited scores. Deleting a profile
 requires confirmation and keeps its historical scores; at least one profile
@@ -223,11 +230,12 @@ after the compact test status. **Instructions & limitations** expands the detail
 key-capture guidance; Shift+Tab always leaves the test.
 
 Preferences, selected profiles, confirmed layouts, and personal notes use
-versioned `localStorage` (schema v8). Earlier settings migrate into one board.
+versioned `localStorage` (schema v9). Earlier settings migrate into one board;
+v8 profiles migrate with empty layer bindings.
 The far-right **Language** selector defaults
 to English and saves your choice locally; **Restore defaults** returns to English.
 Language changes do not change keyboard geometry, user writing, or physical test
-counts. Completed scores use IndexedDB (record v5, database v1). **Stats** separates
+counts. Completed scores use IndexedDB (record v6, database v1). **Stats** separates
 target-copying WPM/accuracy and missed-key summaries from Zen free-writing scores.
 New scores include language/scoring metadata and a board/hardware snapshot;
 existing scores are not rewritten. **Keyboard history** defaults to the active
@@ -238,12 +246,22 @@ a profile leaves saved snapshots unchanged. **Clear history** remains global.
 Heatmaps use the currently active diagram, not a historical geometry snapshot.
 Historical keystroke accuracy and committed-text accuracy have separate summaries.
 **Recent sessions** shows a progress chart above the history table: the latest 10
-target-copying sessions (Zen excluded), oldest to newest, with WPM on the left axis
+target-copying sessions (Zen and command drills excluded), oldest to newest, with WPM on the left axis
 and accuracy (50–100%) on the right. Point color shows language and point shape
 shows mode; language toggles hide or show each language's sessions.
-**Hand load and key accuracy** summarizes saved v4/v5 sessions by language: hand balance,
+**Hand load and key accuracy** summarizes saved v4-v6 typing sessions by language: hand balance,
 per-key accuracy for keys with at least 20 direct attempts, and reach-key versus
 home-row accuracy. Older records are excluded and counted in a note.
+**Layer command practice** uses configured board bindings to prompt an observable
+arrow or F-key output; it does not verify that Fn was held. Command records are
+kept separate from text WPM, typing accuracy and charts. **Adaptive weak-key
+drills** use only the active board/language and require at least 20 key attempts
+across 3 sessions plus 20 candidate tokens. **Mod-tap guide** reports browser
+Space/Shift event timing and user-classified results, not firmware timing.
+**Session insights** compare active minutes 0-5 and 20-25 only after at least
+100 attempts in each window, 5 desk sessions and 3 days for a matched setup.
+Accuracy changes are percentage points and all hardware comparisons are
+observational, not causal or medical.
 Recent-session and per-key tables virtualize their rows in a bounded, keyboard-scrollable
 viewport with sticky headers. Sorting history or changing the attribution language resets
 the relevant table to the top; all records in the selected board scope remain
@@ -305,7 +323,7 @@ Each phase has a detail design and an implementation/verification plan:
 | 9 | Guided and Freestyle Keyboard Test modes | [Design](doc/phase-9-detail-design.md) · [Plan](doc/phase-9-implementation-plan.md) |
 | 10 (review gates pending) | English/Vietnamese resources, Unicode/composition practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
 | 11 (manual gates pending) | Alice Drills and Code modes, cue-only finger guide, hand/finger load and per-key accuracy, VIA/Vial keymap file import | [Design](doc/phase-11-detail-design.md) · [Plan](doc/phase-11-implementation-plan.md) |
-| 12 (M1 implemented; M2-M4 planned) | Multi-board management and isolated Stats; layer/adaptive practice and longitudinal insights planned | [Design](doc/phase-12-detail-design.md) · [Plan](doc/phase-12-implementation-plan.md) |
+| 12 (M1-M4 implemented; manual gates pending) | Multi-board profiles, sourced presets, layer/adaptive practice, mod-tap guidance and setup-matched insights | [Design](doc/phase-12-detail-design.md) · [Plan](doc/phase-12-implementation-plan.md) |
 
 Phase 10 separates UI catalogs under `src/lib/i18n/ui/` from practice resources
 under `src/lib/typing/word-banks/` and `src/lib/typing/quotes/`. Vietnamese word

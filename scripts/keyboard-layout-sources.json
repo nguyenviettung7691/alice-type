@@ -5,18 +5,18 @@
     "qmk": "180f394b489c238cb231c2bf8b080262155e03c0"
   },
   "entries": [
-    { "id": "projectkb-alice", "via": "v3/projectkb/alice/projectkb_alice.json", "qmk": "projectkb/alice/rev1", "note": "Original TGR/ProjectKB Alice PCB." },
+    { "id": "projectkb-alice", "via": "v3/projectkb/alice/projectkb_alice.json", "qmk": "projectkb/alice/rev1", "family": "alice", "note": "Original TGR/ProjectKB Alice PCB." },
     { "id": "keychron-q8-ansi", "via": "v3/keychron/q8/ansi.json", "qmk": "keychron/q8/ansi", "layer": "WIN_BASE", "note": "Keychron Q8 ANSI; Windows base layer." },
     { "id": "keychron-q8-ansi-encoder", "via": "v3/keychron/q8/ansi_encoder.json", "qmk": "keychron/q8/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron Q8 ANSI knob; Windows base layer." },
     { "id": "keychron-q8-iso", "via": "v3/keychron/q8/iso.json", "qmk": "keychron/q8/iso", "layer": "WIN_BASE", "note": "Keychron Q8 ISO; Windows base layer." },
     { "id": "keychron-q8-iso-encoder", "via": "v3/keychron/q8/iso_encoder.json", "qmk": "keychron/q8/iso_encoder", "layer": "WIN_BASE", "note": "Keychron Q8 ISO knob; Windows base layer." },
     { "id": "keychron-v8-ansi", "via": "v3/keychron/v8/ansi.json", "qmk": "keychron/v8/ansi", "layer": "WIN_BASE", "note": "Keychron V8 ANSI; Windows base layer." },
     { "id": "keychron-v8-ansi-encoder", "via": "v3/keychron/v8/ansi_encoder.json", "qmk": "keychron/v8/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron V8 ANSI knob; Windows base layer. V8 ISO entries are excluded: the VIA definition labels the H key with matrix 2,12, which LAYOUT_iso_70 does not contain." },
-    { "id": "keychron-q10-ansi-encoder", "via": "v3/keychron/q10/ansi_encoder.json", "qmk": "keychron/q10/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron Q10 ANSI knob; Windows base layer." },
+    { "id": "keychron-q10-ansi-encoder", "via": "v3/keychron/q10/ansi_encoder.json", "qmk": "keychron/q10/ansi_encoder", "family": "alice75", "layer": "WIN_BASE", "note": "Keychron Q10 ANSI knob; 75% Alice reference with function row and knob; Windows base layer." },
     { "id": "keychron-q10-iso-encoder", "via": "v3/keychron/q10/iso_encoder.json", "qmk": "keychron/q10/iso_encoder", "layer": "WIN_BASE", "note": "Keychron Q10 ISO knob; Windows base layer." },
     { "id": "keychron-v10-ansi-encoder", "via": "v3/keychron/v10/ansi_encoder.json", "qmk": "keychron/v10/ansi_encoder", "layer": "WIN_BASE", "note": "Keychron V10 ANSI knob; Windows base layer." },
     { "id": "keychron-v10-iso-encoder", "via": "v3/keychron/v10/iso_encoder.json", "qmk": "keychron/v10/iso_encoder", "layer": "WIN_BASE", "note": "Keychron V10 ISO knob; Windows base layer." },
-    { "id": "fate-nozomi-arisu", "via": "v3/fate_nozomi/arisu/arisu.json", "qmk": "arisu", "note": "Arisu (Fate/Nozomi)." },
+    { "id": "fate-nozomi-arisu", "via": "v3/fate_nozomi/arisu/arisu.json", "qmk": "arisu", "family": "arisu", "note": "Arisu (Fate/Nozomi)." },
     { "id": "ph-arisu", "via": "v3/other/ph_arisu/ph_arisu.json", "qmk": "nightly_boards/ph_arisu", "note": "PH Arisu." },
     { "id": "sneakbox-aliceclone", "via": "v3/sneakbox/aliceclone/aliceclone.json", "qmk": "sneakbox/aliceclone", "note": "Sneakbox AliceClone." },
     { "id": "sneakbox-aliceclone-rgb", "via": "v3/sneakbox/aliceclonergb/alicecloneRGB.json", "qmk": "sneakbox/aliceclonergb", "displayName": "Sneakbox Alice Clone RGB", "note": "Sneakbox AliceClone RGB; the VIA name matches the non-RGB board, so the display name is disambiguated." },
@@ -27,6 +27,7 @@
     { "id": "fancytech-fancyalice66", "via": "v3/fancytech/fancyalice66.json", "qmk": "fancytech/fancyalice66", "note": "FancyTech FancyAlice66." },
     { "id": "mwstudio-alicekk", "via": "v3/mwstudio/alicekk.json", "qmk": "mwstudio/alicekk", "note": "MW Studio AliceKK." },
     { "id": "meetlab-kalice", "via": "v3/meetlab/kalice/kalice.json", "qmk": "meetlab/kalice", "note": "Meetlab KAlice." },
-    { "id": "qwertlekeys-calice", "via": "v3/qwertlekeys/calice.json", "qmk": "qwertlekeys/calice", "note": "QwertleKeys Calice." }
+    { "id": "qwertlekeys-calice", "via": "v3/qwertlekeys/calice.json", "qmk": "qwertlekeys/calice", "note": "QwertleKeys Calice." },
+    { "id": "sofle-keyhive", "via": "v3/sofle/keyhive_sofle_rgb.json", "qmk": "sofle/keyhive", "family": "split", "displayName": "Keyhive Sofle RGB", "note": "Keyhive Sofle RGB two-piece split; ortholinear geometry is intentionally not required to have Alice key rotations." }
   ]
 }

@@ -18,6 +18,7 @@ interface SourceEntry {
   id: string;
   via: string;
   qmk: string;
+  family?: 'alice' | 'arisu' | 'alice75' | 'split';
   layer?: string;
   displayName?: string;
   note: string;
@@ -193,8 +194,8 @@ async function importEntry(entry: SourceEntry, pins: SourceFile['pins'], usbInde
   const defaultCodes = new Set(keys.filter((key) => key.o === 0).map((key) => key.code));
   const missing = REQUIRED_CODES.filter((code) => !defaultCodes.has(code));
   if (missing.length > 0) throw new Error(`Default variant lacks physical codes ${missing.join(', ')}.`);
-  // Alice-family boards have an angled split: both halves must be rotated in opposite directions.
-  if (!keys.some((key) => key.r > 0) || !keys.some((key) => key.r < 0)) {
+  // Alice-family boards have an angled split; a two-piece split may be ortholinear.
+  if (entry.family !== 'split' && (!keys.some((key) => key.r > 0) || !keys.some((key) => key.r < 0))) {
     throw new Error('Layout has no angled split (needs both positive and negative key rotation); not an Alice-family board.');
   }
 
@@ -207,6 +208,7 @@ async function importEntry(entry: SourceEntry, pins: SourceFile['pins'], usbInde
       id: entry.id,
       displayName: entry.displayName ?? name,
       name,
+      family: entry.family ?? 'alice',
       brand: info.manufacturer.trim(),
       vendorId,
       productId,

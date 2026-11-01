@@ -19,7 +19,7 @@ export interface TimelinePoint {
   readonly language: LanguageId;
   readonly mode: TimelineMode;
   readonly scoring: 'committed' | 'legacy';
-  readonly record: Exclude<SessionRecord, { mode: 'zen' }>;
+  readonly record: Exclude<SessionRecord, { mode: 'zen' | 'command' }>;
 }
 
 /**
@@ -29,7 +29,8 @@ export interface TimelinePoint {
 export function buildSessionTimeline(records: readonly SessionRecord[], limit = TIMELINE_LIMIT): TimelinePoint[] {
   if (!Number.isSafeInteger(limit) || limit < 1) throw new Error('Timeline limit must be a positive integer.');
   const latest = records
-    .filter((record): record is Exclude<SessionRecord, { mode: 'zen' }> => record.mode !== 'zen')
+    .filter((record): record is Exclude<SessionRecord, { mode: 'zen' | 'command' }> =>
+      record.mode !== 'zen' && record.mode !== 'command')
     .sort((a, b) => b.completedAt - a.completedAt || a.id.localeCompare(b.id))
     .slice(0, limit)
     .reverse();

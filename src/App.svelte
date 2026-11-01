@@ -18,6 +18,7 @@
     resolveImportedLayout, type ResolvedKeyboardLayout
   } from './lib/keyboard/layout-catalog';
   import { applyKeymapLayer, keymapVariantKey, layersFitMatrix, physicalCodeMap } from './lib/keyboard/keymap-import';
+  import { keyboardSetupFingerprint } from './lib/keyboard/setup-fingerprint';
   import { type PracticeSettings } from './lib/typing/exercise-generator';
   import {
     DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type KeyboardKeymapImport, type Preferences,
@@ -53,6 +54,7 @@
   let preferences = $state<Preferences>(initial.settings);
   const board = $derived(activeKeyboard(preferences));
   const keyboardSnapshot = $derived(snapshotKeyboard(board));
+  const setupFingerprint = $derived(keyboardSetupFingerprint(board));
   const i18n = provideLocalization(() => preferences.language);
   const { text } = i18n;
   $effect(() => {
@@ -367,7 +369,7 @@
     <div hidden={view !== 'practice'}>
       {#key preferences.activeKeyboardId}
       <PracticePanel {settings} bind:running active={view === 'practice'} {contentReset}
-        keyboard={keyboardSnapshot}
+        keyboard={keyboardSnapshot} {history} {setupFingerprint} layerBindings={preferences.keyboardLayerBindings}
         onsettingschange={(next) => changePreferences({ ...preferences, ...next })}
         layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
         inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox} layoutConfirmed={!!appliedLayout}
@@ -427,13 +429,20 @@
             ? preferences.keyboardLayoutConfirmation : null
         })}
         onuserdetailschange={(keyboardUserDetails) => changePreferences({ ...preferences, keyboardUserDetails })}
-        onlayoutconfirm={(keyboardLayoutConfirmation) => changePreferences({
-          ...preferences, keyboardProfileId: keyboardLayoutConfirmation.profileId, keyboardLayoutConfirmation
-        })}
+        onlayoutconfirm={(keyboardLayoutConfirmation) => {
+          const family = findCatalogEntry(keyboardLayoutConfirmation.profileId)?.family;
+          changePreferences({
+            ...preferences, keyboardProfileId: keyboardLayoutConfirmation.profileId, keyboardLayoutConfirmation,
+            keyboardBoards: preferences.keyboardBoards.map((entry) => entry.id === preferences.activeKeyboardId && family
+              ? { ...entry, hardware: { ...entry.hardware, family } } : entry)
+          });
+        }}
         onlayoutclear={() => changePreferences({ ...preferences, keyboardLayoutConfirmation: null })}
         keymapImport={preferences.keyboardKeymapImport}
         onkeymapapply={(keyboardKeymapImport) => { keymapNotice = ''; changePreferences({ ...preferences, keyboardKeymapImport }); }}
         onkeymapclear={() => changePreferences({ ...preferences, keyboardKeymapImport: null })}
+        layerBindings={preferences.keyboardLayerBindings}
+        onlayerbindingschange={(keyboardLayerBindings) => changePreferences({ ...preferences, keyboardLayerBindings })}
       />
       {/key}
     {/if}

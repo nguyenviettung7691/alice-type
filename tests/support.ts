@@ -8,13 +8,13 @@ export const DEFAULT_PREFERENCES: Preferences = {
   punctuation: false, numbers: false, caretStyle: 'block', soundEnabled: false,
   showLiveStats: true, onboardingComplete: false, keyboardTestSoundEnabled: false, keyboardTestSoundEffect: 'default',
   keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null,
-  drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null,
+  drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null, keyboardLayerBindings: [],
   activeKeyboardId: 'default-board',
   keyboardBoards: [{
     id: 'default-board', name: 'My keyboard',
     hardware: { family: 'unknown', switchType: 'unknown', actuationForce: null, keycapProfile: '', tentingAngle: null },
     thumbs: { left: 'unknown', right: 'unknown' },
-    settings: { keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null, keyboardKeymapImport: null, bKeyHand: 'left' }
+    settings: { keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null, keyboardKeymapImport: null, keyboardLayerBindings: [], bKeyHand: 'left' }
   }]
 };
 
@@ -22,7 +22,7 @@ export async function skipOnboarding(page: Page) {
   await disableDeviceAccess(page);
   await page.addInitScript(({ key, defaults }) => {
     if (localStorage.getItem(key) === null) {
-      localStorage.setItem(key, JSON.stringify({ version: 7, settings: defaults }));
+      localStorage.setItem(key, JSON.stringify({ version: 9, settings: defaults }));
     }
   }, { key: PREFERENCES_KEY, defaults: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
 }

@@ -10,6 +10,9 @@
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import KeymapImportPanel from './KeymapImportPanel.svelte';
   import LayoutMatchPanel from './LayoutMatchPanel.svelte';
+  import KeyboardPresetPanel from './KeyboardPresetPanel.svelte';
+  import LayerBindingsPanel from './LayerBindingsPanel.svelte';
+  import type { KeyboardLayerBinding } from '../keyboard/user-keyboards';
   import { deviceId, type KeyboardDevice } from '../keyboard/keyboard-access';
   import { useLocalization } from '../i18n/context';
   const localization = useLocalization();
@@ -22,7 +25,7 @@
   let {
     profileId, userDetails, onprofilechange, onuserdetailschange, connectedDevice = null,
     layoutConfirmation, layoutNotice = '', onlayoutconfirm, onlayoutclear,
-    keymapImport = null, onkeymapapply, onkeymapclear
+    keymapImport = null, onkeymapapply, onkeymapclear, layerBindings = [], onlayerbindingschange
   }: {
     profileId: string | null;
     userDetails: KeyboardUserDetails;
@@ -36,6 +39,8 @@
     keymapImport?: KeyboardKeymapImport | null;
     onkeymapapply: (keymap: KeyboardKeymapImport) => void;
     onkeymapclear: () => void;
+    layerBindings?: readonly KeyboardLayerBinding[];
+    onlayerbindingschange: (bindings: readonly KeyboardLayerBinding[]) => void;
   } = $props();
 
   const fieldLabels: Record<DetailField, string> = $derived({
@@ -144,6 +149,8 @@
     {text("keyboard-details-panel.find-a-layout-that-looks-like-your")}
   </p>
 
+  <KeyboardPresetPanel onapply={onlayoutconfirm} />
+
   <LayoutMatchPanel {connectedDevice} boardNames={[
     userDetails.name ?? '', userDetails.model ?? '',
     [userDetails.brand, userDetails.name].filter(Boolean).join(' '),
@@ -152,6 +159,7 @@
     confirmation={layoutConfirmation} {layoutNotice} onconfirm={onlayoutconfirm} onclear={onlayoutclear} />
 
   <KeymapImportPanel confirmation={layoutConfirmation} {keymapImport} onapply={onkeymapapply} onclear={onkeymapclear} />
+  <LayerBindingsPanel bindings={layerBindings} onbindingschange={onlayerbindingschange} />
 
   <details class="device-disclosure">
   <summary>{text("keyboard-details-panel.connected-keyboard")} <span>{connectedDevice?.productName || (connectedDevice ? text("keyboard-connection.unnamed-device") : text("keyboard-connection.no-device-selected"))}</span></summary>

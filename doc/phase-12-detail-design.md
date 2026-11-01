@@ -5,7 +5,7 @@
 | Item | Value |
 | --- | --- |
 | Phase | 12: User keyboard management |
-| Status | M1 implemented with automated verification; M2-M4 planned |
+| Status | M1-M4 implemented with automated verification; physical-board, accessibility and language-review gates remain |
 | Product contract | [Technical design](./tech-design.md), sections 4.4, 4.6 and 5.8 |
 | Preceding contract | [Phase 11](./phase-11-detail-design.md) |
 | Delivery plan | [Phase 12 implementation plan](./phase-12-implementation-plan.md) |
@@ -43,24 +43,24 @@ from metadata. Current short-session summaries cannot establish such a claim.
 
 ## 3. Delivery boundaries
 
-- **M1 (start now):** collection lifecycle; active board selector; hardware and
-  thumb-role notes; per-board catalog selection, confirmation, import, user
-  details and B-hand; preferences v8; history v5 board snapshots; board-isolated
-  Stats with explicit all-board and unassigned views.
-- **M2:** sourced quick-select geometry presets for all four families, including
-  75% and two-piece splits; per-board observable layer maps and practice runner.
-- **M3:** board-specific adaptive text drills and honest mod-tap guided practice.
-- **M4:** time-window recording, setup-matched longitudinal comparison and
-  ergonomic/session insights.
+- **M1:** collection lifecycle; active board selector; hardware and thumb-role
+  notes; per-board catalog selection, confirmation, import, user details and
+  B-hand; preferences v8; history v5 board snapshots; board-isolated Stats.
+- **M2 (implemented):** four sourced geometry presets, per-board observable
+  layer bindings, focused command practice and command-history v6.
+- **M3 (implemented):** deterministic board/language-specific adaptive text
+  drills and guided, explicitly limited mod-tap practice.
+- **M4 (implemented):** bounded active-time windows, setup fingerprints and
+  thresholded, setup-matched longitudinal insights in Stats.
 
-M1's layout-family field is explicitly descriptive; it does not redraw the
-keyboard. Until M2, geometry still comes only from existing confirmed catalog
-layouts or the generic Alice fallback, with the existing visible notices.
-Do not expose empty practice modes, pretend presets, or invented analytics.
+The layout-family field remains descriptive on its own. M2 presets are a
+separate preview/apply flow that explicitly confirms a sourced catalog layout;
+otherwise existing confirmed layouts or the generic Alice fallback remain in
+effect. Do not expose empty practice modes, pretend presets, or invented analytics.
 
 ## 4. M1 data and persistence
 
-### 4.1 Preferences v8
+### 4.1 Preferences v8-v9
 
 Extend the existing single localStorage envelope (same key) with:
 
@@ -81,6 +81,7 @@ interface UserKeyboard {
     keyboardUserDetails: KeyboardUserDetails;
     keyboardLayoutConfirmation: KeyboardLayoutConfirmation | null;
     keyboardKeymapImport: KeyboardKeymapImport | null;
+    keyboardLayerBindings: readonly KeyboardLayerBinding[];
     bKeyHand: 'left' | 'right';
   };
 }
@@ -88,7 +89,8 @@ interface UserKeyboard {
 
 `ThumbRole` is `unknown`, `space`, `backspace`, `delete`, `enter`,
 `layer-1`, `space-shift`, or `space-layer-1`. The last two mean tap Space,
-hold Shift/Layer 1. M2 can extend this to arbitrary explicit layer bindings.
+hold Shift/Layer 1. Layer bindings are validated, capped at 64 per board,
+and limited to observable arrow/F-key output with optional Shift.
 
 Keep `keyboardBoards` and `activeKeyboardId`. Existing top-level keyboard
 settings remain the active projection for existing consumers. Validation
@@ -105,12 +107,14 @@ persist a collection and active selection in separate keys.
 - Actuation force: unknown or finite 1-200g. Tenting: unknown or finite 0-90
   degrees. Zero tenting is valid. Keycap profile: trimmed, at most 40 characters;
   suggest Cherry, KAT, MT3, SA but allow custom names.
-- Reuse existing detail, confirmation, keymap and B-hand validators on **every**
+- Reuse existing detail, confirmation, keymap, layer-binding and B-hand validators on **every**
   board, not just the active one. Reject invalid/duplicate IDs and orphan active
   IDs with the existing storage-warning/retry flow, without rewriting bad data.
 - Migrate v1-v7 through their existing validators, preserving the previous
   active configuration in the first board. No old scores are retroactively
   attributed. Persist migration once, retaining in-memory recovery on failure.
+- Migrate v8 profiles to v9 with empty per-board layer bindings and one write;
+  persist validated bindings in the active top-level projection and each board.
 - Language, modes, sound, caret and finger-guide visibility remain global.
 - Restore defaults resets global practice preferences, not the board collection
   or its setup. Board deletion is a separate confirmed action.
@@ -118,13 +122,20 @@ persist a collection and active selection in separate keys.
 - Deleting an active board selects the first remaining board. Keep all history.
   The last board's delete action is disabled with an explanation.
 
-### 4.2 Session record v5
+### 4.2 Session records v5-v6
 
 Retain v4 scoring/attribution and add `keyboard`, a validated snapshot containing
 the stable ID, name, hardware and thumb roles. Also snapshot the selected catalog
 ID and B-hand. Do not copy the potentially large keymap or personal device notes
-into each score. M4 will add a compact configuration fingerprint for exact
-keymap/setup matching before it offers longitudinal comparisons.
+into each score. Record v6 is a mode-tagged union: command records
+contain only supported output counts and a binding snapshot; typing records
+may contain bounded active-time windows, setup/difficulty fingerprints, and
+adaptive sample metadata. These additions never contain raw text or keystrokes.
+The setup fingerprint includes hardware, thumb roles, selected layout/variant,
+B-hand, layer bindings and imported keymap content; the separate difficulty
+fingerprint includes mode/configuration and adaptive selection. Custom targets
+contribute only grapheme count and broad letter/number/space/symbol counts;
+neither plaintext nor a content hash is stored.
 
 Application sessions receive the snapshot before practice starts. Board edits,
 switching and reset are blocked while running; completion and pending-save retry
@@ -159,14 +170,16 @@ existing 1,000-record global history bound. No raw keystroke text is persisted.
 - All copy and accessible names are typed en/vi messages. Preserve native
   keyboard navigation and charcoal/orange focus states; allow narrow wrapping.
 
-## 6. Follow-up detail: geometry and layers (M2)
+## 6. Geometry and layers (M2)
 
 ### 6.1 Presets
 
 Provide Standard Alice (60%, no arrows), Arisu (65%, arrow cluster), Ergonomic
-75% Alice (function row and macro columns), and Custom Split (two-piece,
-e.g. Ergodox/Sofle). Each selectable preset must map to reviewed bundled physical
-geometry with variants, matrix coordinates where available, and source notices.
+75% Alice (function row and macro/knob area), and Custom Split (two-piece,
+e.g. Ergodox/Sofle). The current reviewed presets map to ProjectKB Alice,
+Fate/Nozomi Arisu, Keychron Q10 ANSI Encoder, and Keyhive Sofle RGB. Each
+selectable preset maps to bundled physical geometry with available variants,
+matrix coordinates, attribution, and direct VIA/QMK source links.
 Do not relabel an Arisu drawing as a 75% or guess custom split geometry.
 Presets preview first; explicit Apply sets the active board's confirmation.
 Existing catalog eligibility assumes Alice; extend eligibility by family with
@@ -191,7 +204,7 @@ Persist mode-specific output attempts/misses and layer binding snapshot only
 after a separately versioned history contract and Stats presentation exist.
 Label successful output as output success, never verified Fn/physical reach.
 
-## 7. Follow-up detail: adaptation and mod-tap (M3)
+## 7. Adaptive practice and mod-tap (M3)
 
 - Select only the active board, matching practice language and compatible
   committed-text scoring. Ignore legacy/unassigned and Zen/command drills.
@@ -199,32 +212,34 @@ Label successful output as output success, never verified Fn/physical reach.
   3 sessions before adapting. Select up to 5 keys by descending miss rate,
   tie-breaking by attempts then code. Exclude unsupported/unmapped keys and
   do not infer physical keys for composed text.
-- Build a seeded, reproducible drill from the existing language bank with
-  >=60% of tokens containing an eligible weak key and at least 20 distinct
+- Build a seeded, reproducible 10-token drill from the existing language bank
+  with >=60% of tokens containing an eligible weak key and at least 20 distinct
   candidate tokens. Show selected keys and sample counts. An insufficient pool
   produces an explicit explanation, not a falsely labeled adaptive fallback.
-- Mod-tap practice displays the board's tap/hold intent, prompts a tap or hold
-  sequence and records only visible output/modifier transitions. Report elapsed
-  DOM-event timing as browser timing (not switch latency/firmware tapping-term).
-  For invisible layer transitions require the user to classify the outcome.
-  Offer qualitative suggestions to consult firmware settings and repeat tests;
-  no automatic firmware edits or claimed timing diagnosis.
+- Mod-tap practice displays the board's tap/hold intent, prompts a tap or hold,
+  and measures only browser-observed Space/Shift DOM-event duration. Users
+  classify whether the observed behavior matched their intent; these outcomes
+  are not persisted. Report browser timing, never switch latency or firmware
+  tapping-term. Offer qualitative suggestions only; no automatic firmware
+  edits or claimed timing diagnosis.
 
-## 8. Follow-up detail: longitudinal analytics (M4)
+## 8. Longitudinal analytics (M4)
 
 Record bounded 60-second aggregates: elapsed active time, attempts, correct
 attempts and retained correct-character deltas, with no raw text. Explicitly
 pause observation on hidden tabs/blur and exclude idle gaps >30 seconds.
 Restart never persists an unfinished run; distinguish a practice run from a
 longer desk session, grouping completed runs with gaps <=5 minutes and unchanged
-board/setup. Retain only compact windows inside the history retention budget.
+setup/difficulty. Deduplicate cumulative snapshots by desk-session ID and retain
+only compact windows inside the history retention budget.
 
 Within each setup, compare early minutes 0-5 with minutes 20-25 only when each
 window has >=100 scored attempts and there are >=5 qualifying desk sessions
 across >=3 days. Match language, mode, scoring version and content difficulty;
 exclude Zen, command drills and incomplete windows. Weight accuracy by attempts,
-report speed changes and accuracy differences in percentage points with sample
-counts and spread. Cross-setup comparisons require both setups to meet the gate.
+report early/late speed, accuracy differences in percentage points, sample
+counts and per-session spread. Cross-setup comparisons require both setups to
+meet the gate and have matching language and difficulty.
 Explicitly label switch/tenting metadata as self-reported and comparisons as
 observational/confounded. Below threshold show "not enough comparable data".
 No medical diagnosis, inferred pain, fabricated percentages or causal claim.
@@ -238,7 +253,12 @@ language filters and deleted-history access. Browser tests must cover reload,
 switching same-layout boards, layout/keymap restoration, running locks, hotkey,
 form validation, en/vi labels and narrow-screen overflow.
 
-M2-M4 each require their own tested record-version changes, focused/browser
-acceptance and manual real-board gates. Native VIA/Vial firmware, mod-tap timing,
-OS function-key interception, Vietnamese editorial review and assistive
-technology cannot be signed off by synthetic tests alone.
+M2: preferences v8-v9 migration and binding bounds; sourced preset family and
+eligibility checks; explicit preview/apply; command output matching, modifier,
+blur, repeat, Escape, history isolation and shortcuts. M3: exact attempt/session
+thresholds, deterministic generation, coverage, board/language isolation, and
+insufficient-data UI; mod-tap event timing and self-report boundaries. M4:
+completed-window boundaries, blur/hidden/idle pause, 5-minute grouping, setup
+fingerprints, no-text history validation, deduplication, minimum attempts,
+sessions/days, matching and percentage-point calculations. Focused Chromium
+coverage and the manual gates listed above remain part of release acceptance.

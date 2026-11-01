@@ -35,7 +35,7 @@ describe('physical keyboard collection', () => {
     expect(storage.setItem).toHaveBeenCalledTimes(1);
     const [key, raw] = storage.setItem.mock.calls[0];
     expect(key).toBe(PREFERENCES_KEY);
-    expect(JSON.parse(raw)).toEqual({ version: 8, settings: value });
+    expect(JSON.parse(raw)).toEqual({ version: 9, settings: value });
   });
 
   it('restores every board setting without changing global preferences', () => {

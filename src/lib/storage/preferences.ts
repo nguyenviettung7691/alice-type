@@ -7,7 +7,7 @@ import { KEYBOARD_TEST_EFFECTS, type KeyboardTestEffect } from '../audio/keyboar
 import { isKeyboardProfileId } from '../keyboard/keyboard-profiles';
 import { isLanguageId, type LanguageId } from '../i18n/languages';
 import {
-  boardSettings, DEFAULT_HARDWARE, isKeyboardId, MAX_USER_KEYBOARDS, validateKeyboardIdentity,
+  boardSettings, DEFAULT_HARDWARE, isKeyboardId, MAX_USER_KEYBOARDS, validateKeyboardIdentity, validateLayerBindings,
   type BoardSettings, type UserKeyboard
 } from '../keyboard/user-keyboards';
 
@@ -61,6 +61,7 @@ interface Version7Preferences extends PracticeSettings {
   readonly keyboardLayoutConfirmation: KeyboardLayoutConfirmation | null;
   readonly fingerGuide: boolean;
   readonly keyboardKeymapImport: KeyboardKeymapImport | null;
+  readonly keyboardLayerBindings: BoardSettings['keyboardLayerBindings'];
 }
 
 export interface Preferences extends Version7Preferences {
@@ -70,7 +71,7 @@ export interface Preferences extends Version7Preferences {
 
 const DEFAULT_BOARD_SETTINGS: BoardSettings = {
   keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null,
-  keyboardKeymapImport: null, bKeyHand: 'left'
+  keyboardKeymapImport: null, keyboardLayerBindings: [], bKeyHand: 'left'
 };
 
 const DEFAULT_BOARD: UserKeyboard = {
@@ -92,6 +93,7 @@ export const DEFAULT_PREFERENCES: Preferences = {
   keyboardLayoutConfirmation: null,
   fingerGuide: false,
   keyboardKeymapImport: null,
+  keyboardLayerBindings: [],
   keyboardBoards: [DEFAULT_BOARD],
   activeKeyboardId: DEFAULT_BOARD.id
 };
@@ -100,7 +102,7 @@ function member<T>(values: readonly T[], value: unknown): value is T {
   return values.some((entry) => entry === value);
 }
 
-type Version7Fields = 'drillType' | 'codeLanguage' | 'bKeyHand' | 'fingerGuide' | 'keyboardKeymapImport';
+type Version7Fields = 'drillType' | 'codeLanguage' | 'bKeyHand' | 'fingerGuide' | 'keyboardKeymapImport' | 'keyboardLayerBindings';
 type Version6Preferences = Omit<Version7Preferences, Version7Fields>;
 type Version1Preferences = Omit<Version6Preferences,
   'keyboardTestSoundEnabled' | 'keyboardTestSoundEffect' | 'keyboardProfileId' | 'keyboardUserDetails'
@@ -276,7 +278,8 @@ function validateVersion7(value: unknown): Version7Preferences {
     bKeyHand: value.bKeyHand,
     ...rest,
     fingerGuide: value.fingerGuide,
-    keyboardKeymapImport: validateKeymapImport(value.keyboardKeymapImport)
+    keyboardKeymapImport: validateKeymapImport(value.keyboardKeymapImport),
+    keyboardLayerBindings: validateLayerBindings(value.keyboardLayerBindings ?? [])
   };
 }
 
@@ -290,6 +293,9 @@ function validateBoard(value: unknown): UserKeyboard {
 }
 
 export function validatePreferences(value: unknown): Preferences {
+  if (!isRecord(value) || !Object.hasOwn(value, 'keyboardLayerBindings')) {
+    throw new StorageError('Saved keyboard layer bindings are missing.');
+  }
   const settings = validateVersion7(value);
   if (!isRecord(value) || !Array.isArray(value.keyboardBoards)
     || value.keyboardBoards.length < 1 || value.keyboardBoards.length > MAX_USER_KEYBOARDS
@@ -348,7 +354,8 @@ const VERSION_7_DEFAULTS = {
   codeLanguage: DEFAULT_PREFERENCES.codeLanguage,
   bKeyHand: DEFAULT_PREFERENCES.bKeyHand,
   fingerGuide: DEFAULT_PREFERENCES.fingerGuide,
-  keyboardKeymapImport: null
+  keyboardKeymapImport: null,
+  keyboardLayerBindings: []
 } as const;
 
 export class PreferenceMigrationError extends StorageError {
@@ -365,10 +372,32 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     if (raw === null) return { ...DEFAULT_PREFERENCES };
     const record: unknown = JSON.parse(raw);
     if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3
-      && record.version !== 4 && record.version !== 5 && record.version !== 6 && record.version !== 7 && record.version !== 8)) {
+      && record.version !== 4 && record.version !== 5 && record.version !== 6 && record.version !== 7
+      && record.version !== 8 && record.version !== 9)) {
       throw new StorageError('Saved preferences use an unsupported schema version.');
     }
-    if (record.version === 8) return validatePreferences(record.settings);
+    if (record.version === 9) return validatePreferences(record.settings);
+    if (record.version === 8) {
+      if (!isRecord(record.settings) || !Array.isArray(record.settings.keyboardBoards)) {
+        throw new StorageError('Saved keyboard collection is invalid.');
+      }
+      const upgraded = {
+        ...record.settings,
+        keyboardLayerBindings: [],
+        keyboardBoards: record.settings.keyboardBoards.map((board) => {
+          if (!isRecord(board) || !isRecord(board.settings)) throw new StorageError('Saved keyboard settings are invalid.');
+          return { ...board, settings: { ...board.settings, keyboardLayerBindings: [] } };
+        })
+      };
+      const migrated = validatePreferences(upgraded);
+      try {
+        savePreferences(migrated, storage);
+      } catch (error) {
+        if (error instanceof StorageError) throw new PreferenceMigrationError(migrated, error);
+        throw error;
+      }
+      return migrated;
+    }
 
     let previous: Version7Preferences | Version6Preferences;
     if (record.version === 7) {
@@ -424,7 +453,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
 }
 
 export function savePreferences(settings: Preferences, storage?: PreferenceStorage): void {
-  const record = { version: 8, settings: validatePreferences(settings) };
+  const record = { version: 9, settings: validatePreferences(settings) };
   try {
     (storage ?? window.localStorage).setItem(PREFERENCES_KEY, JSON.stringify(record));
   } catch (error) {

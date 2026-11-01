@@ -4,6 +4,8 @@ import { generateExercise } from '../typing/exercise-generator';
 import {
   EMPTY_ATTRIBUTION, completedRecord, summarizeAttribution, summarizeSessions, validateSessionRecord, validateStoredSessionRecord, type SessionRecord
 } from './session-history';
+import { DEFAULT_PREFERENCES } from './preferences';
+import { snapshotKeyboard } from '../keyboard/user-keyboards';
 
 const record: SessionRecord = {
   version: 2, id: 'session-one', completedAt: 1000, mode: 'words', limit: 10, wordBankTier: 200,
@@ -223,6 +225,39 @@ describe('history record version 4', () => {
     expect(validateSessionRecord(v4)).toEqual(v4);
     expect(validateSessionRecord(drills)).toEqual(drills);
     expect(validateSessionRecord(code)).toEqual(code);
+  });
+
+  describe('history record version 6 analytics', () => {
+    const keyboard = snapshotKeyboard(DEFAULT_PREFERENCES.keyboardBoards[0]);
+    const analytics = {
+      ...custom,
+      version: 6 as const, language: 'en' as const, scoringVersion: 'committed-grapheme-v1' as const,
+      keyboard, bKeyHand: keyboard.bKeyHand,
+      keyAttempts: { KeyX: 10 },
+      handAttempts: { left: 10, right: 0, thumb: 0, unattributed: 0 },
+      setupFingerprint: 'fnv1a-12345678', difficultyKey: 'difficulty-12345678',
+      deskSessionId: 'desk-one', activeMsTotal: 60_000,
+      activityWindows: [{ minute: 0, attempts: 10, correctAttempts: 8, correctCharacters: 8, activeMs: 60_000 }],
+      adaptiveDrill: { keys: ['KeyX'], sampleAttempts: 20, sampleSessions: 3 }
+    };
+
+    it('validates bounded activity windows and adaptive sample metadata without retaining text', () => {
+      const saved = validateSessionRecord({ ...analytics, target: 'private text' });
+      expect(saved).toMatchObject({
+        version: 6, setupFingerprint: 'fnv1a-12345678', deskSessionId: 'desk-one',
+        activityWindows: analytics.activityWindows, adaptiveDrill: analytics.adaptiveDrill
+      });
+      expect(JSON.stringify(saved)).not.toContain('private text');
+    });
+
+    it.each([
+      ['activityWindows', [{ minute: 60, attempts: 1, correctAttempts: 1, correctCharacters: 1, activeMs: 1000 }]],
+      ['activityWindows', [{ minute: 0, attempts: 1, correctAttempts: 2, correctCharacters: 1, activeMs: 1000 }]],
+      ['setupFingerprint', 'unstable'], ['difficultyKey', 'unhashed'], ['activeMsTotal', -1],
+      ['adaptiveDrill', { keys: ['KeyX', 'KeyX'], sampleAttempts: 20, sampleSessions: 3 }]
+    ])('rejects invalid %s metadata', (field, value) => {
+      expect(() => validateSessionRecord({ ...analytics, [field]: value })).toThrow();
+    });
   });
 
   it.each([

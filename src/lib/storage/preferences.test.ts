@@ -16,10 +16,23 @@ function expected(settings: Preferences): Preferences {
 }
 
 function saved(settings: Preferences): string {
-  return JSON.stringify({ version: 8, settings: validatePreferences(settings) });
+  return JSON.stringify({ version: 9, settings: validatePreferences(settings) });
 }
 
-describe('preferences version 8 and historical compatibility', () => {
+describe('preferences version 9 and historical compatibility', () => {
+  it('migrates v8 board profiles to empty layer bindings in one v9 write', () => {
+    const settings = { ...DEFAULT_PREFERENCES, keyboardBoards: DEFAULT_PREFERENCES.keyboardBoards.map((board) => {
+      const { keyboardLayerBindings: _bindings, ...boardSettings } = board.settings;
+      return { ...board, settings: boardSettings };
+    }) };
+    const { keyboardLayerBindings: _bindings, ...version8Settings } = settings;
+    const source = storage(JSON.stringify({ version: 8, settings: version8Settings }));
+    const migrated = loadPreferences(source);
+    expect(migrated.keyboardLayerBindings).toEqual([]);
+    expect(migrated.keyboardBoards[0].settings.keyboardLayerBindings).toEqual([]);
+    expect(source.setItem).toHaveBeenCalledExactlyOnceWith(PREFERENCES_KEY, saved(migrated));
+  });
+
   it.each([1, 2, 3, 4, 5])('migrates a genuine language-less v%i record exactly once without losing preferences', (version) => {
     const { language, ...oldSettings } = DEFAULT_PREFERENCES;
     expect(language).toBe('en');
@@ -38,7 +51,7 @@ describe('preferences version 8 and historical compatibility', () => {
     expect(loadPreferences(source)).toEqual(settings);
     expect(source.setItem).not.toHaveBeenCalled();
     for (const language of [undefined, '', 'fr', 'VI', null]) {
-      const invalid = storage(JSON.stringify({ version: 8, settings: { ...settings, language } }));
+      const invalid = storage(JSON.stringify({ version: 9, settings: { ...settings, language } }));
       expect(() => loadPreferences(invalid)).toThrow(/language/);
       expect(invalid.setItem).not.toHaveBeenCalled();
     }
@@ -67,8 +80,8 @@ describe('preferences version 8 and historical compatibility', () => {
     const normalized = { ...settings, keyboardUserDetails: {
       name: 'Split Alice', brand: 'Example', connectivity: 'USB-C', rgbBacklighting: false, programmableKeys: true
     } };
-    expect(JSON.parse(raw[1])).toEqual({ version: 8, settings: expected(normalized) });
-    expect(loadPreferences(storage(JSON.stringify({ version: 8, settings: { ...normalized, target: 'private' } })))).toEqual(expected(normalized));
+    expect(JSON.parse(raw[1])).toEqual({ version: 9, settings: expected(normalized) });
+    expect(loadPreferences(storage(JSON.stringify({ version: 9, settings: { ...normalized, target: 'private' } })))).toEqual(expected(normalized));
   });
 
   it.each(['{', 'null', '[]', '{"version":0}', '{"version":8}', '{"version":7}', '{"version":6,"settings":{}}', '{"version":1,"settings":{}}',
@@ -146,7 +159,7 @@ describe('preferences version 8 and historical compatibility', () => {
       ...settings, target: 'private', draft: 'private', writing: { text: 'private' }
     } as typeof settings, destination);
     const raw = destination.setItem.mock.calls[0]?.[1];
-    expect(JSON.parse(raw)).toEqual({ version: 8, settings: expected(settings) });
+    expect(JSON.parse(raw)).toEqual({ version: 9, settings: expected(settings) });
     expect(loadPreferences(storage(raw))).toEqual(settings);
   });
 
@@ -298,7 +311,7 @@ describe('keyboard layout confirmation (version 5)', () => {
 
   it('round trips a confirmation and strips unknown confirmation fields', () => {
     const settings = { ...DEFAULT_PREFERENCES, keyboardProfileId: PROFILE, keyboardLayoutConfirmation: confirmation };
-    const source = storage(JSON.stringify({ version: 8, settings: {
+    const source = storage(JSON.stringify({ version: 9, settings: {
       ...settings, keyboardLayoutConfirmation: { ...confirmation, score: 0.9, observedCodes: ['KeyA'] }
     } }));
     expect(loadPreferences(source)).toEqual(expected(settings));

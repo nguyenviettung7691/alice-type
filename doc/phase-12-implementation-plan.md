@@ -1,7 +1,7 @@
 # AliceType Phase 12 Technical Implementation Plan
 
-> **Status:** M1 implemented and automatically verified. M2-M4 remain planned;
-> physical-board, assistive-technology and fluent Vietnamese gates remain open.
+> **Status:** M1-M4 implementation and automated verification are integrated.
+> Real-board, assistive-technology and fluent Vietnamese release gates remain open.
 > Contract: [Phase 12 Detail Design](./phase-12-detail-design.md).
 
 ## Goal
@@ -13,7 +13,7 @@ confirmation dialogs, layout resolver and Stats aggregators.
 
 ## Work packages
 
-| ID | Work | Prerequisites | Exit evidence |
+| ID | Work | Prerequisites | Exit evidence / status |
 | --- | --- | --- | --- |
 | P12-01 | Requirements analysis, product/README updates and detailed contract | None | Scope/observability decisions documented |
 | P12-02 | Board types, bounds, lifecycle helpers and preferences v8 | P12-01 | Migration, validation and quota tests |
@@ -22,21 +22,22 @@ confirmation dialogs, layout resolver and Stats aggregators.
 | P12-05 | Application/layout/test lifecycle and snapshot wiring | P12-03, P12-04 | No stale board state, running locks and retry attribution |
 | P12-06 | Stats scope selector across all aggregate surfaces | P12-03, P12-05 | Active/all/unassigned/deleted filtering tests |
 | P12-07 | M1 verification and documentation checkpoint | P12-06 | Check, unit, build and focused Chromium results |
-| P12-08 | Sourced four-family geometry presets | P12-07 | Attribution, geometry/eligibility tests and explicit preview/apply |
-| P12-09 | Layer bindings and focused command-drill engine | P12-07, P12-08 | Observable output scoring, shortcut/blur tests |
-| P12-10 | Command history schema and localized practice/Stats UI | P12-09 | Versioned records and mode-specific summaries |
-| P12-11 | Per-board adaptive drill selection/generation | P12-07 | Exact sample and 60% coverage thresholds tested |
-| P12-12 | Guided mod-tap experiments | P12-09, P12-10 | Observability messaging and real-board validation |
-| P12-13 | Setup fingerprints and bounded active-time windows | P12-07 | Clock, blur, idle, grouping and retention tests |
-| P12-14 | Comparable-setup longitudinal insights | P12-13 | Thresholds, confounder exclusions and sample labels |
-| P12-15 | Final Phase 12 sign-off | P12-08, P12-10, P12-11, P12-12, P12-14 | Automated and manual acceptance matrix |
+| P12-08 | Sourced four-family geometry presets | P12-07 | Implemented; source/family tests and explicit preview/apply |
+| P12-09 | Layer bindings and focused command-drill engine | P12-07, P12-08 | Implemented; supported output scoring, modifiers and focus behavior |
+| P12-10 | Command history schema and localized practice/Stats UI | P12-09 | Implemented; history v6 validation and typing-summary isolation |
+| P12-11 | Per-board adaptive drill selection/generation | P12-07 | Implemented; attempt/session/candidate thresholds and deterministic sampling |
+| P12-12 | Guided mod-tap experiments | P12-09, P12-10 | Implemented; browser timing and self-report limits are explicit |
+| P12-13 | Setup fingerprints and bounded active-time windows | P12-07 | Implemented; completed windows, blur/idle and grouping tests |
+| P12-14 | Comparable-setup longitudinal insights | P12-13 | Implemented; attempts/sessions/days gates and matched comparisons |
+| P12-15 | Final Phase 12 sign-off | P12-08, P12-10, P12-11, P12-12, P12-14 | Automated gates integrated; manual release gates remain |
 
-M1 ends at P12-07. P12-08 onward are explicitly not claimed implemented at that
-checkpoint. Adaptation and analytics can be developed independently after M1;
-do not rush browser-invisible features into fake scoring.
+M1 ended at P12-07. M2-M4 are implemented without claiming that browser-
+invisible firmware behavior is measured. P12-15 remains open for manual release
+gates and integrated browser acceptance evidence.
 
-P12-01 through P12-07 are complete for the initial delivery. P12-08 through
-P12-15 remain pending.
+P12-01 through P12-14 are implemented and covered by automated checks. The
+remaining P12-15 gates require physical boards/firmware, assistive technology,
+native key interception and fluent Vietnamese review.
 
 ## M1 execution
 
@@ -91,22 +92,23 @@ P12-15 remain pending.
   storage, keyboard, language, practice and Stats integration selectors.
 - No separate lint command exists. Do not add tooling or dependencies.
 
-## Follow-up implementation gates
+## M2-M4 execution and release gates
 
-- P12-08: audit current catalog coverage; source only missing families. Preserve
-  source licenses and pinned reproducibility. Do not invent keycode mapping.
-- P12-09/10: explicitly define command-mode configuration/history before wiring
-  the UI; keep it separate from committed-text WPM and accuracy.
-- P12-11: test exactly >=20 attempts/key, >=3 sessions, >=20 candidate tokens
-  and >=60% targeted token coverage, including insufficient Vietnamese pools.
-- P12-12: document observable vs self-reported outcomes; test repeat/blur and
-  invisible-layer cases; no numeric tapping-term recommendation without evidence.
-- P12-13/14: deterministic clocks test 60-second windows, >30-second idle gaps,
-  <=5-minute grouping, >=100 attempts/window, >=5 sessions and >=3 days.
-  Test mismatch exclusions and percentage-point calculations.
-- P12-15: real-board Alice/Arisu/75%/split and VIA/Vial imports; OS hotkeys,
-  mod-tap and function-key interception; fluent Vietnamese and screen-reader
-  review. Record outstanding manual gates honestly.
+- P12-08: sourced the four presets from reviewed bundled profiles, adding the
+  pinned Keyhive Sofle split source; preview/apply retains explicit confirmation.
+- P12-09/10: per-board bindings score only supported output; version 6 command
+  records are excluded from typing summaries, charts and attribution.
+- P12-11: stable seeded selection uses the active board/language; exact sample
+  and candidate thresholds return an explicit insufficient-data result.
+- P12-12: the guide measures browser Space/Shift event timing and user-classified
+  outcomes only; outcomes are not persisted and firmware terms are not inferred.
+- P12-13/14: deterministic 60-second windows pause on blur/hidden state, ignore
+  >30-second idle gaps, group <=5-minute runs, and require >=100 attempts in
+  each window, >=5 desk sessions and >=3 days.
+- P12-15 manual gates: test Alice/Arisu/75%/two-piece hardware and VIA/Vial
+  firmware; verify OS function-key interception and real mod-tap behavior;
+  review Vietnamese copy with a fluent speaker and perform screen-reader/
+  keyboard accessibility review. Synthetic tests cannot close these.
 
 ## M1 verification results (2026-11-01)
 
@@ -166,3 +168,30 @@ Manual physical-board behavior, native reserved-hotkey handling, screen-reader
 review and fluent Vietnamese review remain pending. No firmware visibility,
 new geometry presets, adaptive drills, mod-tap calibration or fatigue analytics
 are claimed at M1.
+
+## M2-M4 implementation and verification
+
+| Check | Result |
+| --- | --- |
+| `npm run check` | Passed; 0 errors and 0 warnings |
+| `npm test` | Passed; 36 files / 705 tests |
+| `npm run build` | Passed; Vite reports the existing main chunk is above 500 kB |
+| Focused Phase 12 and affected Chromium regression selection | 130 passed |
+| `git diff --check` | Passed |
+
+The browser selection includes `phase12-followups.spec.ts` and the affected
+keyboard profile, storage/migration, layout, practice, Stats, language,
+accessibility and responsive-layout suites. It excludes the six browser cases
+previously reproduced on untouched HEAD `282817a`, as detailed in the M1
+verification record above.
+
+Automated acceptance now covers sourced preset family mappings, explicit
+preview/apply, board layer-binding persistence and observable command-output
+history; exact board/language adaptive thresholds and deterministic targets;
+mod-tap browser timing/self-report boundaries; v8-to-v9 preferences and v6
+history validation; completed active-time windows, pause/idle/group behavior;
+custom-target difficulty fingerprints that store no plaintext/hash; and
+setup-insight sample gates, deduplication and matched comparisons. M2-M4 code
+and automated verification are integrated. P12-15 remains open for real-board
+and firmware checks, OS key interception, screen-reader/accessibility review,
+and fluent Vietnamese editorial review.

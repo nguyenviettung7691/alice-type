@@ -2,6 +2,8 @@
   import { onDestroy, tick, untrack } from 'svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import ModeNavigation from './ModeNavigation.svelte';
+  import CommandPracticePanel from './CommandPracticePanel.svelte';
+  import ModTapGuidePanel from './ModTapGuidePanel.svelte';
   import { ALICE_LAYOUT, ALICE_VIEW_BOX, type AliceKey, type InertKey, type KeyFeedback } from '../keyboard/alice-layout';
   import {
     createSession,
@@ -21,12 +23,16 @@
   import { CARET_STYLES, type CaretStyle } from '../storage/preferences';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import HandBalance from './HandBalance.svelte';
-  import { completedRecord, type HandAttempts, type SessionRecord } from '../storage/session-history';
-  import type { KeyboardSnapshot } from '../keyboard/user-keyboards';
+  import { completedRecord, type HandAttempts, type SessionHistory, type SessionRecord } from '../storage/session-history';
+  import type { KeyboardLayerBinding, KeyboardSnapshot } from '../keyboard/user-keyboards';
+  import { buildAdaptiveDrill } from '../typing/adaptive-drills';
+  import { ActiveTimeRecorder } from '../storage/activity-windows';
+  import { StorageError } from '../storage/errors';
   import { DrillPoolError, MINIMUM_DRILL_POOL, generateDrill } from '../typing/alice-drills';
   import { selectCodeSnippet, type CodeSnippet } from '../typing/code-snippets';
   import { expectedKeycaps, fingerForCode, layoutCentreX } from '../keyboard/finger-map';
   import { keyForCharacter } from '../keyboard/key-for-character';
+  import { practiceDifficultyFingerprint } from '../typing/practice-difficulty';
   import { DRILL_TYPE_HELP_KEYS, DRILL_TYPE_LABEL_KEYS, FINGER_LABEL_KEYS, HAND_LABEL_KEYS } from '../i18n/alice-messages';
   import { prepareCustomText } from '../typing/custom-text';
   import { selectQuote, type Quote } from '../typing/quote-catalog';
@@ -44,7 +50,8 @@
     layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false,
     inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutConfirmed = false,
     active = true, contentReset = 0,
-    fingerGuide = false, onfingerguidechange, layoutMap = null, physicalCodes = {}, keyboard
+    fingerGuide = false, onfingerguidechange, layoutMap = null, physicalCodes = {}, keyboard,
+    history, setupFingerprint = '', layerBindings = []
   }: {
     settings?: PracticeSettings;
     running?: boolean;
@@ -73,6 +80,9 @@
     /** Remapped code to the catalog-default code of the physical slot (imported keymaps). */
     physicalCodes?: Readonly<Record<string, string>>;
     keyboard?: KeyboardSnapshot;
+    history?: SessionHistory;
+    setupFingerprint?: string;
+    layerBindings?: readonly KeyboardLayerBinding[];
   } = $props();
 
   let sessionId = '';
@@ -84,6 +94,12 @@
   let handAttempts = $state<HandAttempts>({ ...EMPTY_HANDS });
   let fingerAttempts = $state<Record<string, number>>({});
   let session = $state.raw<PracticeSession | null>(null);
+  let practiceTool = $state<'typing' | 'command' | 'modtap'>('typing');
+  let commandRunning = $state(false);
+  let adaptiveMetadata = $state<{ keys: readonly string[]; sampleAttempts: number; sampleSessions: number } | null>(null);
+  let adaptiveMessage = $state('');
+  let difficultyKey = '';
+  const activityRecorder = new ActiveTimeRecorder();
   let quote = $state<Quote | null>(null);
   let snippet = $state<CodeSnippet | null>(null);
   let guideAnnouncement = $state('');
@@ -226,7 +242,9 @@
   let previousReset = 0;
 
   $effect(() => {
-    running = active && session?.status === 'running' && !exerciseError;
+    running = practiceTool === 'command'
+      ? active && commandRunning
+      : active && session?.status === 'running' && !exerciseError;
   });
 
   $effect(() => {
@@ -331,7 +349,9 @@
           session = createSession(quote.text, { mode: 'quote', quoteId: quote.id, language: selected.language ?? 'en' });
           break;
         case 'custom':
-          session = customTarget && !editing ? createSession(customTarget, { mode: 'custom', language: selected.language ?? 'en' }) : null;
+          session = customTarget && !editing
+            ? createSession(customTarget, { mode: 'custom', language: selected.language ?? 'en' })
+            : null;
           break;
         case 'zen':
           session = createZenSession(selected.language ?? 'en');
@@ -356,12 +376,21 @@
       session = null;
       generationFailed(error);
     }
+    if (session && !isZenSession(session) && keyboard && setupFingerprint) {
+      difficultyKey = practiceDifficultyFingerprint(session.configuration, customTarget, adaptiveMetadata?.keys ?? null);
+      activityRecorder.startSeries(`${setupFingerprint}:${difficultyKey}`, performance.now());
+    } else {
+      difficultyKey = '';
+      activityRecorder.reset();
+    }
     synchronizeInput();
   }
 
   function changeSettings(next: PracticeSettings) {
     if (running) return;
     if (settings.mode === 'zen') session = null;
+    adaptiveMetadata = null;
+    adaptiveMessage = '';
     settings = next;
     onsettingschange?.(next);
   }
@@ -371,9 +400,14 @@
     clearFeedback();
     if (!submitted && session?.status === 'completed' && oncomplete) {
       submitted = true;
+      const analytics = keyboard && setupFingerprint && !isZenSession(session) ? {
+        setupFingerprint, difficultyKey, deskSessionId: activityRecorder.deskSessionId,
+        activeMsTotal: activityRecorder.activeMsTotal, activityWindows: activityRecorder.snapshot(),
+        ...(adaptiveMetadata ? { adaptiveDrill: adaptiveMetadata } : {})
+      } : undefined;
       oncomplete(completedRecord(session, sessionId, startedWallTime, missedKeys, {
         keyAttempts: { ...keyAttempts }, handAttempts: { ...handAttempts }, bKeyHand
-      }, keyboard));
+      }, keyboard, analytics));
     }
   }
 
@@ -458,10 +492,16 @@
         if (!refillTarget(Math.max(0, next.length - previous.length))) { synchronizeInput(); return; }
         const oldStatus = session.status;
         const before = session.totalAttempts;
+        const correctBefore = isZenSession(session) ? 0 : session.correctAttempts;
         const direct = directCode && result.edit.deleteCount === 0 && result.edit.inserted.length === 1
           && result.edit.start === previous.length;
         const correct = !isZenSession(session) && result.edit.inserted[0] === session.target[result.edit.start];
         session = applyCommittedInput(session, next, now);
+        const attemptDelta = session.totalAttempts - before;
+        if (attemptDelta > 0 && !isZenSession(session)) {
+          const correctDelta = session.correctAttempts - correctBefore;
+          activityRecorder.record(now, attemptDelta, correctDelta, correctDelta);
+        }
         if (oldStatus === 'ready' && session.status !== 'ready') {
           sessionId = Array.from(crypto.getRandomValues(new Uint8Array(16)), (byte) => byte.toString(16).padStart(2, '0')).join('');
           startedWallTime = Date.now();
@@ -552,6 +592,44 @@
     prepareExercise(settings);
   }
 
+  async function startAdaptive() {
+    adaptiveMessage = '';
+    if (!history || !keyboard) {
+      adaptiveMessage = text('boards.adaptive-history-unavailable');
+      return;
+    }
+    try {
+      const result = buildAdaptiveDrill(await history.read(), keyboard.id, settings.language ?? 'en');
+      if (result.kind === 'insufficient') {
+        adaptiveMetadata = null;
+        adaptiveMessage = text(`boards.adaptive-insufficient-${result.reason}`);
+        return;
+      }
+      adaptiveMetadata = {
+        keys: result.drill.keys,
+        sampleAttempts: result.drill.sampleAttempts,
+        sampleSessions: result.drill.sampleSessions
+      };
+      customTarget = result.drill.target;
+      editing = false;
+      customError = '';
+      normalized = false;
+      settings = { ...settings, mode: 'custom' };
+      onsettingschange?.(settings);
+      practiceTool = 'typing';
+      adaptiveMessage = text('boards.adaptive-ready', {
+        keys: result.drill.keys.join(', '),
+        attempts: formatNumber(i18n.language, result.drill.sampleAttempts),
+        sessions: formatNumber(i18n.language, result.drill.sampleSessions),
+        coverage: formatNumber(i18n.language, Math.round(result.drill.coverage * 100))
+      });
+    } catch (failure) {
+      if (!(failure instanceof StorageError)) throw failure;
+      adaptiveMetadata = null;
+      adaptiveMessage = text('boards.adaptive-history-error', { detail: failure.message });
+    }
+  }
+
   async function stop() {
     if (!session || !isZenSession(session)) return;
     cancelComposition();
@@ -562,12 +640,46 @@
   }
 </script>
 
+<svelte:window onblur={() => activityRecorder.pause()} />
+<svelte:document onvisibilitychange={() => {
+  if (document.visibilityState !== 'visible') activityRecorder.pause();
+}} />
+
 <section class="practice-panel" data-caret={caretStyle} aria-labelledby="practice-panel-heading" data-status={exerciseError ? 'error' : session?.status ?? 'ready'}>
   <h3 id="practice-panel-heading" class="sr-only" tabindex="-1">{text("practice-panel.typing-practice")}</h3>
   {#if !hasGraphemeSupport()}<p role="alert">{text("practice-panel.update-your-browser-to-use-unicode-practice")}</p>{/if}
 
+  <details class="practice-tools">
+    <summary>{text('boards.practice-tools')}</summary>
+    <div role="group" aria-label={text('boards.practice-tools')}>
+      <button class="secondary-button" type="button" disabled={running} aria-pressed={practiceTool === 'command'}
+        onclick={() => { practiceTool = practiceTool === 'command' ? 'typing' : 'command'; }}>
+        {text('boards.command-open')}
+      </button>
+      <button class="secondary-button" type="button" disabled={running} aria-pressed={practiceTool === 'modtap'}
+        onclick={() => { practiceTool = practiceTool === 'modtap' ? 'typing' : 'modtap'; }}>
+        {text('boards.modtap-open')}
+      </button>
+    </div>
+  </details>
+
+  {#if practiceTool === 'command'}
+    {#if keyboard}
+      <CommandPracticePanel bindings={layerBindings} {keyboard} oncomplete={(record) => oncomplete?.(record)}
+        onrunning={(value) => { commandRunning = value; }} onexit={() => { practiceTool = 'typing'; }} />
+    {:else}
+      <p role="alert">{text('boards.command-needs-board')}</p>
+    {/if}
+  {:else if practiceTool === 'modtap'}
+    {#if keyboard}
+      <ModTapGuidePanel {keyboard} onexit={() => { practiceTool = 'typing'; }} />
+    {:else}
+      <p role="alert">{text('boards.command-needs-board')}</p>
+    {/if}
+  {:else}
   <ModeNavigation mode={settings.mode} disabled={running}
     onmodechange={(mode) => changeSettings({ ...settings, mode })} />
+  {#if adaptiveMessage}<p role="status">{adaptiveMessage}</p>{/if}
 
   {#if settings.mode === 'timed' || settings.mode === 'words'}
   <fieldset class="exercise-settings" disabled={running}>
@@ -645,6 +757,9 @@
       changeSettings({ ...settings, numbers: event.currentTarget.checked });
     }} />{text("practice-panel.numbers")}</label>
   </fieldset>
+  <button class="secondary-button" type="button" disabled={running} onclick={() => { void startAdaptive(); }}>
+    {text('boards.adaptive-build')}
+  </button>
   <p id="drill-help" class="settings-note">{text(DRILL_TYPE_HELP_KEYS[settings.drillType])}</p>
   <p class="settings-note">{text("alice-practice.no-enforcement")}</p>
   {#if settings.language === 'vi'}<p class="settings-note">{text("alice-practice.vi-direct-input")}</p>{/if}
@@ -765,7 +880,7 @@
       commitNative(event.currentTarget.value);
     }}
     onfocus={() => { focused = true; synchronizeInput(); }}
-    onblur={() => { focused = false; cancelComposition(); clearFeedback(); }}
+    onblur={() => { focused = false; activityRecorder.pause(); cancelComposition(); clearFeedback(); }}
   />
   <label bind:this={targetElement} class="sample-text practice-text" for="practice-input" id="practice-target" tabindex="-1" lang={session.configuration?.language ?? 'en'}>
     {#if zen}
@@ -853,6 +968,7 @@
     <p class="settings-note">{text("practice-panel.results-and-history-are-saved-even-when")}</p>
     <button type="button" class="secondary-button danger-button" onclick={() => { confirmingReset = true; }}>{text("practice-panel.restore-defaults")}</button>
   </fieldset>
+  {/if}
 </section>
 
 {#if confirmingReset}
@@ -867,6 +983,9 @@
 
 <style>
   .practice-panel { padding: clamp(1rem, 2vw, 1.5rem); }
+  .practice-tools { margin-bottom: 0; }
+  .practice-tools > summary { min-height: 1.25rem; color: var(--color-muted); cursor: pointer; font-size: 0.9rem; line-height: 1.25rem; }
+  .practice-tools [role="group"] { display: flex; flex-wrap: wrap; gap: 0.5rem; }
   .guide-caption { margin: 0.5rem 0 0; color: var(--color-text); font-weight: 600; }
   .guide-reference { color: var(--color-muted); font-weight: 400; font-size: 0.85em; }
   .writing-area { position: relative; margin-block: 0.75rem; }

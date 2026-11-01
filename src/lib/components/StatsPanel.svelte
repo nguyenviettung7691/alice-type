@@ -12,6 +12,7 @@
   import { LANGUAGES, getLanguage, isLanguageId, type LanguageId } from '../i18n/languages';
   import { DRILL_TYPE_LABEL_KEYS } from '../i18n/alice-messages';
   import { CODE_LANGUAGE_NAMES } from '../typing/exercise-generator';
+  import { summarizeSetupInsights } from '../storage/session-insights';
   const i18n = useLocalization();
   const { text } = i18n;
   const number = (value: number | null) => value === null ? text("practice-panel.not-available") : formatNumber(i18n.language, value);
@@ -34,6 +35,11 @@
   let boardScope = $state('active');
   const records = $derived(boardScope === 'all' || !activeKeyboardId ? allRecords
     : sessionsForKeyboard(allRecords, boardScope === 'active' ? activeKeyboardId : boardScope === 'unassigned' ? null : boardScope.slice(6)));
+  const scoredRecords = $derived(records.filter((record) => record.mode !== 'command'));
+  const insightBoardId = $derived(boardScope === 'active' ? activeKeyboardId
+    : boardScope.startsWith('board:') ? boardScope.slice(6) : null);
+  const setupInsights = $derived(insightBoardId ? summarizeSetupInsights(allRecords, insightBoardId)
+    : { insights: [], compared: [] });
   const boardOptions = $derived.by(() => {
     const names = new Map(boards.map((board) => [board.id, board.name]));
     for (const record of allRecords) {
@@ -49,13 +55,13 @@
   let confirming = $state(false);
   let clearing = $state(false);
   let refresh = $state(0);
-  const summary = $derived(summarizeSessions(records));
+  const summary = $derived(summarizeSessions(scoredRecords));
   const missedCounts = $derived(Object.fromEntries(summary.missedKeys));
   const layoutCodes = $derived(new Set(layout.map((key) => key.code)));
   const unmappedMisses = $derived(summary.missedKeys.filter(([code]) => !layoutCodes.has(code)));
   let attributionLanguage = $state<LanguageId | 'all'>('all');
   const attribution = $derived(summarizeAttribution(attributionLanguage === 'all'
-    ? records : records.filter((record) => (record.language ?? 'en') === attributionLanguage)));
+    ? scoredRecords : scoredRecords.filter((record) => (record.language ?? 'en') === attributionLanguage)));
 
   type SortKey = 'completedAt' | 'mode' | 'wpm' | 'accuracy';
   let sortKey = $state<SortKey>('completedAt');
@@ -99,9 +105,11 @@
       case 'timed': return text("stats-panel.timed-seconds", { p0: number(record.limit) });
       case 'words': return text("stats-panel.words-words", { p0: number(record.limit) });
       case 'quote': return text("stats-panel.quote-characters", { p0: number(record.targetCharacters) });
-      case 'custom': return text("stats-panel.custom-characters", { p0: number(record.targetCharacters) });
+      case 'custom': return record.adaptiveDrill ? text('boards.adaptive-history')
+        : text("stats-panel.custom-characters", { p0: number(record.targetCharacters) });
       case 'drills': return text("stats-panel.drills-words", { p0: text(DRILL_TYPE_LABEL_KEYS[record.drillType]), p1: number(record.limit) });
       case 'code': return text("stats-panel.code-snippet", { p0: CODE_LANGUAGE_NAMES[record.codeLanguage] });
+      case 'command': return text('boards.command-history');
       case 'zen': return text("stats-panel.zen-manual-stop-seconds", { p0: formatNumber(i18n.language, record.elapsedMs / 1000, 1) });
     }
   }
@@ -167,6 +175,45 @@
     {#if !records.length}
       <p class="empty-state">{text("stats-panel.no-saved-sessions-yet-complete-a-timed")}</p>
     {:else}
+      {#if insightBoardId}
+        <section class="stats-section" aria-labelledby="setup-insights-heading">
+          <div class="stats-section-heading"><h3 id="setup-insights-heading">{text('boards.insights-heading')}</h3></div>
+          <p class="panel-copy">{text('boards.insights-observational')}</p>
+          {#if !setupInsights.insights.length}
+            <p class="empty-state">{text('boards.insights-insufficient')}</p>
+          {:else}
+            <ul class="setup-insights">
+              {#each setupInsights.insights as insight (`${insight.fingerprint}-${insight.difficultyKey}`)}
+                <li>
+                  <h4>{insight.boardName} · {text(`boards.switch-${insight.hardware.switchType}`)}
+                    {#if insight.hardware.actuationForce}{text('boards.insights-force', { grams: number(insight.hardware.actuationForce) })}{/if}
+                    {#if insight.hardware.tentingAngle !== null}{text('boards.insights-angle', { degrees: number(insight.hardware.tentingAngle) })}{/if}
+                  </h4>
+                  <p>{text('boards.insights-window-summary', {
+                    earlyWpm: number(insight.early.wpm), lateWpm: number(insight.late.wpm),
+                    earlyAccuracy: formatAccuracy(i18n.language, insight.early.accuracy),
+                    lateAccuracy: formatAccuracy(i18n.language, insight.late.accuracy),
+                    accuracyChange: number(Math.round((insight.late.accuracy - insight.early.accuracy) * 10) / 10),
+                    earlyAttempts: number(insight.early.attempts), lateAttempts: number(insight.late.attempts)
+                  })}</p>
+                  <p>{text('boards.insights-sample', {
+                    sessions: number(insight.sessions), days: number(insight.days),
+                    spread: number(Math.round(insight.accuracySpread * 10) / 10)
+                  })}</p>
+                </li>
+              {/each}
+            </ul>
+            {#each setupInsights.compared as pair (`${pair.first.fingerprint}-${pair.second.fingerprint}`)}
+              <p class="panel-copy">{text('boards.insights-setup-comparison', {
+                first: pair.first.boardName, second: pair.second.boardName,
+                firstWpm: number(pair.first.late.wpm), secondWpm: number(pair.second.late.wpm),
+                firstAccuracy: formatAccuracy(i18n.language, pair.first.late.accuracy),
+                secondAccuracy: formatAccuracy(i18n.language, pair.second.late.accuracy)
+              })}</p>
+            {/each}
+          {/if}
+        </section>
+      {/if}
       <section class="stats-section" aria-labelledby="stats-summary-heading">
         <div class="stats-section-heading">
           <h3 id="stats-summary-heading">{text("stats-panel.stats-summary")}</h3>
@@ -195,9 +242,9 @@
             <h3 id="recent-sessions-heading">{text("stats-panel.recent-sessions")}</h3>
             <p class="panel-copy">{text("stats-panel.newest-first-by-default-select-a-column", { p0: number(MAX_SESSION_HISTORY) })}</p>
           </div>
-          <span class="stats-badge">{text("stats-panel.saved", { p0: number(summary.count) })}</span>
+          <span class="stats-badge">{text("stats-panel.saved", { p0: number(records.length) })}</span>
         </div>
-        <SessionProgressChart {records} {modeLabel} />
+        <SessionProgressChart records={scoredRecords} {modeLabel} />
         <VirtualTable items={sortedRecords} itemKey={(record) => record.id} columns={6}
           label={text("stats-panel.session-history-table")} resetKey={`${boardScope}-${activeKeyboardId}-${sortKey}-${sortDirection}-${i18n.language}`}>
           {#snippet header()}
@@ -214,7 +261,8 @@
           {#snippet row(record)}
                   <td><time datetime={new Date(record.completedAt).toISOString()}>{formatDate(i18n.language, record.completedAt)}</time></td>
                   <td>{modeLabel(record)}</td>
-                  <td>{record.mode === 'zen' ? text("stats-panel.free-writing-wpm", { p0: number(record.wpm) }) : number(record.wpm)}</td>
+                  <td>{record.mode === 'zen' ? text("stats-panel.free-writing-wpm", { p0: number(record.wpm) })
+                    : record.mode === 'command' ? text("stats-panel.not-applicable") : number(record.wpm)}</td>
                   <td>{#if record.accuracy === null}{text("stats-panel.not-applicable")}{:else}<span class="percent-value" style:color={percentColor(record.accuracy)}>{formatAccuracy(i18n.language, record.accuracy)}</span>
                     <span class="sr-only">{record.scoringVersion ? text("stats-panel.committed-text-accuracy") : text("stats-panel.historical-keystroke-accuracy")}</span>{/if}</td>
                   <td>{text(getLanguage(record.language ?? 'en').labelKey)}</td>

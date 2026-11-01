@@ -2,7 +2,9 @@ import { B_KEY_HANDS, CODE_LANGUAGES, DRILL_TYPES, DURATIONS, WORD_LIMITS, WORD_
 import { getMetrics, isZenSession, type PracticeSession } from '../typing/typing-engine';
 import { isRecord, StorageError, storageFailure } from './errors';
 import { isLanguageId, type LanguageId } from '../i18n/languages';
-import { validateKeyboardSnapshot, type KeyboardSnapshot } from '../keyboard/user-keyboards';
+import {
+  COMMAND_OUTPUT_CODES, validateKeyboardSnapshot, validateLayerBindings, type KeyboardLayerBinding, type KeyboardSnapshot
+} from '../keyboard/user-keyboards';
 
 export interface HandAttempts {
   readonly left: number;
@@ -22,10 +24,16 @@ export const HAND_BUCKETS = ['left', 'right', 'thumb', 'unattributed'] as const;
 const SAFE_CODE = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 
 interface RecordBase {
-  readonly version: 2 | 3 | 4 | 5;
+  readonly version: 2 | 3 | 4 | 5 | 6;
   readonly keyboard?: KeyboardSnapshot;
   readonly language?: LanguageId;
   readonly scoringVersion?: 'committed-grapheme-v1';
+  readonly setupFingerprint?: string;
+  readonly difficultyKey?: string;
+  readonly deskSessionId?: string;
+  readonly activeMsTotal?: number;
+  readonly activityWindows?: readonly ActivityWindow[];
+  readonly adaptiveDrill?: AdaptiveDrillSnapshot;
   readonly id: string;
   readonly completedAt: number;
   readonly wpm: number;
@@ -65,7 +73,37 @@ type ZenRecord = RecordBase & {
   readonly missedKeys: Readonly<Record<string, number>>;
 };
 
-export type SessionRecord = GeneratedRecord | FiniteRecord | ZenRecord;
+export interface ActivityWindow {
+  readonly minute: number;
+  readonly attempts: number;
+  readonly correctAttempts: number;
+  readonly correctCharacters: number;
+  readonly activeMs: number;
+}
+
+export interface AdaptiveDrillSnapshot {
+  readonly keys: readonly string[];
+  readonly sampleAttempts: number;
+  readonly sampleSessions: number;
+}
+
+export interface CommandRecord extends Omit<RecordBase, 'version'> {
+  readonly version: 6;
+  readonly mode: 'command';
+  readonly keyboard: KeyboardSnapshot;
+  readonly wpm: 0;
+  readonly accuracy: number;
+  readonly correctAttempts: number;
+  readonly missedKeys: Readonly<Record<string, number>>;
+  readonly outputAttempts: Readonly<Record<string, number>>;
+  readonly elapsedMs: number;
+  readonly bindings: readonly KeyboardLayerBinding[];
+}
+
+export type SessionRecord = GeneratedRecord | FiniteRecord | ZenRecord | CommandRecord;
+type TypingSessionRecord = Exclude<SessionRecord, CommandRecord>;
+
+const MAX_ACTIVITY_WINDOWS = 60;
 
 function finite(value: unknown): value is number {
   return typeof value === 'number' && Number.isFinite(value);
@@ -124,9 +162,92 @@ function safeCount(value: unknown, minimum = 0): value is number {
   return finite(value) && Number.isSafeInteger(value) && value >= minimum;
 }
 
+function validateActivityWindows(value: unknown): readonly ActivityWindow[] {
+  const invalid = () => new StorageError('A saved session contains invalid active-time windows.');
+  if (!Array.isArray(value) || value.length > MAX_ACTIVITY_WINDOWS) throw invalid();
+  let previousMinute = -1;
+  return value.map((window) => {
+    if (!isRecord(window) || !safeCount(window.minute) || window.minute >= MAX_ACTIVITY_WINDOWS
+      || window.minute <= previousMinute || !safeCount(window.attempts, 1)
+      || !safeCount(window.correctAttempts) || window.correctAttempts > window.attempts
+      || !safeCount(window.correctCharacters) || window.correctCharacters > window.correctAttempts
+      || !finite(window.activeMs) || window.activeMs <= 0 || window.activeMs > 60_000) throw invalid();
+    previousMinute = window.minute;
+    return {
+      minute: window.minute, attempts: window.attempts, correctAttempts: window.correctAttempts,
+      correctCharacters: window.correctCharacters, activeMs: window.activeMs
+    };
+  });
+}
+
+function validateAdaptiveDrill(value: unknown): AdaptiveDrillSnapshot {
+  const invalid = () => new StorageError('A saved adaptive drill contains invalid sample metadata.');
+  if (!isRecord(value) || !Array.isArray(value.keys) || value.keys.length < 1 || value.keys.length > 5
+    || value.keys.some((code) => typeof code !== 'string' || !SAFE_CODE.test(code) || code === 'Unidentified')
+    || new Set(value.keys).size !== value.keys.length || !safeCount(value.sampleAttempts, 20)
+    || !safeCount(value.sampleSessions, 3)) throw invalid();
+  return { keys: [...value.keys] as string[], sampleAttempts: value.sampleAttempts, sampleSessions: value.sampleSessions };
+}
+
+function validateCommandRecord(value: Record<string, unknown>): CommandRecord {
+  const invalid = () => new StorageError('A saved command drill contains invalid output attempts.');
+  if (typeof value.id !== 'string' || !value.id.trim() || !finite(value.completedAt) || value.completedAt < 0
+    || value.completedAt > 8.64e15 || value.wpm !== 0 || !isLanguageId(value.language)
+    || !safeCount(value.totalAttempts, 1) || value.totalAttempts > 100
+    || !safeCount(value.correctAttempts) || value.correctAttempts > value.totalAttempts
+    || !finite(value.accuracy) || value.accuracy < 0 || value.accuracy > 100
+    || value.accuracy !== Math.round(value.correctAttempts / value.totalAttempts * 1000) / 10
+    || !finite(value.elapsedMs) || value.elapsedMs < 0 || value.elapsedMs > 86_400_000
+    || !isRecord(value.outputAttempts) || !isRecord(value.missedKeys) || !Array.isArray(value.bindings)) throw invalid();
+  const outputAttempts: Record<string, number> = {};
+  for (const [code, count] of Object.entries(value.outputAttempts)) {
+    if (!COMMAND_OUTPUT_CODES.some((candidate) => candidate === code) || !safeCount(count, 1)) throw invalid();
+    Object.defineProperty(outputAttempts, code, { value: count, enumerable: true });
+  }
+  const missedKeys: Record<string, number> = {};
+  for (const [code, count] of Object.entries(value.missedKeys)) {
+    if (!COMMAND_OUTPUT_CODES.some((candidate) => candidate === code) || !safeCount(count, 1)
+      || count > (outputAttempts[code] ?? 0)) throw invalid();
+    Object.defineProperty(missedKeys, code, { value: count, enumerable: true });
+  }
+  if (Object.values(outputAttempts).reduce((sum, count) => sum + count, 0) !== value.totalAttempts
+    || Object.values(missedKeys).reduce((sum, count) => sum + count, 0) !== value.totalAttempts - value.correctAttempts) throw invalid();
+  const keyboard = validateKeyboardSnapshot(value.keyboard);
+  const bindings = validateLayerBindings(value.bindings);
+  return {
+    version: 6, mode: 'command', id: value.id, completedAt: value.completedAt, wpm: 0,
+    totalAttempts: value.totalAttempts, correctAttempts: value.correctAttempts, accuracy: value.accuracy,
+    missedKeys, outputAttempts, elapsedMs: value.elapsedMs, bindings, keyboard, language: value.language
+  };
+}
+
 export function validateSessionRecord(value: unknown): SessionRecord {
+  if (isRecord(value) && value.version === 6) {
+    if (value.mode === 'command') return validateCommandRecord(value);
+    const record = validateSessionRecord({ ...value, version: 5 });
+    if (record.mode === 'command' || typeof value.setupFingerprint !== 'string'
+      || !/^fnv1a-[0-9a-f]{8}$/.test(value.setupFingerprint)) {
+      throw new StorageError('A saved session contains invalid setup analytics metadata.');
+    }
+    if (typeof value.difficultyKey !== 'string' || !/^difficulty-[0-9a-f]{8}$/.test(value.difficultyKey)
+      || typeof value.deskSessionId !== 'string' || !/^[A-Za-z0-9-]{1,80}$/.test(value.deskSessionId)
+      || !finite(value.activeMsTotal) || value.activeMsTotal < 0
+      || value.activeMsTotal > MAX_ACTIVITY_WINDOWS * 60_000) {
+      throw new StorageError('A saved session contains invalid active-time grouping metadata.');
+    }
+    const activityWindows = validateActivityWindows(value.activityWindows);
+    if (value.adaptiveDrill !== undefined && record.mode !== 'custom') {
+      throw new StorageError('Only a custom-text session can contain adaptive drill metadata.');
+    }
+    return {
+      ...record, version: 6, setupFingerprint: value.setupFingerprint, activityWindows,
+      difficultyKey: value.difficultyKey, deskSessionId: value.deskSessionId, activeMsTotal: value.activeMsTotal,
+      ...(value.adaptiveDrill !== undefined ? { adaptiveDrill: validateAdaptiveDrill(value.adaptiveDrill) } : {})
+    };
+  }
   if (isRecord(value) && value.version === 5) {
     const record = validateSessionRecord({ ...value, version: 4 });
+    if (record.mode === 'command') throw new StorageError('A saved session has an invalid record version.');
     const keyboard = validateKeyboardSnapshot(value.keyboard);
     if (keyboard.bKeyHand !== record.bKeyHand) throw new StorageError('Saved session keyboard and hand attribution disagree.');
     return { ...record, version: 5, keyboard };
@@ -171,7 +292,7 @@ function validateAttribution(value: Record<string, unknown>, record: SessionReco
   return { keyAttempts, handAttempts, bKeyHand: value.bKeyHand as BKeyHand };
 }
 
-function validateRecordBody(value: unknown, alice: boolean): SessionRecord {
+function validateRecordBody(value: unknown, alice: boolean): TypingSessionRecord {
   const invalid = () => new StorageError('A saved session contains invalid data.');
   if (!isRecord(value) || value.version !== 2
     || typeof value.id !== 'string' || !value.id.trim()
@@ -249,16 +370,35 @@ export const EMPTY_ATTRIBUTION = (bKeyHand: BKeyHand): SessionAttribution => ({
   keyAttempts: {}, handAttempts: { left: 0, right: 0, thumb: 0, unattributed: 0 }, bKeyHand
 });
 
+export interface SessionAnalyticsContext {
+  readonly setupFingerprint: string;
+  readonly difficultyKey: string;
+  readonly deskSessionId: string;
+  readonly activeMsTotal: number;
+  readonly activityWindows: readonly ActivityWindow[];
+  readonly adaptiveDrill?: AdaptiveDrillSnapshot;
+}
+
 export function completedRecord(
   session: PracticeSession, id: string, startedWallTime: number, missedKeys: Readonly<Record<string, number>>,
-  attribution: SessionAttribution, keyboard?: KeyboardSnapshot
+  attribution: SessionAttribution, keyboard?: KeyboardSnapshot, analytics?: SessionAnalyticsContext
 ): SessionRecord {
   if (session.status !== 'completed' || !session.configuration) {
     throw new StorageError('Only completed configured sessions can be saved.');
   }
+  if (analytics && !keyboard) throw new StorageError('Active-time analytics require a keyboard setup snapshot.');
   const metrics = getMetrics(session, session.endedAt);
   const base = {
-    version: keyboard ? 5 : 4, keyboard, language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
+    version: analytics ? 6 : keyboard ? 5 : 4, keyboard,
+    ...(analytics ? {
+      setupFingerprint: analytics.setupFingerprint,
+      difficultyKey: analytics.difficultyKey,
+      deskSessionId: analytics.deskSessionId,
+      activeMsTotal: analytics.activeMsTotal,
+      activityWindows: analytics.activityWindows,
+      ...(analytics.adaptiveDrill ? { adaptiveDrill: analytics.adaptiveDrill } : {})
+    } : {}),
+    language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
     id, completedAt: startedWallTime + metrics.elapsedMs,
     wpm: metrics.wpm, totalAttempts: session.totalAttempts
   };
@@ -332,7 +472,7 @@ export function summarizeAttribution(records: readonly SessionRecord[]) {
   let included = 0;
   let excluded = 0;
   for (const record of records) {
-    if (record.mode === 'zen') continue;
+    if (record.mode === 'zen' || record.mode === 'command') continue;
     if (!record.keyAttempts || !record.handAttempts) {
       excluded += 1;
       continue;
@@ -379,6 +519,7 @@ export function summarizeSessions(records: readonly SessionRecord[]) {
   let legacyAccuracy = 0;
   let legacyCount = 0;
   for (const record of records) {
+    if (record.mode === 'command') continue;
     if (record.mode === 'zen') {
       zenCount += 1;
       zenBestWpm = Math.max(zenBestWpm, record.wpm);

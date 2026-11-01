@@ -1,7 +1,7 @@
 AliceType keyboard layout data
 ==============================
 
-Catalog revision via-9e3e9f4.qmk-180f394, generated 2026-10-26 by scripts/import-keyboard-layouts.ts.
+Catalog revision via-9e3e9f4.qmk-180f394, generated 2026-11-01 by scripts/import-keyboard-layouts.ts.
 
 The files in this directory (index.json and profiles/*.json) are derived from third-party
 open-source keyboard data and are NOT covered by the AliceType MIT license:
@@ -165,3 +165,9 @@ AVA (sneakbox-ava)
   QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/sneakbox/ava/info.json
   QMK default keymap (layer _BASE): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sneakbox/ava/keymaps/default/keymap.c
   Copyright 2021 Bryan Ong
+
+Keyhive Sofle RGB (sofle-keyhive)
+  VIA definition: https://github.com/the-via/keyboards/blob/9e3e9f4aa9f50f9439fdebc747560f51aaf109a0/v3/sofle/keyhive_sofle_rgb.json
+  QMK keyboard metadata: https://keyboards.qmk.fm/v1/keyboards/sofle/keyhive/info.json
+  QMK default keymap (layer _QWERTY): https://github.com/qmk/qmk_firmware/blob/180f394b489c238cb231c2bf8b080262155e03c0/keyboards/sofle/keymaps/default/keymap.c
+  Copyright 2023 QMK
