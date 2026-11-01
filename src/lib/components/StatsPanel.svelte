@@ -1,6 +1,6 @@
 <script lang="ts">
   import { StorageError } from '../storage/errors';
-  import { MAX_SESSION_HISTORY, MINIMUM_KEY_ATTEMPTS, SessionHistory, summarizeAttribution, summarizeSessions, type SessionRecord } from '../storage/session-history';
+  import { MAX_SESSION_HISTORY, MINIMUM_KEY_ATTEMPTS, SessionHistory, sessionsForKeyboard, summarizeAttribution, summarizeSessions, type SessionRecord } from '../storage/session-history';
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import AliceKeyboardVisualizer from './AliceKeyboardVisualizer.svelte';
   import HandBalance from './HandBalance.svelte';
@@ -16,7 +16,8 @@
   const { text } = i18n;
   const number = (value: number | null) => value === null ? text("practice-panel.not-available") : formatNumber(i18n.language, value);
 
-  let { history, revision, pending, layout, layoutLabel, inertKeys = [], viewBox, layoutConfirmed, browserLegends }: {
+  let { history, revision, pending, layout, layoutLabel, inertKeys = [], viewBox, layoutConfirmed, browserLegends,
+    boards = [], activeKeyboardId }: {
     history: SessionHistory;
     revision: number;
     pending: boolean;
@@ -26,8 +27,22 @@
     viewBox?: string;
     layoutConfirmed: boolean;
     browserLegends: boolean;
+    boards?: readonly { id: string; name: string }[];
+    activeKeyboardId?: string;
   } = $props();
-  let records = $state<SessionRecord[]>([]);
+  let allRecords = $state<SessionRecord[]>([]);
+  let boardScope = $state('active');
+  const records = $derived(boardScope === 'all' || !activeKeyboardId ? allRecords
+    : sessionsForKeyboard(allRecords, boardScope === 'active' ? activeKeyboardId : boardScope === 'unassigned' ? null : boardScope.slice(6)));
+  const boardOptions = $derived.by(() => {
+    const names = new Map(boards.map((board) => [board.id, board.name]));
+    for (const record of allRecords) {
+      if (record.keyboard && !names.has(record.keyboard.id)) {
+        names.set(record.keyboard.id, text('boards.deleted-name', { name: record.keyboard.name }));
+      }
+    }
+    return [...names].map(([id, name]) => ({ id, name }));
+  });
   let loading = $state(true);
   let error = $state('');
   let message = $state('');
@@ -98,7 +113,7 @@
     loading = true;
     error = '';
     history.read().then((saved) => {
-      if (active) records = saved;
+      if (active) allRecords = saved;
     }).catch((failure: unknown) => {
       if (!(failure instanceof StorageError)) throw failure;
       if (active) error = failure.message;
@@ -112,7 +127,7 @@
     error = '';
     try {
       await history.clear();
-      records = [];
+      allRecords = [];
       message = 'Local session history deleted.';
       refresh += 1;
     } catch (failure) {
@@ -128,6 +143,17 @@
   <p class="eyebrow">{text("stats-panel.a-little-progress-every-day")}</p>
   <h2 id="stats-heading" tabindex="-1">{text("stats-panel.stats")}</h2>
   <p class="panel-copy">{text("stats-panel.completed-practice-sessions-stored-only-in-this")}</p>
+  {#if activeKeyboardId}
+    <label>{text('boards.stats-scope')}
+      <select bind:value={boardScope} aria-label={text('boards.stats-scope')}>
+        <option value="active">{text('boards.active')}</option>
+        <option value="all">{text('boards.all')}</option>
+        <option value="unassigned">{text('boards.unassigned')}</option>
+        {#each boardOptions as board (board.id)}<option value={`board:${board.id}`}>{board.name}</option>{/each}
+      </select>
+    </label>
+    <p class="panel-copy">{text('boards.stats-help')}</p>
+  {/if}
   {#if error}
     <div class="notice" role="alert">
       <p>{text("stats-panel.history-error", { p0: String(error) })}</p>
@@ -144,7 +170,7 @@
       <section class="stats-section" aria-labelledby="stats-summary-heading">
         <div class="stats-section-heading">
           <h3 id="stats-summary-heading">{text("stats-panel.stats-summary")}</h3>
-          <span class="stats-badge">{text("stats-panel.all-time-all-languages")}</span>
+          <span class="stats-badge">{text("boards.scope-summary")}</span>
         </div>
         <dl class="stats-summary">
           <div><dt>{text("stats-panel.completed-sessions")}</dt><dd>{number(summary.count)}</dd></div>
@@ -172,8 +198,8 @@
           <span class="stats-badge">{text("stats-panel.saved", { p0: number(summary.count) })}</span>
         </div>
         <SessionProgressChart {records} {modeLabel} />
-        <VirtualTable items={sortedRecords} itemKey={(record) => record.id} columns={5}
-          label={text("stats-panel.session-history-table")} resetKey={`${sortKey}-${sortDirection}-${i18n.language}`}>
+        <VirtualTable items={sortedRecords} itemKey={(record) => record.id} columns={6}
+          label={text("stats-panel.session-history-table")} resetKey={`${boardScope}-${activeKeyboardId}-${sortKey}-${sortDirection}-${i18n.language}`}>
           {#snippet header()}
               {#each [['completedAt', 'Completed'], ['mode', 'Mode / limit'], ['wpm', 'WPM'], ['accuracy', 'Accuracy']] as const as [key, label]}
                 <th scope="col" aria-sort={ariaSort(key)}>
@@ -183,6 +209,7 @@
                 </th>
               {/each}
               <th scope="col">{text("stats-panel.language")}</th>
+              <th scope="col">{text('boards.keyboard')}</th>
           {/snippet}
           {#snippet row(record)}
                   <td><time datetime={new Date(record.completedAt).toISOString()}>{formatDate(i18n.language, record.completedAt)}</time></td>
@@ -191,6 +218,7 @@
                   <td>{#if record.accuracy === null}{text("stats-panel.not-applicable")}{:else}<span class="percent-value" style:color={percentColor(record.accuracy)}>{formatAccuracy(i18n.language, record.accuracy)}</span>
                     <span class="sr-only">{record.scoringVersion ? text("stats-panel.committed-text-accuracy") : text("stats-panel.historical-keystroke-accuracy")}</span>{/if}</td>
                   <td>{text(getLanguage(record.language ?? 'en').labelKey)}</td>
+                  <td>{record.keyboard?.name ?? text('boards.unassigned')}</td>
           {/snippet}
         </VirtualTable>
       </section>
@@ -238,7 +266,7 @@
           <p class="panel-copy">{text("stats-panel.per-key-accuracy-copy", { p0: number(MINIMUM_KEY_ATTEMPTS) })}</p>
           {#if attribution.keys.length}
             <VirtualTable items={attribution.keys} itemKey={(key) => key.code} columns={4}
-              label={text("stats-panel.per-key-accuracy")} resetKey={`${attributionLanguage}-${i18n.language}`}>
+              label={text("stats-panel.per-key-accuracy")} resetKey={`${boardScope}-${activeKeyboardId}-${attributionLanguage}-${i18n.language}`}>
                 {#snippet header()}
                   <th scope="col">{text("stats-panel.key")}</th>
                   <th scope="col">{text("stats-panel.attempts")}</th>

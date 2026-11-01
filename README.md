@@ -22,6 +22,7 @@ accent, and real-time feedback. Everything runs in your browser.
 - **Keyboard Details** with a generic Alice profile and 23 real Alice-family layouts sourced from QMK/VIA.
 - **Local preferences and history** with missed-key summaries, hand load and per-key accuracy, and separate Zen scores.
 - **VIA/Vial keymap file import** onto a confirmed layout, processed locally and never uploaded.
+- **Multiple physical-board profiles** with hardware/thumb notes, a header switcher and board-isolated Stats.
 - **English and Vietnamese** UI and practice resources, with a saved header language selector.
 - **No accounts, backend, telemetry, or runtime data downloads.**
 
@@ -35,6 +36,10 @@ Phase 11 (specialized Alice practices) is implemented with automated verificatio
 real-board keymap import, Vietnamese drills under OS input methods, screen-reader,
 fluent Vietnamese copy, and snippet review gates remain pending. Standard-versus-Alice
 board comparison is deferred.
+Phase 12 milestone M1 is implemented with automated verification: local board
+profiles, hardware/thumb metadata, explicit switching and per-board Stats. Four-family
+geometry presets, layer-output practice, adaptive drills, mod-tap guidance and
+long-session comparisons are planned follow-up milestones, not available yet.
 Difficulty rules, alternate themes, and reading
 layouts from firmware are deferred. Browser-based automatic hardware
 identification is not supported.
@@ -185,11 +190,31 @@ A read-only layer viewer shows every imported layer. The file is never uploaded 
 reflects the file, not what the keyboard currently runs. Changing the confirmed
 profile, variant, or catalog revision removes the import with a notice.
 
+### Your keyboards
+
+In **Keyboard Details**, add, edit, duplicate or delete profiles for up to 20
+physical boards. Use **Active keyboard** in the header to switch while idle;
+**Ctrl+Shift+K** focuses the selector where the browser permits it. Switching
+resets idle Practice and Keyboard Test state, including unsaved Custom/Zen text.
+Finish or restart a running session first.
+
+Each board remembers its confirmed layout, keymap import, device notes and
+B-hand preference, plus optional switch type, actuation force (not bottom-out
+weight), keycap profile, tenting angle and left/right thumb roles. These are
+self-reported notes: the family field is **not** a geometry preset, and thumb
+roles do not reprogram firmware or prove which thumb/layer was used. Geometry
+still requires confirming an existing catalog layout. Connecting a device does
+not automatically switch profiles.
+
+Duplicates receive a new identity and no inherited scores. Deleting a profile
+requires confirmation and keeps its historical scores; at least one profile
+must remain. **Restore defaults** preserves the collection and board setups.
+
 ## Preferences, history, and privacy
 
 The **Practice** page includes Block, Line, or Underline carets, live-stat
 visibility, and optional generated typing clicks (off by default). **Restore
-defaults** requires confirmation and does not delete history.
+defaults** requires confirmation and does not delete keyboards or history.
 
 Practice keeps its mode/options, typing area, progress, and actions above the
 full-width keyboard. The two-line text window scrolls with the caret. Keyboard Test places
@@ -198,23 +223,31 @@ after the compact test status. **Instructions & limitations** expands the detail
 key-capture guidance; Shift+Tab always leaves the test.
 
 Preferences, selected profiles, confirmed layouts, and personal notes use
-versioned `localStorage` (schema v7). The far-right **Language** selector defaults
+versioned `localStorage` (schema v8). Earlier settings migrate into one board.
+The far-right **Language** selector defaults
 to English and saves your choice locally; **Restore defaults** returns to English.
 Language changes do not change keyboard geometry, user writing, or physical test
-counts. Completed scores use IndexedDB (record v4, database v1). **Stats** separates
+counts. Completed scores use IndexedDB (record v5, database v1). **Stats** separates
 target-copying WPM/accuracy and missed-key summaries from Zen free-writing scores.
-New scores include language/scoring metadata; existing scores are not rewritten.
+New scores include language/scoring metadata and a board/hardware snapshot;
+existing scores are not rewritten. **Keyboard history** defaults to the active
+board across all summaries, charts and heatmaps. Choose **All keyboards**,
+**Unassigned (older sessions)**, or a specific current/deleted board to inspect
+other results. Old scores are never guessed onto a board. Renaming or deleting
+a profile leaves saved snapshots unchanged. **Clear history** remains global.
+Heatmaps use the currently active diagram, not a historical geometry snapshot.
 Historical keystroke accuracy and committed-text accuracy have separate summaries.
 **Recent sessions** shows a progress chart above the history table: the latest 10
 target-copying sessions (Zen excluded), oldest to newest, with WPM on the left axis
 and accuracy (50–100%) on the right. Point color shows language and point shape
 shows mode; language toggles hide or show each language's sessions.
-**Hand load and key accuracy** summarizes saved v4 sessions by language: hand balance,
+**Hand load and key accuracy** summarizes saved v4/v5 sessions by language: hand balance,
 per-key accuracy for keys with at least 20 direct attempts, and reach-key versus
 home-row accuracy. Older records are excluded and counted in a note.
 Recent-session and per-key tables virtualize their rows in a bounded, keyboard-scrollable
 viewport with sticky headers. Sorting history or changing the attribution language resets
-the relevant table to the top; all records remain included in summaries and charts.
+the relevant table to the top; all records in the selected board scope remain
+included in summaries and charts.
 Reach stats compare accuracy in two cards and show up to five lowest-accuracy reach
 keys with attempt/miss counts, or explain when the sample is too small.
 Keyboard Test counts and raw input events are not stored.
@@ -272,6 +305,7 @@ Each phase has a detail design and an implementation/verification plan:
 | 9 | Guided and Freestyle Keyboard Test modes | [Design](doc/phase-9-detail-design.md) · [Plan](doc/phase-9-implementation-plan.md) |
 | 10 (review gates pending) | English/Vietnamese resources, Unicode/composition practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
 | 11 (manual gates pending) | Alice Drills and Code modes, cue-only finger guide, hand/finger load and per-key accuracy, VIA/Vial keymap file import | [Design](doc/phase-11-detail-design.md) · [Plan](doc/phase-11-implementation-plan.md) |
+| 12 (M1 implemented; M2-M4 planned) | Multi-board management and isolated Stats; layer/adaptive practice and longitudinal insights planned | [Design](doc/phase-12-detail-design.md) · [Plan](doc/phase-12-implementation-plan.md) |
 
 Phase 10 separates UI catalogs under `src/lib/i18n/ui/` from practice resources
 under `src/lib/typing/word-banks/` and `src/lib/typing/quotes/`. Vietnamese word

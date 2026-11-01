@@ -5,6 +5,11 @@ const stats = (page: Page) => page.locator('.stats-panel');
 const key = (page: Page, code: string) => stats(page).locator(`.keyboard-key[data-code="${code}"]`);
 const nav = (page: Page, name: string) => page.getByRole('button', { name, exact: true });
 
+async function openAllStats(page: Page) {
+  await page.getByRole('button', { name: 'Stats', exact: true }).click();
+  await page.getByLabel('Keyboard history', { exact: true }).selectOption('all');
+}
+
 async function seedHistory(page: Page, missedKeys: Record<string, number>, count = 1) {
   await page.evaluate(async ({ missedKeys, count }) => {
     const path = '/src/lib/storage/session-history.ts';
@@ -31,7 +36,7 @@ test.beforeEach(async ({ page }) => {
 
 test('separates sections, aligns metric cards, and bounds history with a sticky header', async ({ page }) => {
   await seedHistory(page, { KeyA: 4, KeyS: 2 }, 30);
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   for (const name of ['Stats summary', 'Recent sessions', 'Most-missed physical keys']) {
     await expect(page.getByRole('region', { name, exact: true })).toBeVisible();
   }
@@ -98,7 +103,7 @@ test('virtualizes large histories and per-key accuracy, reaches the final row, a
       });
     } finally { history.close(); }
   });
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   const history = stats(page).getByRole('region', { name: 'Session history table', exact: true });
   const accuracy = stats(page).getByRole('region', { name: 'Per-key accuracy', exact: true });
   await expect(history.locator('table')).toHaveAttribute('aria-rowcount', '302');
@@ -130,7 +135,7 @@ test('virtualizes large histories and per-key accuracy, reaches the final row, a
 
 test('renders exact miss counts and proportional heat, shared spacebars, and unmapped codes', async ({ page }) => {
   await seedHistory(page, { KeyA: 4, KeyS: 2, Space: 1, IntlBackslash: 8 });
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   await expect(page.getByRole('img', { name: 'Generic Alice missed-key heatmap' })).toBeVisible();
   for (const [code, count, heat] of [['KeyA', '4', '0.5'], ['KeyS', '2', '0.25'], ['Space', '1', '0.125'], ['KeyD', '0', '0']]) {
     await expect(key(page, code)).toHaveAttribute('data-count', count);
@@ -154,7 +159,7 @@ test('renders exact miss counts and proportional heat, shared spacebars, and unm
 test('zero-miss heatmap stays neutral and remains usable on a narrow screen', async ({ page }) => {
   await seedHistory(page, {});
   await page.setViewportSize({ width: 375, height: 812 });
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   await expect(stats(page).getByText(/No physical-key errors recorded/)).toBeVisible();
   await expect(key(page, 'KeyA')).toHaveAttribute('data-heat', '0');
   await expect(key(page, 'KeyA').locator('.key-count')).toHaveText('0');
@@ -187,7 +192,7 @@ test('uses the confirmed layout geometry and browser key legends in Stats', asyn
   await expect(page.locator('.practice-panel .keyboard-key[data-code="KeyA"] .key-legend')).toHaveText('\u03b1');
   const caps = await page.locator('.practice-panel .keyboard-key rect').count();
   await seedHistory(page, { KeyA: 4 });
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   await expect(stats(page).locator('.keyboard-visualizer')).toHaveAttribute('data-layout-source', 'confirmed');
   await expect(page.getByRole('img', { name: 'Keychron Q8 ANSI missed-key heatmap' })).toBeVisible();
   await expect(key(page, 'KeyA').locator('.key-legend')).toHaveText('\u03b1');
@@ -232,7 +237,7 @@ test('charts the latest ten target-copying sessions above the history table', as
     completedAt: Date.UTC(2026, 9, 29, 5, 0), mode: 'zen', elapsedMs: 5000, retainedCharacters: 10,
     totalAttempts: 10, wpm: 99, accuracy: null, correctAttempts: null, missedKeys: {}
   }]);
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   const section = page.getByRole('region', { name: 'Recent sessions', exact: true });
   const chart = section.locator('.progress-chart');
   await expect(chart.getByRole('heading', { name: 'Progress: last 10 target-copying sessions' })).toBeVisible();
@@ -290,7 +295,7 @@ test('explains an empty chart for Zen-only history and keeps the chart usable on
     completedAt: 5000, mode: 'zen', elapsedMs: 5000, retainedCharacters: 10,
     totalAttempts: 10, wpm: 30, accuracy: null, correctAttempts: null, missedKeys: {}
   }]);
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   await expect(stats(page).getByText(/No target-copying sessions to chart yet/)).toBeVisible();
   await expect(stats(page).locator('.timeline-chart')).toHaveCount(0);
 
@@ -321,7 +326,7 @@ test('destructive actions use error colors without changing confirmation behavio
   await expectDanger(page.getByRole('dialog').getByRole('button', { name: 'Restore defaults' }), true);
   await expect(page.getByRole('dialog').getByRole('button', { name: 'Cancel' })).not.toHaveClass(/danger-button/);
   await page.keyboard.press('Escape');
-  await nav(page, 'Stats').click();
+  await openAllStats(page);
   await expectDanger(nav(page, 'Clear history'));
   await nav(page, 'Clear history').click();
   await expectDanger(nav(page, 'Delete history'), true);

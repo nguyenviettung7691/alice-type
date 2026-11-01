@@ -114,7 +114,7 @@ test.describe('preferences and local history', () => {
     });
     expect(Object.keys(record).sort()).toEqual([
       'version', 'language', 'scoringVersion', 'id', 'completedAt', 'mode', 'limit', 'wordBankTier', 'punctuation', 'numbers',
-      'wpm', 'accuracy', 'totalAttempts', 'correctAttempts', 'missedKeys', 'keyAttempts', 'handAttempts', 'bKeyHand'
+      'wpm', 'accuracy', 'totalAttempts', 'correctAttempts', 'missedKeys', 'keyAttempts', 'handAttempts', 'bKeyHand', 'keyboard'
     ].sort());
     await page.keyboard.type('extra');
     await page.keyboard.press('Backspace');
@@ -333,6 +333,7 @@ test.describe('preferences and local history', () => {
       } finally { history.close(); }
     });
     await nav(page, 'Stats').click();
+    await page.getByLabel('Keyboard history', { exact: true }).selectOption('all');
     await expect(page.locator('.stats-summary dd')).toHaveText(['2', '2', '60', '40', '65.0%', 'Not available']);
     await expect(page.locator('.history-scroll tbody tr').first()).toContainText('60');
     await expect(page.locator('.stats-panel .keyboard-key[data-code="KeyX"]')).toHaveAttribute('data-count', '2');
@@ -467,7 +468,7 @@ test.describe('onboarding and preference recovery', () => {
     await expect(input(page)).toBeFocused();
   });
 
-  for (const raw of ['{broken', JSON.stringify({ version: 8, settings: DEFAULT_PREFERENCES })]) {
+  for (const raw of ['{broken', JSON.stringify({ version: 9, settings: DEFAULT_PREFERENCES })]) {
     test(`does not overwrite invalid/future data during onboarding: ${raw.slice(0, 14)}`, async ({ page }) => {
       await page.addInitScript(({ key, value }) => localStorage.setItem(key, value), { key: PREFERENCES_KEY, value: raw });
       await page.goto('/');

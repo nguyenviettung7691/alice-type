@@ -62,6 +62,7 @@ A utility module that dynamically generates the text block based on current sett
 * **Settings Save:** Automatically saves changes to modes, difficulties, and themes into `localStorage` so the user's preferences persist across sessions.
 * **Phase 10 language:** Persist one validated language ID with existing preferences (schema v6). Default/migrate to English; no browser-language guessing. The selection drives UI and built-in practice resources, never keyboard geometry or an input-method installation.
 * **Phase 11:** preferences schema v7 adds the finger guide, B-key hand, drill type, code language, and an optional imported keymap. History record v4 adds per-key direct attempts and a left/right/thumb/unattributed hand snapshot; older records stay readable and are excluded from per-key accuracy.
+* **Phase 12:** preferences v8 adds a local physical-board collection and active board. Board-specific layout, keymap, notes and B-hand follow that selection; language and general practice preferences remain global. New history v5 records snapshot board identity and hardware metadata; older results remain unassigned, never guessed onto a board.
 * **Stat Aggregation:** At the end of a session, the payload `{ wpm, accuracy, mode, date, missedKeys }` is written to IndexedDB. This allows the app to chart progress over time and show which specific keys on the Alice layout the user struggles with most.
 * **Progress chart (Stats addendum):** Stats → Recent sessions shows a dual-axis timeline above the history table: the latest 10 target-copying sessions (Zen excluded), oldest to newest; WPM as a bold accent line on the left axis and accuracy (50–100%) as a dashed line with a faint fill on the right axis. Point color encodes language and point shape encodes mode, with in-memory language filter toggles. See [Phase 5 Detail Design §6.3.1](./phase-5-detail-design.md#631-recent-sessions-progress-chart-stats-addendum).
 
@@ -172,13 +173,47 @@ Phase 11 therefore offers cues and measurements. It never enforces or scores whi
   * Dual-B hand enforcement.
   * Spacebar alternation.
   * The Space-as-Backspace penalty.
-  * Layer-hold drills and a thumb rhythm arcade.
+  * Verified layer-hold scoring and a thumb rhythm arcade. Phase 12 may practice observable layer output with a hold cue, not proof of a physical hold.
   * Fetching articles at runtime is also excluded (no backend or network content).
 * **Deferred:**
   * Alice-versus-standard board WPM/CPM comparison.
   * QMK Configurator `keymap.json` import.
   * Firmware protocol reads.
 * Follow the [Phase 11 Detail Design](./phase-11-detail-design.md) and [Phase 11 Technical Implementation Plan](./phase-11-implementation-plan.md).
+
+### 5.8. User keyboard management (Phase 12)
+
+* Store multiple user-owned physical boards with stable local IDs, even when
+  they share a catalog model. Add, edit, duplicate, delete and explicitly switch
+  active board in the header; `Ctrl+Shift+K` focuses the switcher where available.
+  Lock switching while Practice runs. Device connection never silently selects
+  a board.
+* Per board, save catalog layout/variant confirmation, VIA/Vial import, B-hand,
+  personal details, switch type (Linear/Tactile/Clicky), actuation force in grams,
+  keycap profile (including Cherry/KAT/MT3/SA), and tenting angle. Metadata is
+  self-reported, not detected hardware.
+* Provide reviewed quick-select geometry presets for Standard Alice (60%, no
+  arrows), Arisu (65%, arrows), Ergonomic 75% Alice (function row/macro columns),
+  and Custom Split (two-piece Ergodox/Sofle-like boards). Descriptive family
+  selection alone must not claim or fabricate implemented geometry.
+* Record left/right thumb roles including Space/Backspace, Layer 1 hold/Space,
+  Delete/Enter and Space mod-taps. These are cues, never physical identity
+  enforcement. Layer practice targets configured observable output such as
+  Fn1+H/J/K/L arrows and Fn1+top-row F1-F12; invisible Fn holds cannot be scored.
+* Guided mod-tap experiments distinguish browser timing/output from unobservable
+  firmware decisions. Give calibrated, evidence-based guidance, not invented
+  tapping-term values or automatic firmware changes.
+* Isolate missed-key memory, heatmaps and adaptive drill inputs by board ID.
+  Retain legacy scores as explicitly unassigned. Snapshot identity/setup on new
+  results so rename, delete and switch operations cannot relabel history.
+* Add long-session speed/accuracy observations with time windows, setup matching
+  and sample gates before comparing switches or tenting. Label accuracy
+  differences in percentage points, disclose confounders and never claim
+  medical fatigue diagnosis or causal hardware benefits.
+* Delivery is staged: M1 collection/metadata/switching/isolated Stats; M2 actual
+  presets and layer-output drills; M3 adaptive drills and mod-tap guidance; M4
+  longitudinal analytics. Follow the [Phase 12 Detail Design](./phase-12-detail-design.md)
+  and [implementation plan](./phase-12-implementation-plan.md).
 
 ## 6. Implementation Roadmap
 
@@ -258,3 +293,17 @@ Phase 11 therefore offers cues and measurements. It never enforces or scores whi
 * Never claim hand, thumb, or layer enforcement. Excluded and deferred items are listed in section 5.7.
 * Runtime implementation and automated verification are integrated. Real-board keymap import, Vietnamese drills under OS input methods, screen-reader, fluent Vietnamese copy, and snippet originality gates remain pending, as recorded in the implementation plan.
 * Follow the [Phase 11 Detail Design](./phase-11-detail-design.md) and [Phase 11 Technical Implementation Plan](./phase-11-implementation-plan.md).
+
+### Phase 12: User keyboard management
+
+* Implement the four milestones in section 5.8, starting with browser-local
+  physical-board identities, preferences v8, safe switching, hardware/thumb
+  metadata, history v5 snapshots and board-isolated Stats.
+* M1 is implemented with automated verification. Subsequent milestones and
+  physical-board/accessibility/editorial gates remain open; see the plan for
+  test evidence and independently reproduced pre-existing browser-test failures.
+* Keep full preset coverage, layer-output practice, adaptation, mod-tap guidance
+  and longitudinal insights as explicit subsequent work, not placeholder claims.
+* Preserve browser-only privacy, earlier migrations and scoring contracts.
+* Follow the [Phase 12 Detail Design](./phase-12-detail-design.md) and
+  [Phase 12 Technical Implementation Plan](./phase-12-implementation-plan.md).

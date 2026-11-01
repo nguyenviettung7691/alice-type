@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_PREFERENCES, PREFERENCES_KEY, PreferenceMigrationError, loadPreferences, savePreferences, validatePreferences } from './preferences';
+import { DEFAULT_PREFERENCES, PREFERENCES_KEY, PreferenceMigrationError, loadPreferences, savePreferences, validatePreferences, type Preferences } from './preferences';
+import { boardSettings } from '../keyboard/user-keyboards';
 import { StorageError } from './errors';
 import { KEYBOARD_TEST_EFFECTS } from '../audio/keyboard-test-sound';
 
@@ -9,7 +10,16 @@ function storage(raw: string | null = null) {
   return { getItem: vi.fn(() => raw), setItem: vi.fn() };
 }
 
-describe('preferences version 6', () => {
+function expected(settings: Preferences): Preferences {
+  return { ...settings, keyboardBoards: settings.keyboardBoards.map((board) => board.id === settings.activeKeyboardId
+    ? { ...board, settings: boardSettings(settings) } : board) };
+}
+
+function saved(settings: Preferences): string {
+  return JSON.stringify({ version: 8, settings: validatePreferences(settings) });
+}
+
+describe('preferences version 8 and historical compatibility', () => {
   it.each([1, 2, 3, 4, 5])('migrates a genuine language-less v%i record exactly once without losing preferences', (version) => {
     const { language, ...oldSettings } = DEFAULT_PREFERENCES;
     expect(language).toBe('en');
@@ -19,16 +29,16 @@ describe('preferences version 6', () => {
     const migrated = loadPreferences(source);
     expect(migrated).toMatchObject({ language: 'en', durationSeconds: 120, wordBankTier: 1000, caretStyle: 'line', soundEnabled: true });
     expect(source.setItem).toHaveBeenCalledTimes(1);
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 7, settings: migrated }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, saved(migrated));
   });
 
   it('round trips Vietnamese and rejects missing/unsupported current language IDs without rewriting stored data', () => {
     const settings = { ...DEFAULT_PREFERENCES, language: 'vi' as const };
-    const source = storage(JSON.stringify({ version: 7, settings }));
+    const source = storage(saved(settings));
     expect(loadPreferences(source)).toEqual(settings);
     expect(source.setItem).not.toHaveBeenCalled();
     for (const language of [undefined, '', 'fr', 'VI', null]) {
-      const invalid = storage(JSON.stringify({ version: 7, settings: { ...settings, language } }));
+      const invalid = storage(JSON.stringify({ version: 8, settings: { ...settings, language } }));
       expect(() => loadPreferences(invalid)).toThrow(/language/);
       expect(invalid.setItem).not.toHaveBeenCalled();
     }
@@ -57,8 +67,8 @@ describe('preferences version 6', () => {
     const normalized = { ...settings, keyboardUserDetails: {
       name: 'Split Alice', brand: 'Example', connectivity: 'USB-C', rgbBacklighting: false, programmableKeys: true
     } };
-    expect(raw).toEqual([PREFERENCES_KEY, JSON.stringify({ version: 7, settings: normalized })]);
-    expect(loadPreferences(storage(JSON.stringify({ version: 7, settings: { ...normalized, target: 'private' } })))).toEqual(normalized);
+    expect(JSON.parse(raw[1])).toEqual({ version: 8, settings: expected(normalized) });
+    expect(loadPreferences(storage(JSON.stringify({ version: 8, settings: { ...normalized, target: 'private' } })))).toEqual(expected(normalized));
   });
 
   it.each(['{', 'null', '[]', '{"version":0}', '{"version":8}', '{"version":7}', '{"version":6,"settings":{}}', '{"version":1,"settings":{}}',
@@ -123,24 +133,24 @@ describe('preferences version 6', () => {
 
   it.each(KEYBOARD_TEST_EFFECTS)('round trips independent test effect $id', ({ id }) => {
     const settings = { ...DEFAULT_PREFERENCES, keyboardTestSoundEnabled: true, keyboardTestSoundEffect: id };
-    const source = storage(JSON.stringify({ version: 7, settings }));
+    const source = storage(saved(settings));
     expect(loadPreferences(source)).toEqual(settings);
     expect(source.setItem).not.toHaveBeenCalled();
     expect(settings.soundEnabled).toBe(false);
   });
 
-  it.each(['timed', 'words', 'quote', 'custom', 'zen', 'drills', 'code'] as const)('round trips v7 mode %s without content', (mode) => {
+  it.each(['timed', 'words', 'quote', 'custom', 'zen', 'drills', 'code'] as const)('round trips current mode %s without content', (mode) => {
     const settings = { ...DEFAULT_PREFERENCES, mode, durationSeconds: 120 as const, wordLimit: 100 as const };
     const destination = storage();
     savePreferences({
       ...settings, target: 'private', draft: 'private', writing: { text: 'private' }
     } as typeof settings, destination);
     const raw = destination.setItem.mock.calls[0]?.[1];
-    expect(raw).toBe(JSON.stringify({ version: 7, settings }));
+    expect(JSON.parse(raw)).toEqual({ version: 8, settings: expected(settings) });
     expect(loadPreferences(storage(raw))).toEqual(settings);
   });
 
-  it('migrates v6 to v7 with Alice practice defaults and one write', () => {
+  it('migrates v6 with Alice practice defaults and one write', () => {
     const {
       drillType: _drill, codeLanguage: _code, bKeyHand: _hand, fingerGuide: _guide, keyboardKeymapImport: _import, ...v6
     } = DEFAULT_PREFERENCES;
@@ -149,7 +159,7 @@ describe('preferences version 6', () => {
     const loaded = loadPreferences(source);
     expect(loaded).toEqual({ ...DEFAULT_PREFERENCES, ...existing });
     expect(loaded).toMatchObject({ drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null });
-    expect(source.setItem).toHaveBeenCalledExactlyOnceWith(PREFERENCES_KEY, JSON.stringify({ version: 7, settings: loaded }));
+    expect(source.setItem).toHaveBeenCalledExactlyOnceWith(PREFERENCES_KEY, saved(loaded));
     for (const mode of ['drills', 'code']) {
       expect(() => loadPreferences(storage(JSON.stringify({ version: 6, settings: { ...existing, mode } })))).toThrow(StorageError);
     }
@@ -175,7 +185,7 @@ describe('preferences version 6', () => {
     const destination = storage();
     savePreferences(settings, destination);
     const raw = destination.setItem.mock.calls[0]?.[1];
-    expect(loadPreferences(storage(raw))).toEqual(settings);
+    expect(loadPreferences(storage(raw))).toEqual(expected(settings));
     for (const layers of [[], [['KC_A'], ['KC_A', 'KC_B']], [['KC A']], Array.from({ length: 33 }, () => ['KC_A'])]) {
       expect(() => validatePreferences({ ...settings, keyboardKeymapImport: { ...keymap, layers } })).toThrow(StorageError);
     }
@@ -202,7 +212,7 @@ describe('preferences version 6', () => {
     expect(loaded).toEqual({
       ...existing, keyboardTestSoundEnabled, keyboardTestSoundEffect, keyboardProfileId, keyboardUserDetails
     });
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 7, settings: loaded }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, saved(loaded));
     expect(source.setItem).toHaveBeenCalledTimes(1);
   });
 
@@ -215,7 +225,7 @@ describe('preferences version 6', () => {
     const loaded = loadPreferences(source);
     expect(loaded).toEqual({ ...existing, keyboardProfileId, keyboardUserDetails });
     expect(source.setItem).toHaveBeenCalledTimes(1);
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 7, settings: loaded }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, saved(loaded));
   });
 
   it('retains validated migrated settings and the original record when v1 migration cannot be saved', () => {
@@ -235,7 +245,7 @@ describe('preferences version 6', () => {
     source.setItem.mockReset();
     if (!failure) throw new Error('Expected migration failure.');
     savePreferences(failure.settings, source);
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 7, settings: failure.settings }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, saved(failure.settings));
   });
 
   it('retains v2 values and the original record when migration cannot be saved', () => {
@@ -274,9 +284,9 @@ describe('keyboard layout confirmation (version 5)', () => {
     const source = storage(JSON.stringify({ version: 3, settings: existing }));
     const loaded = loadPreferences(source);
     expect(keyboardLayoutConfirmation).toBeNull();
-    expect(loaded).toEqual({ ...existing, keyboardLayoutConfirmation: null });
+    expect(loaded).toEqual(expected({ ...existing, keyboardLayoutConfirmation: null }));
     expect(source.setItem).toHaveBeenCalledTimes(1);
-    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, JSON.stringify({ version: 7, settings: loaded }));
+    expect(source.setItem).toHaveBeenCalledWith(PREFERENCES_KEY, saved(loaded));
   });
 
   it('ignores a confirmation-shaped field in v3 records instead of trusting it', () => {
@@ -288,10 +298,10 @@ describe('keyboard layout confirmation (version 5)', () => {
 
   it('round trips a confirmation and strips unknown confirmation fields', () => {
     const settings = { ...DEFAULT_PREFERENCES, keyboardProfileId: PROFILE, keyboardLayoutConfirmation: confirmation };
-    const source = storage(JSON.stringify({ version: 7, settings: {
+    const source = storage(JSON.stringify({ version: 8, settings: {
       ...settings, keyboardLayoutConfirmation: { ...confirmation, score: 0.9, observedCodes: ['KeyA'] }
     } }));
-    expect(loadPreferences(source)).toEqual(settings);
+    expect(loadPreferences(source)).toEqual(expected(settings));
     expect(source.setItem).not.toHaveBeenCalled();
     expect(validatePreferences({ ...settings, keyboardLayoutConfirmation: { ...confirmation, confirmedFor: null } })
       .keyboardLayoutConfirmation?.confirmedFor).toBeNull();
@@ -307,9 +317,9 @@ describe('keyboard layout confirmation (version 5)', () => {
       keyboardLayoutConfirmation: confirmation
     };
     const source = storage(JSON.stringify({ version: 4, settings }));
-    expect(loadPreferences(source)).toEqual(settings);
+    expect(loadPreferences(source)).toEqual(expected(settings));
     expect(source.setItem).toHaveBeenCalledExactlyOnceWith(
-      PREFERENCES_KEY, JSON.stringify({ version: 7, settings })
+      PREFERENCES_KEY, saved(settings)
     );
   });
 
@@ -326,13 +336,13 @@ describe('keyboard layout confirmation (version 5)', () => {
       failure = error;
     }
     const settings = { ...original, keyboardLayoutConfirmation: version === 3 ? null : confirmation };
-    expect(failure?.settings).toEqual(settings);
+    expect(failure?.settings).toEqual(expected(settings));
     expect(failure?.message).toMatch(/migrated in memory.*not saved.*Full/);
     expect(JSON.parse(source.getItem() ?? '').version).toBe(version);
     source.setItem.mockReset();
     savePreferences(settings, source);
     expect(source.setItem).toHaveBeenCalledExactlyOnceWith(
-      PREFERENCES_KEY, JSON.stringify({ version: 7, settings })
+      PREFERENCES_KEY, saved(settings)
     );
   });
 

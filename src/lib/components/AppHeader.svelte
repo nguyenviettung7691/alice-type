@@ -2,12 +2,16 @@
   import { DEFAULT_LANGUAGE, isLanguageId, LANGUAGES, type LanguageId } from '../i18n/languages';
   import { translate } from '../i18n/messages';
 
-  let { disabled, view, onviewchange, language = DEFAULT_LANGUAGE, onlanguagechange }: {
+  let { disabled, view, onviewchange, language = DEFAULT_LANGUAGE, onlanguagechange,
+    boards = [], activeKeyboardId, onkeyboardchange }: {
     disabled: boolean;
     view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details';
     onviewchange: (view: 'practice' | 'stats' | 'keyboard-test' | 'keyboard-details') => void;
     language?: LanguageId;
     onlanguagechange?: (language: LanguageId) => void;
+    boards?: readonly { id: string; name: string }[];
+    activeKeyboardId?: string;
+    onkeyboardchange?: (id: string) => void;
   } = $props();
   const views = [
     { id: 'practice', label: 'view.practice' }, { id: 'keyboard-test', label: 'view.keyboardTest' },
@@ -29,6 +33,21 @@
             onclick={() => onviewchange(destination.id)}>{translate(language, destination.label)}</button>
         {/each}
       </nav>
+      {#if onkeyboardchange}
+        <label class="board-selector">
+          <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M5 9h2m2 0h2m2 0h2m2 0h2M5 12h2m2 0h2m2 0h2m2 0h2M7 15h10" />
+          </svg>
+          <span class="sr-only">{translate(language, 'boards.active')}</span>
+          <select id="active-keyboard" value={activeKeyboardId} {disabled} aria-keyshortcuts="Control+Shift+K"
+            aria-label={translate(language, 'boards.active')}
+            aria-describedby={disabled ? 'board-locked' : undefined}
+            onchange={(event) => onkeyboardchange?.(event.currentTarget.value)}>
+            {#each boards as board (board.id)}<option value={board.id}>{board.name}</option>{/each}
+          </select>
+        </label>
+        {#if disabled}<span id="board-locked" class="sr-only">{translate(language, 'boards.locked')}</span>{/if}
+      {/if}
       {#if onlanguagechange}
         <label class="language-selector">
           <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -54,4 +73,6 @@
 
 <style>
   .language-selector { margin-left: auto; display: flex; align-items: center; gap: 0.5rem; color: #b8b8b8; font-size: 0.85rem; }
+  .board-selector { display: flex; align-items: center; gap: 0.5rem; max-width: 100%; color: #b8b8b8; font-size: 0.85rem; }
+  .board-selector select { width: 12rem; max-width: 100%; }
 </style>

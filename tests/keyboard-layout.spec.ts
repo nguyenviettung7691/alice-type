@@ -66,13 +66,13 @@ test.describe('Keyboard layout profiles', () => {
     await expect(preview.getByText('Correct press', { exact: true })).toHaveCount(0);
     await expect(preview.getByText('Mismatch', { exact: true })).toHaveCount(0);
     await expect(preview.locator('g[transform^="rotate"]').first()).toBeAttached();
-    expect(await saved(page)).toEqual({ version: 7, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
+    expect(await saved(page)).toEqual({ version: 8, settings: { ...DEFAULT_PREFERENCES, onboardingComplete: true } });
 
     await nav(page, 'Confirm this layout').click();
     await expect(matchPanel(page).locator('.layout-status')).toContainText('Keychron Q8 ANSI Confirmed by you');
     await expect(nav(page, 'Layout confirmed')).toBeDisabled();
     const stored = await saved(page);
-    expect(stored.version).toBe(7);
+    expect(stored.version).toBe(8);
     expect(stored.settings.keyboardProfileId).toBe('keychron-q8-ansi');
     expect(stored.settings.keyboardLayoutConfirmation).toEqual({
       profileId: 'keychron-q8-ansi', variant: {}, confirmedFor: { vendorId: 0x3434, productId: 0x0180 },
@@ -178,7 +178,7 @@ test.describe('Keyboard layout profiles', () => {
     await setup(page, { stored: stale });
     await expect(page.getByRole('alert').filter({ hasText: 'no longer available' })).toBeVisible();
     await expect(practiceVisualizer(page)).toHaveAttribute('data-layout-source', 'generic');
-    expect(await saved(page)).toEqual(stale);
+    expect((await saved(page)).settings.keyboardLayoutConfirmation).toEqual(stale.settings.keyboardLayoutConfirmation);
     await nav(page, 'Open Find my layout').click();
     await expect(page.locator('#layout-match-heading')).toBeFocused();
   });
@@ -187,9 +187,13 @@ test.describe('Keyboard layout profiles', () => {
     const { keyboardLayoutConfirmation: _omit, ...v3 } = { ...DEFAULT_PREFERENCES, onboardingComplete: true, keyboardProfileId: 'generic-alice' };
     await setup(page, { stored: { version: 3, settings: v3 } });
     await expect(page.getByRole('textbox', { name: 'Typing practice', exact: true })).toBeVisible();
-    expect(await saved(page)).toEqual({ version: 7, settings: {
+    expect(await saved(page)).toEqual({ version: 8, settings: {
       ...v3, language: 'en', keyboardLayoutConfirmation: null,
-      drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null
+      drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null,
+      keyboardBoards: [{
+        ...DEFAULT_PREFERENCES.keyboardBoards[0],
+        settings: { ...DEFAULT_PREFERENCES.keyboardBoards[0].settings, keyboardProfileId: 'generic-alice' }
+      }]
     } });
   });
 

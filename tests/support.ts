@@ -8,7 +8,14 @@ export const DEFAULT_PREFERENCES: Preferences = {
   punctuation: false, numbers: false, caretStyle: 'block', soundEnabled: false,
   showLiveStats: true, onboardingComplete: false, keyboardTestSoundEnabled: false, keyboardTestSoundEffect: 'default',
   keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null,
-  drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null
+  drillType: 'split-boundary', codeLanguage: 'python', bKeyHand: 'left', fingerGuide: false, keyboardKeymapImport: null,
+  activeKeyboardId: 'default-board',
+  keyboardBoards: [{
+    id: 'default-board', name: 'My keyboard',
+    hardware: { family: 'unknown', switchType: 'unknown', actuationForce: null, keycapProfile: '', tentingAngle: null },
+    thumbs: { left: 'unknown', right: 'unknown' },
+    settings: { keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null, keyboardKeymapImport: null, bKeyHand: 'left' }
+  }]
 };
 
 export async function skipOnboarding(page: Page) {

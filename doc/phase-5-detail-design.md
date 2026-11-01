@@ -13,6 +13,12 @@
 
 ## 2. Purpose
 
+Phase 12 addendum: [User keyboard management](./phase-12-detail-design.md)
+adds preferences v8 and history record v5 board snapshots. Stats defaults to the
+active board, with explicit all-board/unassigned views; older records are not
+retroactively assigned. The database version and global history-clear semantics
+remain unchanged.
+
 This document defines the detailed design and acceptance criteria for persisting AliceType's implemented preferences, recording completed typing sessions locally, presenting a usable statistics view, and polishing practice startup and typing feedback.
 
 Phase 5 builds on the Timed and Words sessions and focused input path from Phase 4. It does not change exercise generation, the typing engine's metric definitions, or the physical-key feedback contract from Phase 3. All user data remains in the browser; no account, backend, or network service is introduced.

@@ -14,6 +14,12 @@
 
 ## 2. Requirement analysis and decisions
 
+Phase 12 follow-up: [User keyboard management](./phase-12-detail-design.md)
+supersedes the global single-board assumption. It adds per-board configuration
+and history, and designs observable layer-output practice and setup comparisons.
+It does not change the browser limits or retroactively claim Phase 11 implements
+physical layer-hold scoring.
+
 Phase 11 starts from a product request for Alice/Arisu-specific practice: hand-separation drills, split-spacebar and
 layer drills, angled visualizers with hand/finger load, Alice-oriented content, a rhythm game, a code mode, VIA/VIAL/QMK
 keymap import, and Alice-versus-standard progress comparison. Each idea was checked against the current system and the

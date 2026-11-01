@@ -6,6 +6,10 @@ import { isRecord, StorageError, storageFailure } from './errors';
 import { KEYBOARD_TEST_EFFECTS, type KeyboardTestEffect } from '../audio/keyboard-test-sound';
 import { isKeyboardProfileId } from '../keyboard/keyboard-profiles';
 import { isLanguageId, type LanguageId } from '../i18n/languages';
+import {
+  boardSettings, DEFAULT_HARDWARE, isKeyboardId, MAX_USER_KEYBOARDS, validateKeyboardIdentity,
+  type BoardSettings, type UserKeyboard
+} from '../keyboard/user-keyboards';
 
 export const PREFERENCES_KEY = 'alicetype.preferences';
 export const CARET_STYLES = ['block', 'line', 'underline'] as const;
@@ -44,7 +48,7 @@ export const MAX_KEYMAP_LAYERS = 32;
 export const MAX_KEYMAP_POSITIONS = 4096;
 export const KEYMAP_FILE_NAME_LENGTH = 120;
 
-export interface Preferences extends PracticeSettings {
+interface Version7Preferences extends PracticeSettings {
   readonly language: LanguageId;
   readonly caretStyle: CaretStyle;
   readonly soundEnabled: boolean;
@@ -59,6 +63,21 @@ export interface Preferences extends PracticeSettings {
   readonly keyboardKeymapImport: KeyboardKeymapImport | null;
 }
 
+export interface Preferences extends Version7Preferences {
+  readonly keyboardBoards: readonly UserKeyboard[];
+  readonly activeKeyboardId: string;
+}
+
+const DEFAULT_BOARD_SETTINGS: BoardSettings = {
+  keyboardProfileId: null, keyboardUserDetails: {}, keyboardLayoutConfirmation: null,
+  keyboardKeymapImport: null, bKeyHand: 'left'
+};
+
+const DEFAULT_BOARD: UserKeyboard = {
+  id: 'default-board', name: 'My keyboard', hardware: DEFAULT_HARDWARE,
+  thumbs: { left: 'unknown', right: 'unknown' }, settings: DEFAULT_BOARD_SETTINGS
+};
+
 export const DEFAULT_PREFERENCES: Preferences = {
   ...DEFAULT_SETTINGS,
   language: 'en',
@@ -72,7 +91,9 @@ export const DEFAULT_PREFERENCES: Preferences = {
   keyboardUserDetails: {},
   keyboardLayoutConfirmation: null,
   fingerGuide: false,
-  keyboardKeymapImport: null
+  keyboardKeymapImport: null,
+  keyboardBoards: [DEFAULT_BOARD],
+  activeKeyboardId: DEFAULT_BOARD.id
 };
 
 function member<T>(values: readonly T[], value: unknown): value is T {
@@ -80,7 +101,7 @@ function member<T>(values: readonly T[], value: unknown): value is T {
 }
 
 type Version7Fields = 'drillType' | 'codeLanguage' | 'bKeyHand' | 'fingerGuide' | 'keyboardKeymapImport';
-type Version6Preferences = Omit<Preferences, Version7Fields>;
+type Version6Preferences = Omit<Version7Preferences, Version7Fields>;
 type Version1Preferences = Omit<Version6Preferences,
   'keyboardTestSoundEnabled' | 'keyboardTestSoundEffect' | 'keyboardProfileId' | 'keyboardUserDetails'
   | 'keyboardLayoutConfirmation' | 'language'>;
@@ -238,7 +259,7 @@ function validateKeymapImport(value: unknown): KeyboardKeymapImport | null {
   };
 }
 
-export function validatePreferences(value: unknown): Preferences {
+function validateVersion7(value: unknown): Version7Preferences {
   if (!isRecord(value)) throw new StorageError('Saved preferences contain invalid settings.');
   if (!member(PRACTICE_MODES, value.mode)) throw new StorageError('Saved preferences contain an invalid practice mode.');
   if (!member(DRILL_TYPES, value.drillType) || !member(CODE_LANGUAGES, value.codeLanguage)
@@ -257,6 +278,69 @@ export function validatePreferences(value: unknown): Preferences {
     fingerGuide: value.fingerGuide,
     keyboardKeymapImport: validateKeymapImport(value.keyboardKeymapImport)
   };
+}
+
+function validateBoard(value: unknown): UserKeyboard {
+  const identity = validateKeyboardIdentity(value);
+  if (!isRecord(value) || !isRecord(value.settings)) throw new StorageError('Saved keyboard settings are invalid.');
+  for (const field of Object.keys(DEFAULT_BOARD_SETTINGS)) {
+    if (!Object.hasOwn(value.settings, field)) throw new StorageError('Saved keyboard settings are incomplete.');
+  }
+  return { ...identity, settings: boardSettings(validateVersion7({ ...DEFAULT_PREFERENCES, ...value.settings })) };
+}
+
+export function validatePreferences(value: unknown): Preferences {
+  const settings = validateVersion7(value);
+  if (!isRecord(value) || !Array.isArray(value.keyboardBoards)
+    || value.keyboardBoards.length < 1 || value.keyboardBoards.length > MAX_USER_KEYBOARDS
+    || !isKeyboardId(value.activeKeyboardId)) throw new StorageError('Saved keyboard collection is invalid.');
+  const boards = value.keyboardBoards.map(validateBoard);
+  const ids = new Set(boards.map((board) => board.id));
+  if (ids.size !== boards.length || !ids.has(value.activeKeyboardId)) {
+    throw new StorageError('Saved keyboard collection has duplicate IDs or a missing active keyboard.');
+  }
+  return {
+    ...settings, activeKeyboardId: value.activeKeyboardId,
+    keyboardBoards: boards.map((board) => board.id === value.activeKeyboardId
+      ? { ...board, settings: boardSettings(settings) } : board)
+  };
+}
+
+export function activeKeyboard(settings: Preferences): UserKeyboard {
+  const board = settings.keyboardBoards.find((board) => board.id === settings.activeKeyboardId);
+  if (!board) throw new StorageError('The active keyboard is missing.');
+  return { ...board, settings: boardSettings(settings) };
+}
+
+export function switchKeyboard(settings: Preferences, id: string): Preferences {
+  const current = validatePreferences(settings);
+  const board = current.keyboardBoards.find((board) => board.id === id);
+  if (!board) throw new StorageError('The selected keyboard is missing.');
+  return { ...current, ...board.settings, activeKeyboardId: id };
+}
+
+export function addKeyboard(settings: Preferences, name: string, duplicate = false, id: string = crypto.randomUUID()): Preferences {
+  const current = validatePreferences(settings);
+  if (current.keyboardBoards.length >= MAX_USER_KEYBOARDS) throw new StorageError('The keyboard collection is full.');
+  const board = validateBoard({ ...(duplicate ? activeKeyboard(current) : DEFAULT_BOARD), id, name });
+  return validatePreferences({
+    ...current, ...board.settings, keyboardBoards: [...current.keyboardBoards, board], activeKeyboardId: board.id
+  });
+}
+
+export function editKeyboard(settings: Preferences, board: UserKeyboard): Preferences {
+  if (board.id !== settings.activeKeyboardId) throw new StorageError('Only the active keyboard can be edited.');
+  return validatePreferences({
+    ...settings, ...board.settings,
+    keyboardBoards: settings.keyboardBoards.map((entry) => entry.id === board.id ? board : entry)
+  });
+}
+
+export function deleteKeyboard(settings: Preferences): Preferences {
+  const current = validatePreferences(settings);
+  if (current.keyboardBoards.length === 1) throw new StorageError('Keep at least one keyboard profile.');
+  const boards = current.keyboardBoards.filter((board) => board.id !== current.activeKeyboardId);
+  return switchKeyboard({ ...current, ...boards[0].settings, keyboardBoards: boards, activeKeyboardId: boards[0].id }, boards[0].id);
 }
 
 const VERSION_7_DEFAULTS = {
@@ -281,13 +365,15 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     if (raw === null) return { ...DEFAULT_PREFERENCES };
     const record: unknown = JSON.parse(raw);
     if (!isRecord(record) || (record.version !== 1 && record.version !== 2 && record.version !== 3
-      && record.version !== 4 && record.version !== 5 && record.version !== 6 && record.version !== 7)) {
+      && record.version !== 4 && record.version !== 5 && record.version !== 6 && record.version !== 7 && record.version !== 8)) {
       throw new StorageError('Saved preferences use an unsupported schema version.');
     }
-    if (record.version === 7) return validatePreferences(record.settings);
+    if (record.version === 8) return validatePreferences(record.settings);
 
-    let previous: Version6Preferences;
-    if (record.version === 1) {
+    let previous: Version7Preferences | Version6Preferences;
+    if (record.version === 7) {
+      previous = validateVersion7(record.settings);
+    } else if (record.version === 1) {
       const phaseOne = validateVersion1(record.settings);
       previous = validateVersion6({
         ...phaseOne,
@@ -317,7 +403,11 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
     } else {
       previous = validateVersion6({ ...validateVersion4(record.settings), language: 'en' });
     }
-    const migrated = validatePreferences({ ...previous, ...VERSION_7_DEFAULTS });
+    const legacy = validateVersion7(record.version === 7 ? previous : { ...previous, ...VERSION_7_DEFAULTS });
+    const migrated = validatePreferences({
+      ...legacy, activeKeyboardId: DEFAULT_BOARD.id,
+      keyboardBoards: [{ ...DEFAULT_BOARD, settings: boardSettings(legacy) }]
+    });
     try {
       savePreferences(migrated, storage);
     } catch (error) {
@@ -334,7 +424,7 @@ export function loadPreferences(storage?: PreferenceStorage): Preferences {
 }
 
 export function savePreferences(settings: Preferences, storage?: PreferenceStorage): void {
-  const record = { version: 7, settings: validatePreferences(settings) };
+  const record = { version: 8, settings: validatePreferences(settings) };
   try {
     (storage ?? window.localStorage).setItem(PREFERENCES_KEY, JSON.stringify(record));
   } catch (error) {

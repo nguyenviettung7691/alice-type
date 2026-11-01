@@ -12,6 +12,11 @@
 
 ## 2. Purpose
 
+Phase 12 addendum: [User keyboard management](./phase-12-detail-design.md)
+stores this phase's selection, confirmation and personal details per user-owned
+physical board. Catalog IDs still identify geometry, not a unique owned device.
+Explicit header switching is independent of device connection.
+
 This document defines a sourced keyboard-profile catalog and a local device-details view. Users can select a catalog profile, record their own device details, and see which information is catalog-verified, user-provided, or unknown. A profile may also supply a physical key map for the Keyboard Test view, but only when that map is explicitly defined and verified.
 
 The base feature describes information the user selected or entered. The user-requested optional browser-access extension in section 13 adds limited browser-reported device descriptors without inferring hardware specifications. The user-requested Keyboard Layout Profiles extension in section 14 adds a bundled, sourced catalog of real Alice-family keyboard layouts imported from open-source QMK and VIA definitions, suggests candidate profiles from browser-reported vendor/product IDs and other evidence, and lets the user confirm the exact profile and layout variant. A suggestion is never presented as detection; a device-specific layout becomes active only after explicit user confirmation. Existing practice input, session history, and Phase 6 test behavior remain independent of device details.

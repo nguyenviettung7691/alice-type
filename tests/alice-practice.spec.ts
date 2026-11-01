@@ -78,7 +78,7 @@ test('Drills generate a hand-alternation target, attribute direct keystrokes, an
   await expect(panel(page)).toHaveAttribute('data-status', 'completed');
   await expect.poll(async () => (await records(page)).length).toBe(1);
   const [record] = await records(page);
-  expect(record).toMatchObject({ version: 4, mode: 'drills', drillType: 'hand-alternation', limit: 10, bKeyHand: 'left' });
+  expect(record).toMatchObject({ version: 5, mode: 'drills', drillType: 'hand-alternation', limit: 10, bKeyHand: 'left' });
   const hands = record.handAttempts!;
   expect(hands.left + hands.right + hands.thumb + hands.unattributed).toBe(record.totalAttempts);
   expect(hands.thumb).toBe(9);
@@ -110,7 +110,7 @@ test('Code mode types a single-line snippet, offers Next snippet, and completes 
   await expect(button(page, 'Finish')).toHaveCount(0);
   await expect.poll(async () => (await records(page)).length).toBe(1);
   const [record] = await records(page);
-  expect(record).toMatchObject({ version: 4, mode: 'code', codeLanguage: 'rust', targetCharacters: text.length });
+  expect(record).toMatchObject({ version: 5, mode: 'code', codeLanguage: 'rust', targetCharacters: text.length });
   await button(page, 'Stats').click();
   await expect(page.getByRole('table').first()).toContainText('Code / Rust');
 });

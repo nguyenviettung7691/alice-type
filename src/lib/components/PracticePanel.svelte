@@ -22,6 +22,7 @@
   import ConfirmationDialog from './ConfirmationDialog.svelte';
   import HandBalance from './HandBalance.svelte';
   import { completedRecord, type HandAttempts, type SessionRecord } from '../storage/session-history';
+  import type { KeyboardSnapshot } from '../keyboard/user-keyboards';
   import { DrillPoolError, MINIMUM_DRILL_POOL, generateDrill } from '../typing/alice-drills';
   import { selectCodeSnippet, type CodeSnippet } from '../typing/code-snippets';
   import { expectedKeycaps, fingerForCode, layoutCentreX } from '../keyboard/finger-map';
@@ -43,7 +44,7 @@
     layout = ALICE_LAYOUT, layoutLabel = 'Generic Alice', browserLegends = false,
     inertKeys = [], viewBox = ALICE_VIEW_BOX, layoutConfirmed = false,
     active = true, contentReset = 0,
-    fingerGuide = false, onfingerguidechange, layoutMap = null, physicalCodes = {}
+    fingerGuide = false, onfingerguidechange, layoutMap = null, physicalCodes = {}, keyboard
   }: {
     settings?: PracticeSettings;
     running?: boolean;
@@ -71,6 +72,7 @@
     layoutMap?: ReadonlyMap<string, string> | null;
     /** Remapped code to the catalog-default code of the physical slot (imported keymaps). */
     physicalCodes?: Readonly<Record<string, string>>;
+    keyboard?: KeyboardSnapshot;
   } = $props();
 
   let sessionId = '';
@@ -371,7 +373,7 @@
       submitted = true;
       oncomplete(completedRecord(session, sessionId, startedWallTime, missedKeys, {
         keyAttempts: { ...keyAttempts }, handAttempts: { ...handAttempts }, bKeyHand
-      }));
+      }, keyboard));
     }
   }
 

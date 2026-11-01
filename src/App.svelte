@@ -8,6 +8,8 @@
   import { applyLayoutLegends, type KeyboardDevice } from './lib/keyboard/keyboard-access';
   import KeyboardTestPanel from './lib/components/KeyboardTestPanel.svelte';
   import KeyboardDetailsPanel from './lib/components/KeyboardDetailsPanel.svelte';
+  import UserKeyboardsPanel from './lib/components/UserKeyboardsPanel.svelte';
+  import { boardSettings, snapshotKeyboard } from './lib/keyboard/user-keyboards';
   import {
     findKeyboardProfile, GENERIC_ALICE_TEST_LAYOUT, isTestLayoutEligible
   } from './lib/keyboard/keyboard-profiles';
@@ -18,7 +20,8 @@
   import { applyKeymapLayer, keymapVariantKey, layersFitMatrix, physicalCodeMap } from './lib/keyboard/keymap-import';
   import { type PracticeSettings } from './lib/typing/exercise-generator';
   import {
-    DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type KeyboardKeymapImport, type Preferences
+    DEFAULT_PREFERENCES, loadPreferences, savePreferences, PreferenceMigrationError, type KeyboardKeymapImport, type Preferences,
+    activeKeyboard, addKeyboard, deleteKeyboard, editKeyboard, switchKeyboard, validatePreferences
   } from './lib/storage/preferences';
   import { StorageError } from './lib/storage/errors';
   import { SessionHistory, type SessionRecord } from './lib/storage/session-history';
@@ -48,6 +51,8 @@
 
   const initial = initialPreferences();
   let preferences = $state<Preferences>(initial.settings);
+  const board = $derived(activeKeyboard(preferences));
+  const keyboardSnapshot = $derived(snapshotKeyboard(board));
   const i18n = provideLocalization(() => preferences.language);
   const { text } = i18n;
   $effect(() => {
@@ -74,6 +79,7 @@
     return isTestLayoutEligible(profile) ? profile.testLayout : GENERIC_ALICE_TEST_LAYOUT;
   });
   const activeLayout = $derived(applyLayoutLegends(activeTestLayout.layout, layoutLegends));
+  const activeKeyboardId = $derived(preferences.activeKeyboardId);
   const confirmationKey = $derived(JSON.stringify(preferences.keyboardLayoutConfirmation));
   const keymapKey = $derived(JSON.stringify(preferences.keyboardKeymapImport));
   let resolvedLayout = $state.raw<ResolvedKeyboardLayout | null>(null);
@@ -88,9 +94,11 @@
   const genericLabel = $derived(activeTestLayout.label.replace(/ test layout$/, ''));
 
   $effect(() => {
+    activeKeyboardId;
     const confirmation = JSON.parse(confirmationKey) as Preferences['keyboardLayoutConfirmation'];
     const keymap = JSON.parse(keymapKey) as KeyboardKeymapImport | null;
     layoutNotice = '';
+    resolvedLayout = null;
     resolvedPhysical = {};
     if (!confirmation) {
       resolvedLayout = null;
@@ -167,6 +175,7 @@
   function persist() {
     preferenceOperation = 'save';
     try {
+      preferences = validatePreferences(preferences);
       savePreferences(preferences);
       preferenceError = '';
       preserveStored = false;
@@ -178,9 +187,16 @@
 
   function changePreferences(next: Preferences) {
     if (running) return;
+    if (next.activeKeyboardId !== preferences.activeKeyboardId) {
+      appliedLayout = null;
+      resolvedLayout = null;
+      appliedPhysical = {};
+      keymapNotice = '';
+      layoutNotice = '';
+    }
     const practice = practicePreferences(next);
     if (JSON.stringify(practice) !== JSON.stringify(settings)) settings = practice;
-    preferences = next;
+    preferences = validatePreferences(next);
     persist();
   }
 
@@ -263,7 +279,11 @@
 
   function restoreDefaults() {
     contentReset += 1;
-    changePreferences({ ...DEFAULT_PREFERENCES, onboardingComplete: preferences.onboardingComplete });
+    changePreferences({
+      ...DEFAULT_PREFERENCES, ...boardSettings(preferences),
+      keyboardBoards: preferences.keyboardBoards, activeKeyboardId: preferences.activeKeyboardId,
+      onboardingComplete: preferences.onboardingComplete
+    });
     audioError = '';
   }
 
@@ -279,10 +299,24 @@
     if (focusPractice) (document.getElementById('practice-input') ?? document.getElementById('custom-draft') ?? document.getElementById('practice-panel-heading'))?.focus();
     else document.querySelector<HTMLButtonElement>('.view-navigation button')?.focus();
   }
+
+  function keyboardShortcut(event: KeyboardEvent) {
+    if (event.code !== 'KeyK' || !event.ctrlKey || !event.shiftKey || event.altKey || event.metaKey
+      || event.repeat || event.isComposing || running || onboarding || document.querySelector('dialog[open]')) return;
+    const selector = document.getElementById('active-keyboard');
+    if (selector instanceof HTMLSelectElement && !selector.disabled) {
+      event.preventDefault();
+      selector.focus();
+    }
+  }
 </script>
+
+<svelte:window onkeydown={keyboardShortcut} />
 
 <div class="app-shell">
   <AppHeader disabled={running} {view} language={preferences.language} onviewchange={navigate}
+    boards={preferences.keyboardBoards} activeKeyboardId={preferences.activeKeyboardId}
+    onkeyboardchange={(id) => changePreferences(switchKeyboard(preferences, id))}
     onlanguagechange={(language) => {
       if (running || language === preferences.language) return;
       changePreferences({ ...preferences, language });
@@ -331,7 +365,9 @@
       </div>
     {/if}
     <div hidden={view !== 'practice'}>
+      {#key preferences.activeKeyboardId}
       <PracticePanel {settings} bind:running active={view === 'practice'} {contentReset}
+        keyboard={keyboardSnapshot}
         onsettingschange={(next) => changePreferences({ ...preferences, ...next })}
         layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
         inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox} layoutConfirmed={!!appliedLayout}
@@ -345,13 +381,16 @@
         fingerGuide={preferences.fingerGuide}
         onfingerguidechange={(fingerGuide) => changePreferences({ ...preferences, fingerGuide })}
         layoutMap={layoutLegends} physicalCodes={appliedPhysical} />
+      {/key}
     </div>
     {#if view === 'stats'}
       <StatsPanel {history} {revision} pending={pending.length > 0}
+        boards={preferences.keyboardBoards} activeKeyboardId={preferences.activeKeyboardId}
         layout={confirmedKeys ?? activeLayout} layoutLabel={appliedLayout?.label ?? genericLabel}
         inertKeys={appliedLayout?.inertKeys} viewBox={appliedLayout?.viewBox}
         layoutConfirmed={!!appliedLayout} browserLegends={layoutLegends !== null} />
     {:else if view === 'keyboard-test'}
+      {#key preferences.activeKeyboardId}
       {#key appliedLayout}
         <KeyboardTestPanel
           soundEnabled={preferences.keyboardTestSoundEnabled}
@@ -368,7 +407,13 @@
           onaudiofailure={() => { preferences = { ...preferences, keyboardTestSoundEnabled: false }; }}
         />
       {/key}
+      {/key}
     {:else if view === 'keyboard-details'}
+      {#key preferences.activeKeyboardId}
+      <UserKeyboardsPanel {board} count={preferences.keyboardBoards.length}
+        oncreate={(name, duplicate) => changePreferences(addKeyboard(preferences, name, duplicate))}
+        onedit={(next) => changePreferences(editKeyboard(preferences, next))}
+        ondelete={() => changePreferences(deleteKeyboard(preferences))} />
       <KeyboardDetailsPanel
         {connectedDevice}
         profileId={preferences.keyboardProfileId}
@@ -390,6 +435,7 @@
         onkeymapapply={(keyboardKeymapImport) => { keymapNotice = ''; changePreferences({ ...preferences, keyboardKeymapImport }); }}
         onkeymapclear={() => changePreferences({ ...preferences, keyboardKeymapImport: null })}
       />
+      {/key}
     {/if}
   </main>
 

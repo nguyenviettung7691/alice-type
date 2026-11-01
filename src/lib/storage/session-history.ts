@@ -2,6 +2,7 @@ import { B_KEY_HANDS, CODE_LANGUAGES, DRILL_TYPES, DURATIONS, WORD_LIMITS, WORD_
 import { getMetrics, isZenSession, type PracticeSession } from '../typing/typing-engine';
 import { isRecord, StorageError, storageFailure } from './errors';
 import { isLanguageId, type LanguageId } from '../i18n/languages';
+import { validateKeyboardSnapshot, type KeyboardSnapshot } from '../keyboard/user-keyboards';
 
 export interface HandAttempts {
   readonly left: number;
@@ -21,7 +22,8 @@ export const HAND_BUCKETS = ['left', 'right', 'thumb', 'unattributed'] as const;
 const SAFE_CODE = /^[A-Za-z][A-Za-z0-9]{0,63}$/;
 
 interface RecordBase {
-  readonly version: 2 | 3 | 4;
+  readonly version: 2 | 3 | 4 | 5;
+  readonly keyboard?: KeyboardSnapshot;
   readonly language?: LanguageId;
   readonly scoringVersion?: 'committed-grapheme-v1';
   readonly id: string;
@@ -123,6 +125,12 @@ function safeCount(value: unknown, minimum = 0): value is number {
 }
 
 export function validateSessionRecord(value: unknown): SessionRecord {
+  if (isRecord(value) && value.version === 5) {
+    const record = validateSessionRecord({ ...value, version: 4 });
+    const keyboard = validateKeyboardSnapshot(value.keyboard);
+    if (keyboard.bKeyHand !== record.bKeyHand) throw new StorageError('Saved session keyboard and hand attribution disagree.');
+    return { ...record, version: 5, keyboard };
+  }
   if (isRecord(value) && value.version === 4) {
     if (!isLanguageId(value.language) || value.scoringVersion !== 'committed-grapheme-v1') {
       throw new StorageError('A saved session contains invalid language or scoring metadata.');
@@ -243,14 +251,14 @@ export const EMPTY_ATTRIBUTION = (bKeyHand: BKeyHand): SessionAttribution => ({
 
 export function completedRecord(
   session: PracticeSession, id: string, startedWallTime: number, missedKeys: Readonly<Record<string, number>>,
-  attribution: SessionAttribution
+  attribution: SessionAttribution, keyboard?: KeyboardSnapshot
 ): SessionRecord {
   if (session.status !== 'completed' || !session.configuration) {
     throw new StorageError('Only completed configured sessions can be saved.');
   }
   const metrics = getMetrics(session, session.endedAt);
   const base = {
-    version: 4, language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
+    version: keyboard ? 5 : 4, keyboard, language: session.configuration.language ?? 'en', scoringVersion: 'committed-grapheme-v1',
     id, completedAt: startedWallTime + metrics.elapsedMs,
     wpm: metrics.wpm, totalAttempts: session.totalAttempts
   };
@@ -298,6 +306,10 @@ export function completedRecord(
 }
 
 export const MINIMUM_KEY_ATTEMPTS = 20;
+
+export function sessionsForKeyboard(records: readonly SessionRecord[], id: string | null): SessionRecord[] {
+  return records.filter((record) => (record.keyboard?.id ?? null) === id);
+}
 /** Layout-convention reach keys: number row and outer punctuation, not a measured strain. */
 export const REACH_KEYS: readonly string[] = [
   'Backquote', ...'1234567890'.split('').map((digit) => `Digit${digit}`), 'Minus', 'Equal',

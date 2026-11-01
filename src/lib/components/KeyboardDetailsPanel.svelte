@@ -350,6 +350,7 @@
     .browser-device-values { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .device-product { grid-column: 1 / -1; }
   }
+  .keyboard-details-panel { margin-block: 1.5rem; }
   .keyboard-details-panel select,
   .keyboard-details-panel input {
     width: min(100%, 32rem);
