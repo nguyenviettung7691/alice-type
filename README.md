@@ -11,6 +11,10 @@ accents, and real-time feedback.
 [Deployment workflow](.github/workflows/deploy-pages.yml)
 
 [![Deploy to GitHub Pages](https://github.com/nguyenviettung7691/alice-type/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/nguyenviettung7691/alice-type/actions/workflows/deploy-pages.yml)
+[![GitHub stars](https://img.shields.io/github/stars/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type/forks)
+[![Top language](https://img.shields.io/github/languages/top/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type)
+[![Last commit](https://img.shields.io/github/last-commit/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type/commits/main)
 
 ![AliceType Practice view with the Alice keyboard visualizer](doc/images/homepage.png)
 
