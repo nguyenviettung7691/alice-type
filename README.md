@@ -2,9 +2,9 @@
 
 **Find your rhythm on an Alice keyboard.**
 
-A desktop-oriented typing practice app for Alice split-ergonomic layouts.
-Built with Svelte, TypeScript, and Vite, with a charcoal interface, an orange
-accent, and real-time feedback. Everything runs in your browser.
+AliceType is a desktop-oriented typing practice app for Alice split-ergonomic
+layouts. It runs entirely in your browser, with a charcoal interface, orange
+accents, and real-time feedback.
 
 [Open AliceType](https://alice-type.nguyenviettung.id.vn/) ·
 [Technical design](doc/tech-design.md) ·
@@ -14,45 +14,25 @@ accent, and real-time feedback. Everything runs in your browser.
 
 ![AliceType Practice view with the Alice keyboard visualizer](doc/images/homepage.png)
 
-## At a glance
+## Features
 
-- **Seven practice modes** with live feedback, WPM, accuracy, and progress, including Alice-specific Drills and Code.
-- **Alice keyboard visualizer** with physical-key highlights, confirmed layout variants, and an optional finger guide.
-- **Keyboard Test** with guided and Freestyle modes, plus 13 optional synthesized sound effects.
-- **Keyboard Details** with a generic Alice profile and 24 sourced Alice-family and split layouts from QMK/VIA.
-- **Local preferences and history** with missed-key summaries, hand load and per-key accuracy, and separate Zen scores.
-- **VIA/Vial keymap file import** onto a confirmed layout, processed locally and never uploaded.
-- **Multiple physical-board profiles** with hardware/thumb notes, a header switcher and board-isolated Stats.
-- **Four geometry presets**, per-board layer-output practice, adaptive weak-key drills and guided mod-tap practice.
-- **Setup-matched session insights** based on bounded active-time windows and explicit sample thresholds.
-- **English and Vietnamese** UI and practice resources, with a saved header language selector.
-- **No accounts, backend, telemetry, or runtime data downloads.**
+- Seven practice modes: Timed, Words, Quote, Custom, Zen, Alice Drills, and Code.
+- An Alice keyboard visualizer, optional finger guide, and guided or Freestyle Keyboard Test.
+- Keyboard Details with a generic Alice profile, sourced layout catalog, and optional VIA/Vial keymap import.
+- Up to 20 local board profiles, four sourced geometry presets, and board-specific settings and history.
+- English and Vietnamese interfaces and practice resources.
+- Stats including missed-key summaries, per-key accuracy, adaptive drills, and setup-matched session insights.
+- No accounts, backend, telemetry, or runtime data downloads.
 
-Phases 1-9 are implemented. Phase 10 runtime integration is implemented with
-automated verification: English/Vietnamese UI, language-specific practice content,
-saved language selection, and committed Unicode/composition input. Fluent
-Vietnamese editorial review and real Windows/macOS Telex/VNI and screen-reader
-sign-off remain required; synthetic composition tests do not establish native
-input-method compatibility on every system.
-Phase 11 (specialized Alice practices) is implemented with automated verification;
-real-board keymap import, Vietnamese drills under OS input methods, screen-reader,
-fluent Vietnamese copy, and snippet review gates remain pending. Standard-versus-Alice
-board comparison is deferred.
-Phase 12 M1-M4 implementation is integrated with automated verification:
-local board profiles and isolated Stats; sourced Standard Alice, Arisu, 75%
-Alice and two-piece split presets; per-board observable layer-output drills;
-board/language-specific adaptive text; guided mod-tap observations; and
-setup-matched long-session insights. Firmware layer activation and tapping-term
-are not observable. Real-board/firmware, screen-reader/accessibility and fluent
-Vietnamese review remain release gates. See the [Phase 12 plan](doc/phase-12-implementation-plan.md)
-for automated evidence and outstanding manual checks.
-Difficulty rules, alternate themes, and reading
-layouts from firmware are deferred. Browser-based automatic hardware
-identification is not supported.
+Phase 12 features are implemented with automated verification. Real-board and
+firmware checks, accessibility review, and fluent Vietnamese review remain
+release gates. Browser events cannot identify a physical key when multiple keys
+share a code or verify firmware layer activation. See the [Phase 12 plan](doc/phase-12-implementation-plan.md)
+for details and outstanding checks.
 
 ## Quick start
 
-Use **Node.js 24 LTS** and npm, matching the deployment workflow.
+Use **Node.js 24 LTS** and npm.
 
 ```sh
 git clone https://github.com/nguyenviettung7691/alice-type.git
@@ -61,305 +41,91 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by Vite. Ordinary typing works without granting
-keyboard or device access.
-
-### Development commands
+Open the local URL printed by Vite. Ordinary typing does not require keyboard or
+device access.
 
 | Command | Purpose |
 | --- | --- |
-| `npm run dev` | Start the development server |
 | `npm run check` | Check Svelte and TypeScript |
 | `npm test` | Run unit tests |
-| `npm run build` | Create the production site in `dist/` |
-| `npm run preview` | Preview the production build locally |
+| `npm run build` | Build the production site in `dist/` |
+| `npm run preview` | Preview the production build |
 | `npm run test:e2e` | Run Chromium integration tests |
-| `npm run import:layouts` | Regenerate the reviewed keyboard catalog; requires network access |
+| `npm run import:layouts` | Regenerate the reviewed keyboard catalog (network required) |
 
-Install Chromium before the first browser test run:
+Install Chromium before the first browser test run with
+`npx playwright install chromium`. Browser tests start an isolated development
+server and require port **4175** to be available.
 
-```sh
-npx playwright install chromium
-npm run test:e2e
-```
+## Practice and keyboard tools
 
-Browser tests start an isolated development server and require port **4175**
-to be available. They cover practice modes, keyboard input, storage failures
-and migrations, onboarding, audio, and desktop/narrow layouts.
+Timed and Words offer 15–120 second or 10–100 word targets, with optional
+punctuation and numbers. Quote offers English literary passages and original
+Vietnamese practice passages. Custom lets you enter a target; Zen is free
+writing; Alice Drills focus on split boundaries and hand alternation; Code
+uses original Python, JavaScript, and Rust snippets.
 
-## Practice
+Practice starts with the first committed input. It scores committed text rather
+than provisional input-method composition, and supports Vietnamese text with
+Unicode normalization. Composition and editing behavior can vary by browser
+and operating system. Custom text, Zen writing, unfinished runs, and Keyboard
+Test results are not saved.
 
-Select **Practice**, choose a mode, then select the exercise or activate
-**Start typing**. Focusing does not start the timer; the first committed text does.
+Keyboard connection is optional. Browser-reported legends and device IDs are
+not proof of a physical layout; a device-specific map is used only after you
+confirm it. VIA/Vial keymap files are read locally, previewed, and applied only
+after confirmation. AliceType does not read or write keyboard reports or
+identify firmware layer activation.
 
-| Mode | How it works |
-| --- | --- |
-| **Timed** | Practice for 15, 30, 60, or 120 seconds. The target extends as needed; the default is 30 seconds. |
-| **Words** | Complete 10, 25, 50, or 100 base words. |
-| **Quote** | Copy one of 12 English literary passages or 12 original Vietnamese practice passages, with attribution. Restart repeats it; Next quote selects another while idle. |
-| **Custom** | Paste or enter text, apply it, review the normalized preview, then start. Draft and target are limited to 10,000 characters. |
-| **Zen** | Write freely without a target or limit. Stop explicitly to save a free-writing score; accuracy does not apply. |
-| **Drills** | Alice-specific word sets of 10, 25, 50, or 100 words: **Split boundary** (T G B / Y H N), **Hand alternation**, or **Cross-boundary** (heavy B V G Y 6 7). English and Vietnamese draw diacritic-free words from the bundled bank. |
-| **Code** | Copy original single-line Python, JavaScript, or Rust snippets (17 per language) exercising brackets, pipe, backtick, and digits. Next snippet selects another while idle. |
+Board profiles store user-provided hardware notes, layout choices, and
+preferences. Switching boards is explicit; it does not happen automatically
+when a device connects. Stats can be viewed for the active board, all boards,
+unassigned older sessions, or a selected board.
 
-Timed and Words offer **200**, **1000**, or **5000** word vocabularies, with
-optional punctuation and numbers. Inactive choices are preserved across modes
-but do not alter Quote or Custom text.
+## Data and privacy
 
-Drills let you choose which hand owns **B** (left by default) for the finger guide and
-load figures. AliceType cannot see which hand, thumb, or duplicate keycap you use, so
-drills and the guide are cues only; they never block input or change scoring.
-
-### Input and scoring
-
-- Target-copying WPM uses currently correct characters, five characters per word.
-  Accuracy counts committed insertions/replacements, including mistakes later
-  corrected, not provisional input-method keystrokes.
-- Backspace removes the last character. English finite targets finish at their
-  final position even if errors remain. Vietnamese finite targets, and Vietnamese
-  Custom text under English UI, require **Finish** or Enter outside composition,
-  allowing final-syllable tone corrections before completing.
-- Tab leaves practice capture; time continues while focus is elsewhere.
-  **Resume typing** returns focus. Browser shortcuts are not captured.
-- **Restart** discards an unfinished run and resets metrics. Navigation and
-  settings stay locked while running; use Restart, or Stop in Zen, first.
-- Practice retains a native input buffer for English/Vietnamese input methods.
-  There is one visible writing surface: the caret follows the current target
-  letter, and provisional composition appears inline rather than in a separate
-  textbox above the exercise.
-  Committed text is normalized to NFC; provisional composition is not scored.
-  Edits may rewrite the active trailing token, not arbitrary earlier text.
-  Held-key repeat, pasted/dropped answers and undo/redo are blocked. Paste is
-  available in the Custom editor only. Unsupported text/edits show a warning.
-  Grapheme segmentation requires a modern browser with `Intl.Segmenter`.
-- Zen suppresses live metrics, progress, keyboard visualization, and practice
-  sounds without changing preferences. Its WPM uses retained characters;
-  deleting text reduces the score. Only the trailing 2,000 characters are
-  displayed, while earlier writing remains in memory for editing and scoring.
-
-Custom text and Zen writing are never persisted. Restarting Zen, changing modes,
-leaving Practice, or reloading releases its writing; leaving Practice, restoring
-defaults, or reloading clears Custom text. Unfinished runs are not saved.
-
-## Keyboard tools
-
-### Visualizer and Keyboard Test
-
-Practice highlights accepted physical keys in orange for a match or red for a
-mismatch. Character correctness still depends on what you type, not the legend.
-Both spacebars share the logical `Space` code. Narrow diagrams scroll horizontally.
-
-The optional **Finger guide** (Practice preferences, off by default, hidden in Zen)
-outlines the next expected key and adds a text caption naming its standard finger,
-including Shift on the opposite hand. Without browser legends it uses a US-QWERTY
-reference layout. With live stats shown, target-copying sessions add **Hand balance (this session)**
-shows left, right, thumb, and unattributed direct keystrokes. Composed input-method
-text stays unattributed.
-
-In **Keyboard Test**, focus the test input and choose:
-
-- **One key at a time:** follow the expected-key arrow. Correct keys show `+`;
-  unexpected keys briefly show `!` without advancing. Cells do not show counts.
-- **Freestyle:** press mapped keys in any order. Each cell shows its press count;
-  there is no expected key, mismatch feedback, or completion.
-
-Changing modes or restarting resets the matrix. Test results are temporary and
-never contribute to practice history. Held-key repeat, composition, and system
-shortcuts are ignored. **Shift+Tab** and **Escape** always leave capture.
-
-Keyboard Test sound is independent of practice sound and defaults to off.
-Its 13 effects are original synthesized interpretations, not downloaded recordings.
-
-### Keyboard connection and layout matching
-
-The collapsible connection panel offers optional browser keyboard legends and,
-where supported in a secure context, WebHID device selection. WebHID requires an
-explicit user gesture and may exclude protected keyboard interfaces. Skipping
-access never blocks ordinary typing.
-
-**Keyboard Details** separates catalog-verified facts, user-provided notes, and
-unknown values. **Find my layout** ranks bundled catalog candidates using
-browser-reported vendor/product IDs and an optional physical-key check. Shared
-IDs are not proof of a match.
-
-**A device-specific layout is used only after you confirm its profile and
-variant.** Otherwise the generic Alice map remains active. Browser legends,
-product names, and device IDs do not reliably identify physical geometry,
-model, firmware, or hardware features. AliceType never opens HID devices or
-reads/writes HID reports.
-
-After confirming a layout, **Import keymap** in Keyboard Details reads a VIA saved
-layout (`.json`) or Vial `.vil` file in the browser. It previews differences from the
-default keymap, ignored features (such as macros), and unrecognized keycodes, then
-applies layer 0 to Practice and Keyboard Test only after you choose **Apply keymap**.
-A read-only layer viewer shows every imported layer. The file is never uploaded and
-reflects the file, not what the keyboard currently runs. Changing the confirmed
-profile, variant, or catalog revision removes the import with a notice.
-
-### Your keyboards
-
-In **Keyboard Details**, add, edit, duplicate or delete profiles for up to 20
-physical boards. Use **Active keyboard** in the header to switch while idle;
-**Ctrl+Shift+K** focuses the selector where the browser permits it. Switching
-resets idle Practice and Keyboard Test state, including unsaved Custom/Zen text.
-Finish or restart a running session first.
-
-Each board remembers its confirmed layout, keymap import, device notes and
-B-hand preference, plus optional switch type, actuation force (not bottom-out
-weight), keycap profile, tenting angle, left/right thumb roles and layer
-bindings. These are self-reported notes: thumb roles do not reprogram firmware
-or prove which thumb/layer was used. **Four sourced geometry presets** preview
-the bundled Standard Alice, Arisu, 75% Alice and Keyhive Sofle split layouts;
-choose Apply to confirm a preset. Connecting a device does not automatically
-switch profiles.
-
-Duplicates receive a new identity and no inherited scores. Deleting a profile
-requires confirmation and keeps its historical scores; at least one profile
-must remain. **Restore defaults** preserves the collection and board setups.
-
-## Preferences, history, and privacy
-
-The **Practice** page includes Block, Line, or Underline carets, live-stat
-visibility, and optional generated typing clicks (off by default). **Restore
-defaults** requires confirmation and does not delete keyboards or history.
-
-Practice keeps its mode/options, typing area, progress, and actions above the
-full-width keyboard. The two-line text window scrolls with the caret. Keyboard Test places
-focus/restart actions beside its heading and shows the full-width diagram directly
-after the compact test status. **Instructions & limitations** expands the detailed
-key-capture guidance; Shift+Tab always leaves the test.
-
-Preferences, selected profiles, confirmed layouts, and personal notes use
-versioned `localStorage` (schema v9). Earlier settings migrate into one board;
-v8 profiles migrate with empty layer bindings.
-The far-right **Language** selector defaults
-to English and saves your choice locally; **Restore defaults** returns to English.
-Language changes do not change keyboard geometry, user writing, or physical test
-counts. Completed scores use IndexedDB (record v6, database v1). **Stats** separates
-target-copying WPM/accuracy and missed-key summaries from Zen free-writing scores.
-New scores include language/scoring metadata and a board/hardware snapshot;
-existing scores are not rewritten. **Keyboard history** defaults to the active
-board across all summaries, charts and heatmaps. Choose **All keyboards**,
-**Unassigned (older sessions)**, or a specific current/deleted board to inspect
-other results. Old scores are never guessed onto a board. Renaming or deleting
-a profile leaves saved snapshots unchanged. **Clear history** remains global.
-Heatmaps use the currently active diagram, not a historical geometry snapshot.
-Historical keystroke accuracy and committed-text accuracy have separate summaries.
-**Recent sessions** shows a progress chart above the history table: the latest 10
-target-copying sessions (Zen and command drills excluded), oldest to newest, with WPM on the left axis
-and accuracy (50–100%) on the right. Point color shows language and point shape
-shows mode; language toggles hide or show each language's sessions.
-**Hand load and key accuracy** summarizes saved v4-v6 typing sessions by language: hand balance,
-per-key accuracy for keys with at least 20 direct attempts, and reach-key versus
-home-row accuracy. Older records are excluded and counted in a note.
-**Layer command practice** uses configured board bindings to prompt an observable
-arrow or F-key output; it does not verify that Fn was held. Command records are
-kept separate from text WPM, typing accuracy and charts. **Adaptive weak-key
-drills** use only the active board/language and require at least 20 key attempts
-across 3 sessions plus 20 candidate tokens. **Mod-tap guide** reports browser
-Space/Shift event timing and user-classified results, not firmware timing.
-**Session insights** compare active minutes 0-5 and 20-25 only after at least
-100 attempts in each window, 5 desk sessions and 3 days for a matched setup.
-Accuracy changes are percentage points and all hardware comparisons are
-observational, not causal or medical.
-Recent-session and per-key tables virtualize their rows in a bounded, keyboard-scrollable
-viewport with sticky headers. Sorting history or changing the attribution language resets
-the relevant table to the top; all records in the selected board scope remain
-included in summaries and charts.
-Reach stats compare accuracy in two cards and show up to five lowest-accuracy reach
-keys with attempt/miss counts, or explain when the sample is too small.
-Keyboard Test counts and raw input events are not stored.
-
-All app data stays in your browser, with no uploads or remote synchronization.
-Storage belongs to the current origin/browser and can be removed by browser
-cleanup. Storage failures show explicit warnings and retry controls; reloading
-discards unsaved pending results. Device grants can be revoked in browser site
-settings.
+Preferences and board profiles are stored in browser `localStorage`; completed
+scores use IndexedDB. Data stays in the current browser and origin, is not
+uploaded or synchronized, and may be removed by browser cleanup. Storage
+failures are reported in the app. Keyboard Test counts and raw input events are
+not stored.
 
 ## Deploy to GitHub Pages
 
-1. In the repository's **Settings > Pages**, set **Build and deployment > Source**
-   to **GitHub Actions**.
-2. Push to `main`, or run **Deploy to GitHub Pages** manually from the Actions tab.
+1. In **Settings > Pages**, set the source to **GitHub Actions**.
+2. Push to `main`, or run **Deploy to GitHub Pages** from the Actions tab.
 3. Check the workflow's deployment URL after it succeeds.
 
-The [workflow](.github/workflows/deploy-pages.yml) installs locked dependencies
-with `npm ci`, checks Svelte/TypeScript, runs unit tests, and builds the site.
-It uploads `dist/` as a Pages artifact and deploys through the `github-pages`
-environment using GitHub's built-in token; no personal access token is required.
-Browser integration tests remain a separate local check.
-
-The deployment build uses Vite's relative base (`./`) so asset URLs resolve from
-the page location, both at `/alice-type/` and at the custom-domain root. This
-avoids baking a repository path into the artifact that becomes invalid when a
-custom domain is configured. Local development keeps Vite's default `/` base.
-To preview the deployment build:
+The [deployment workflow](.github/workflows/deploy-pages.yml) installs locked
+dependencies, checks the code, runs unit tests, and deploys the production
+build. To preview a deployment-style build locally:
 
 ```sh
 npm run build -- --base=./
 npm run preview
 ```
 
-Open the printed preview URL. After changing Pages domain settings, rerun the
-deployment workflow to replace any older artifact built with an absolute base.
-Changing the deployment origin does not migrate existing browser preferences or
-history.
-
 ## Design and roadmap
 
-The [technical design](doc/tech-design.md) is the product-level source of truth.
-Each phase has a detail design and an implementation/verification plan:
-
-| Phase | Scope | Documents |
-| --- | --- | --- |
-| 1 | Scaffolding and UI foundation | [Design](doc/phase-1-detail-design.md) · [Plan](doc/phase-1-implementation-plan.md) |
-| 2 | Core typing engine | [Design](doc/phase-2-detail-design.md) · [Plan](doc/phase-2-implementation-plan.md) |
-| 3 | Alice visualizer | [Design](doc/phase-3-detail-design.md) · [Plan](doc/phase-3-implementation-plan.md) |
-| 4 | Modifiers, modes, and logic | [Design](doc/phase-4-detail-design.md) · [Plan](doc/phase-4-implementation-plan.md) |
-| 5 | Storage and polish | [Design](doc/phase-5-detail-design.md) · [Plan](doc/phase-5-implementation-plan.md) |
-| 6 | Keyboard Test matrix | [Design](doc/phase-6-detail-design.md) · [Plan](doc/phase-6-implementation-plan.md) |
-| 7 | Keyboard Details and layout profiles | [Design](doc/phase-7-detail-design.md) · [Plan](doc/phase-7-implementation-plan.md) |
-| 8 | Quote, Custom, and Zen | [Design](doc/phase-8-detail-design.md) · [Plan](doc/phase-8-implementation-plan.md) |
-| 9 | Guided and Freestyle Keyboard Test modes | [Design](doc/phase-9-detail-design.md) · [Plan](doc/phase-9-implementation-plan.md) |
-| 10 (review gates pending) | English/Vietnamese resources, Unicode/composition practice, saved language selector | [Design](doc/phase-10-detail-design.md) · [Plan](doc/phase-10-implementation-plan.md) |
-| 11 (manual gates pending) | Alice Drills and Code modes, cue-only finger guide, hand/finger load and per-key accuracy, VIA/Vial keymap file import | [Design](doc/phase-11-detail-design.md) · [Plan](doc/phase-11-implementation-plan.md) |
-| 12 (M1-M4 implemented; manual gates pending) | Multi-board profiles, sourced presets, layer/adaptive practice, mod-tap guidance and setup-matched insights | [Design](doc/phase-12-detail-design.md) · [Plan](doc/phase-12-implementation-plan.md) |
-
-Phase 10 separates UI catalogs under `src/lib/i18n/ui/` from practice resources
-under `src/lib/typing/word-banks/` and `src/lib/typing/quotes/`. Vietnamese word
-counts mean whitespace-separated tokens (often syllables), not dictionary words.
-
-To add a language, extend the typed registry (native name, document tag, formatting
-locale, display-label key and explicit-finish policy), supply a full UI catalog
-matching the message/placeholder contract, and wire validated vocabulary/Quote
-resources into the exact language-keyed maps. Extend the supported text profile
-and input tests if the new script needs it. No component copy or runtime
-translation service is needed. Review language quality, content rights and actual
-native input methods before sign-off. See the Phase 10 extension checklist.
-
-Vietnamese vocabulary is a pinned, reproducible subtitle-derived snapshot with
-automated repertoire, syllable-shape and exclusion checks, **not a fluently
-reviewed dictionary**. Regenerate with `node scripts\import-vietnamese-vocabulary.ts`;
-review the result before updating it. Original Vietnamese passages likewise
-still need fluent editorial review.
+The [technical design](doc/tech-design.md) and phase-specific designs and
+implementation plans in [`doc/`](doc/) describe the product contract, behavior,
+verification, and remaining review gates.
 
 ## Data attribution and licensing
 
-| Content | Source and terms |
-| --- | --- |
-| AliceType-authored source | Provisional [MIT license](LICENSE); confirm the copyright holder and licensing choice before publishing or distributing. |
-| English vocabulary | Adapted from [FrequencyWords](https://github.com/hermitdave/FrequencyWords), derived from OpenSubtitles2018. [CC BY-SA 4.0](src/lib/typing/word-banks/LICENSE-CC-BY-SA-4.0.txt); see the [attribution and transformation notice](src/lib/typing/word-banks/NOTICE.txt). Tiers are source-frequency prefixes, not a universal ranking. |
-| Vietnamese vocabulary | Separate pinned FrequencyWords/OpenSubtitles2018 snapshot under CC BY-SA 4.0; exact revision, filtering and review limitations are in the [vocabulary notice](src/lib/typing/word-banks/NOTICE.txt). |
-| Literary passages | 12 passages across three works. See the [quote attribution and rights notice](src/lib/typing/QUOTE-NOTICE.txt) for editions, adaptations, and US public-domain status. Check local copyright law before redistribution outside the United States. |
-| Vietnamese passages | 12 original AI-assisted AliceType practice passages in three collections, under the application MIT license; not literary quotations/translations. See the [quote notice](src/lib/typing/QUOTE-NOTICE.txt). |
-| Code snippets | 51 original single-line snippets written for AliceType under the application MIT license. See the [code snippet notice](src/lib/typing/code-snippets/CODE-NOTICE.txt). |
-| Keyboard layouts | Adapted from [VIA](https://github.com/the-via/keyboards) and [QMK](https://github.com/qmk/qmk_firmware) under [GPL-3.0](src/lib/keyboard/layout-data/LICENSE-GPL-3.0.txt). See the [notice](src/lib/keyboard/layout-data/NOTICE.txt) for pinned sources, modifications, and upstream notices. |
-
-VIA supplies geometry and variants; QMK supplies default-keymap physical codes,
-USB IDs, and manufacturer data. Maintainers regenerate the committed snapshot
-from the reviewed [source allowlist](scripts/keyboard-layout-sources.json).
-The app never fetches vocabulary, quotes, or layout data at runtime, and its
-footer links to the bundled notices and licenses.
+- **AliceType-authored code:** provisional [MIT license](LICENSE); confirm the
+  copyright holder and licensing choice before publishing or distributing.
+- **English and Vietnamese vocabulary:** FrequencyWords/OpenSubtitles2018
+  snapshots under CC BY-SA 4.0. See the
+  [license](src/lib/typing/word-banks/LICENSE-CC-BY-SA-4.0.txt) and
+  [attribution notice](src/lib/typing/word-banks/NOTICE.txt).
+- **Literary and Vietnamese passages:** see the
+  [quote attribution and rights notice](src/lib/typing/QUOTE-NOTICE.txt).
+- **Code snippets:** original AliceType material; see the
+  [snippet notice](src/lib/typing/code-snippets/CODE-NOTICE.txt).
+- **Keyboard layouts:** adapted from VIA and QMK under GPL-3.0; see the
+  [license](src/lib/keyboard/layout-data/LICENSE-GPL-3.0.txt) and
+  [layout notice](src/lib/keyboard/layout-data/NOTICE.txt).
 
 AliceType-authored code remains MIT. Because the distributed build includes
 GPL layout data, the build as a whole is conveyed under GPL-3.0; this public
