@@ -15,6 +15,7 @@ accents, and real-time feedback.
 [![GitHub forks](https://img.shields.io/github/forks/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type/forks)
 [![Top language](https://img.shields.io/github/languages/top/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type)
 [![Last commit](https://img.shields.io/github/last-commit/nguyenviettung7691/alice-type)](https://github.com/nguyenviettung7691/alice-type/commits/main)
+[![XERJ Corpus Hub](https://img.shields.io/badge/XERJ%20Corpus%20Hub-Featured%20Solution-6366f1?style=flat-square&logo=github)](https://github.com/xerj-org/xerj)
 
 ![AliceType Practice view with the Alice keyboard visualizer](doc/images/homepage.png)
 
@@ -134,3 +135,9 @@ verification, and remaining review gates.
 AliceType-authored code remains MIT. Because the distributed build includes
 GPL layout data, the build as a whole is conveyed under GPL-3.0; this public
 repository provides the corresponding source.
+
+### 🤖 AI Agent Reference
+
+[![XERJ Corpus Hub](https://img.shields.io/badge/XERJ%20Corpus%20Hub-Featured%20Solution-6366f1?style=flat-square&logo=github)](https://github.com/xerj-org/xerj)
+
+The keyboard onboarding implementation (`feat: Enhance keyboard onboarding and connection experience`) in `alice-type` was selected for inclusion in the [XERJ Corpus Hub](https://github.com/xerj-org/xerj) — an open-source index providing AI coding agents with verified reference implementations.
